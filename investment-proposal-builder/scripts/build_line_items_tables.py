@@ -45,20 +45,21 @@ TABLE_BOTTOM_MARGIN = Emu(520000)  # keep clear of the footer/page-number
 COL_WIDTHS = [Emu(1900000), Emu(1500000), Emu(4573001), Emu(1425000)]  # category, ISIN, instrument, weight
 ROW_HEIGHT = Emu(205000)  # tightened from 228600 to fit more rows per slide
 
-# Category bar colors, extracted directly from the reference deck's own
-# Rectangle shapes (slides 9-10) via their theme scheme references — never
-# invented. Cash/bg2->lt2, Fixed Income & Equity/accent6, Alternatives/
-# accent5, Commodities/accent2, Total/tx2->dk2. Structured Products and
-# Other don't exist as categories in the reference deck's own example, so
-# they take the two theme accents the original 5-category design didn't
-# use (accent1, accent3), keeping the whole set inside the same palette.
+# Category bar colors. Cash/Fixed Income/Private Assets/Commodities/Total
+# are extracted directly from the reference deck's own Rectangle shapes
+# (slides 9-10) via their theme scheme references: Cash=bg2->lt2, Fixed
+# Income=accent6, Alternatives=accent5, Commodities=accent2, Total=tx2->
+# dk2. Equities and Structured Products don't exist as their own colored
+# categories in the reference deck's own example (Equities originally
+# shared Fixed Income's accent6) -- per explicit design direction they use
+# Sky Blue and Peach Pink instead, both distinct from every other bar.
 CATEGORY_COLORS = {
     "Cash": RGBColor(0xFF, 0xC5, 0x45),
     "Fixed Income": RGBColor(0x4B, 0x5F, 0x80),
-    "Equities": RGBColor(0x4B, 0x5F, 0x80),
+    "Equities": RGBColor(0x79, 0xD6, 0xFF),          # Sky Blue
     "Private Assets": RGBColor(0xAC, 0x5D, 0x85),
     "Commodities": RGBColor(0x3B, 0xAF, 0x90),
-    "Structured Products": RGBColor(0x79, 0xD6, 0xFF),
+    "Structured Products": RGBColor(0xE6, 0xA4, 0xAD),  # Peach Pink
     "Other": RGBColor(0xFF, 0xA4, 0x00),
 }
 TOTAL_COLOR = RGBColor(0x20, 0x29, 0x45)

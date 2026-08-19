@@ -107,17 +107,19 @@ bucket, an equity region) still show their own label in the merged first
 column, but get no subtotal of their own — that breakdown lives on the
 sleeve slides (13-19) instead, so showing it twice would be redundant.
 
-Category bar colors are pulled directly from the reference deck's own
-Rectangle shapes via their theme color references (`references/
-geography_map.py` doesn't cover this — see `CATEGORY_COLORS` in
-`build_line_items_tables.py`): Cash = gold (`FFC545`, theme `bg2`/`lt2`),
-Fixed Income and Equities = slate (`4B5F80`, `accent6`), Private Assets
-(filling the "Alternatives" slot) = mauve (`AC5D85`, `accent5`),
-Commodities = mint (`3BAF90`, `accent2`), Total = navy (`202945`, `tx2`/
-`dk2`). Structured Products and Other aren't categories in the reference
-deck's own example, so they take the two theme accents that design didn't
-use — sky (`79D6FF`, `accent1`) and orange (`FFA400`, `accent3`) — keeping
-every color inside the same brand palette rather than inventing new ones.
+Category bar colors (`CATEGORY_COLORS` in `build_line_items_tables.py`):
+Cash = gold (`FFC545`, theme `bg2`/`lt2`), Fixed Income = slate (`4B5F80`,
+`accent6` — the reference deck's own color, which originally doubled for
+Equities too), Private Assets (filling the "Alternatives" slot) = mauve
+(`AC5D85`, `accent5`), Commodities = mint (`3BAF90`, `accent2`), Total =
+navy (`202945`, `tx2`/`dk2`) — all four pulled directly from the reference
+deck's own Rectangle shapes via their theme color references. Equities and
+Structured Products depart from the reference deck by explicit design
+direction: Equities = Sky Blue (`79D6FF`), Structured Products = Peach
+Pink (`E6A4AD`, not a theme color — a one-off custom value), both chosen
+to be visually distinct from every other bar rather than reusing a theme
+accent. `Other` still falls back to `FFA400` (`accent3`) since no explicit
+color was ever specified for it.
 
 ## Formatting rules that must survive every rebuild
 
@@ -188,9 +190,55 @@ automatically:
   `ppt/slides/slideN.xml` was replaced with `202945`; the theme's own
   `dk1` slot (still `000000`, used correctly elsewhere) was left alone.
 
-- **Slide 8's compass/gauge icon** (a decorative `Graphic 8` group near
-  the "Moderate" label, two Freeform shapes forming a speedometer icon)
-  was removed — it added visual noise without meaning.
+- **Slide 8's compass/gauge icon(s)** — there were actually two separate
+  decorative shapes stacked on top of each other: `Graphic 8` (a Freeform
+  group) and `Graphic 54` (an embedded SVG picture literally named
+  "Speedometer Middle with solid fill" in its own XML). Both removed —
+  they added visual noise without meaning. If a rendered check still shows
+  an icon there, look for a third one; there is no principled reason to
+  assume two was the final count.
+- **Slide 8 dial dots** are also resized, not just recolored: the selected
+  profile's dot grows to `DOT_SIZE_HIGHLIGHT`, every other dot shrinks to
+  `DOT_SIZE_DEFAULT`, both resized around their own fixed center point
+  (`_resize_dot_keep_center()` in `build_proposal.py`) so they stay
+  anchored to the curve.
+- **Slides 5 and 6's subtitle font size** was 14pt in the source deck
+  while every other subtitle across the deck is 12pt — a genuine
+  inconsistency in the reference deck itself, not something this skill's
+  code introduced. Fixed by changing only the font size on the template's
+  own frozen slide 5/6 subtitles (text and position untouched, honoring
+  "never change the text or layout" for those two slides).
+- **Sleeve slides' vehicle-breakdown donuts no longer repeat the sleeve
+  name inside the donut hole** (the reference deck showed e.g. "Equities"
+  centered inside the donut on the Equities sleeve slide, redundant with
+  "Equities across investment vehicles" as the slide's own title one line
+  above). Removed on Fixed Income, Equities, Alternatives and Commodities
+  (Structured Products never had one). By contrast, the Portfolio
+  Overview's two donuts ("Allocation by asset class", "Currency exposure")
+  now carry their title *inside* the donut hole instead of as a separate
+  textbox above it, Nunito Sans 14pt bold, navy — those two donuts sit
+  side by side with no other label distinguishing them, so an in-hole
+  label is needed there in a way it isn't on the single-donut sleeve
+  slides.
+- **The "Fixed Income Breakdown" (proposed bond selection) and "Equity
+  breakdown" slides had a broken title.** Root cause: they're the only two
+  slides using the `DEFAULT` slide layout, and that layout — unlike every
+  other layout in the deck — never declared a title placeholder at all
+  (confirmed by diffing `ppt/slideLayouts/slideLayout31.xml` against
+  `slideLayout22.xml`, the `Title` layout every other data slide uses).
+  Equity breakdown's title happened to still show text because its author
+  worked around the missing placeholder with a plain hand-positioned
+  textbox (`Text 0`) — at the wrong position. Fixed at the root: the
+  `Title` layout's title-placeholder XML block was copied verbatim into
+  the `DEFAULT` layout, so both slides now inherit the correct position
+  (665163, 1032442 EMU) the normal way, through the same layout mechanism
+  every other slide uses — not a per-slide workaround. (An earlier attempt
+  that cloned a title *shape* directly onto each slide, without fixing the
+  layout, silently failed: python-pptx read the clone's position back as
+  `None` because a placeholder with no layout to inherit from resolves to
+  nothing. If you're extending this area, verify a placeholder fix by
+  reading the shape's `.left`/`.top` back after reopening the file, not
+  just by confirming the edit ran without error.)
 - **Leftover "agenda dots" section-nav cluster** on four appendix slides
   (original template positions 26 "Your Virtual team of Experts", 27 "Our
   Investment Universe", 29 "Syz Advisory Services", 30 "Our Value
