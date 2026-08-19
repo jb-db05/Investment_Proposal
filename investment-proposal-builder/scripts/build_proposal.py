@@ -139,6 +139,40 @@ def set_text(slide, name, text, bold_overrides=None):
     set_shape_lines(find_shape(slide, name), str(text).split("\n"), bold_overrides)
 
 
+# The subtitle placeholder ("Text Placeholder 2", just under every slide
+# title) uses <a:spAutoFit/> with anchor="b" (bottom) at the layout level:
+# the shape's own height grows to fit its text, and because it's anchored
+# to the bottom of a box whose top edge is fixed, a subtitle that wraps to
+# a second line visibly shifts *down* rather than growing upward — exactly
+# the bug reported. Editing text in place can't fix that; the shape itself
+# has to go. SUBTITLE_LEFT/TOP match the template's own position (H=1.85cm,
+# V=4.8cm) exactly, but as a plain textbox with a fixed height, top-anchored
+# text and no autofit, so it never moves regardless of line count.
+SUBTITLE_LEFT = Emu(665163)
+SUBTITLE_TOP = Emu(1728947)
+SUBTITLE_WIDTH = Emu(9398001)
+SUBTITLE_HEIGHT = Emu(560000)
+SUBTITLE_NAME = "Text Placeholder 2"
+
+
+def set_subtitle(slide, text):
+    old = find_shape(slide, SUBTITLE_NAME)
+    if old is not None:
+        old._element.getparent().remove(old._element)
+    tb = slide.shapes.add_textbox(SUBTITLE_LEFT, SUBTITLE_TOP, SUBTITLE_WIDTH, SUBTITLE_HEIGHT)
+    tb.name = SUBTITLE_NAME
+    tf = tb.text_frame
+    tf.word_wrap = True
+    tf.vertical_anchor = MSO_ANCHOR.TOP
+    tf.margin_left = tf.margin_right = tf.margin_top = tf.margin_bottom = 0
+    p = tf.paragraphs[0]
+    run = p.add_run()
+    run.text = str(text)
+    run.font.size = Pt(12)
+    run.font.color.rgb = NAVY
+    return tb
+
+
 def color_scoreboard_column(shape, values):
     """Color each value paragraph (paragraph index 1+, index 0 is the
     column header) green if positive, tiger-orange if negative — matching
@@ -157,11 +191,25 @@ def color_scoreboard_column(shape, values):
             run.font.color.rgb = MINT
 
 
+DOT_SIZE_DEFAULT = Emu(250065)     # matches every non-selected dot in the template
+DOT_SIZE_HIGHLIGHT = Emu(340000)   # a bit bigger than the template's own highlight size (314873)
+
+
+def _resize_dot_keep_center(shape, new_size: Emu):
+    cx = shape.left + shape.width / 2
+    cy = shape.top + shape.height / 2
+    shape.width = new_size
+    shape.height = new_size
+    shape.left = Emu(int(cx - new_size / 2))
+    shape.top = Emu(int(cy - new_size / 2))
+
+
 def recolor_profile_dial(slide, selected_profile):
     """Slide 8's risk-return graph: the selected profile's dot turns
-    orange (the template's own highlight color, previously hardcoded onto
-    Moderate); every other dot -- including Moderate when it's not
-    selected -- reverts to the default teal."""
+    orange and grows a bit larger (the template's own highlight treatment,
+    previously hardcoded onto Moderate regardless of the actual selection);
+    every other dot -- including Moderate when it's not selected -- reverts
+    to the default teal at the default size."""
     group = find_shape(slide, "Group 3")
     if group is None:
         return
@@ -169,12 +217,14 @@ def recolor_profile_dial(slide, selected_profile):
         if sub.name.startswith("Oval"):
             sub.fill.solid()
             sub.fill.fore_color.rgb = DOT_DEFAULT
+            _resize_dot_keep_center(sub, DOT_SIZE_DEFAULT)
     highlight_name = PROFILE_DOT_SHAPE.get(selected_profile)
     if highlight_name:
         dot = next((sub for sub in group.shapes if sub.name == highlight_name), None)
         if dot is not None:
             dot.fill.solid()
             dot.fill.fore_color.rgb = ORANGE
+            _resize_dot_keep_center(dot, DOT_SIZE_HIGHLIGHT)
 
 
 def fmt_money_m(value_eur: float, currency: str) -> str:
@@ -294,9 +344,11 @@ def fill_concentration_table(slide, table_shape_name, rows, currency="EUR"):
 
 
 def fill_income_tables(slide, sleeve_table_name, duration_table_name, income):
+    income_row_height = None
     sh = find_shape(slide, sleeve_table_name)
     if sh is not None and sh.has_table:
         table = sh.table
+        income_row_height = table.rows[0].height
         rows = income["income_by_sleeve"]
         for i in range(len(table.rows) - 1):
             r = i + 1
@@ -309,17 +361,22 @@ def fill_income_tables(slide, sleeve_table_name, duration_table_name, income):
                 for c in range(3):
                     _cell(table.cell(r, c), "")
 
-    # Rebuilt with the exact same header style (gold fill / navy text) as
-    # the income-by-sleeve table right next to it -- these two tables must
-    # look like one system, not two different designs.
+    # Rebuilt with the exact same header style (gold fill / navy text) AND
+    # the exact same width/row-height as the income-by-sleeve table right
+    # next to it -- these two tables must look like one system, not two
+    # different designs at two different scales.
     sh2 = find_shape(slide, duration_table_name)
     if sh2 is not None and sh2.has_table:
-        left, top, width, height = sh2.left, sh2.top, sh2.width, sh2.height
+        left, top, height = sh2.left, sh2.top, sh2.height
+        width = sh.width if sh is not None else sh2.width
         sh2._element.getparent().remove(sh2._element)
         rows = income["fi_duration_subsleeves"]
         n_rows = 1 + max(1, len(rows))
         gf = slide.shapes.add_table(n_rows, 4, left, top, width, height)
         table = gf.table
+        if income_row_height:
+            for r in table.rows:
+                r.height = income_row_height
         headers = ["Sub-sleeve", "Value", "Avg duration", "Contribution"]
         for c, h in enumerate(headers):
             _cell(table.cell(0, c), h, bold=True, fill=TABLE_HEADER_FILL, font_color=TABLE_HEADER_FONT, size=9)
@@ -453,6 +510,8 @@ def fill_proposed_bond_selection(prs, parsed):
     set_donut_legend(slide, ["Text 18", "Text 20", "Text 22"], pb["by_currency_pct"])
     set_donut_legend(slide, ["Text 25", "Text 27", "Text 29"], pb["by_maturity_pct"])
     set_donut_legend(slide, ["Text 32", "Text 34", "Text 36", "Text 38", "Text 40"], pb["by_rating_pct"])
+    # internal data-sourcing footnote — not for the client's eyes
+    set_text(slide, "Text 41", "")
 
 
 def fill_equity_breakdown(prs, parsed):
@@ -480,6 +539,8 @@ def fill_equity_breakdown(prs, parsed):
     val_m = (sleeve.get("total_weight_pct", 0) / 100) * parsed["total_value_eur"] / 1_000_000
     set_text(slide, "Text 1", f"Equity sleeve: {n_lines} lines, {ccy} {val_m:.1f}m, "
                                f"{sleeve.get('total_weight_pct', 0):.1f}% of the portfolio.")
+    # internal data-classification footnote — not for the client's eyes
+    set_text(slide, "Text 32", "")
 
 
 def fill_liquidity(prs, parsed):
@@ -527,7 +588,7 @@ def fill_market_slides(prs, market):
         return
     s3 = get_slide(prs, 3)
     h = market["headline"]
-    set_text(s3, "Text Placeholder 2", h["intro_sentence"])
+    set_subtitle(s3, h["intro_sentence"])
 
     rects = [sh for sh in s3.shapes if sh.name == "Rectangle"]
     stat_rects, obs_rects = rects[:4], rects[4:7]
@@ -548,7 +609,7 @@ def fill_market_slides(prs, market):
         color_scoreboard_column(textboxes[3], [r["ytd"] for r in rows])
 
     s4 = get_slide(prs, 4)
-    set_text(s4, "Text Placeholder 2", market["four_drivers"]["intro_sentence"])
+    set_subtitle(s4, market["four_drivers"]["intro_sentence"])
     # the 5th 'Rectangle' on slide 4 is a standalone policy note (no title
     # line), not a numbered driver card — left untouched, see slide_recipe.md
     driver_rects = [sh for sh in s4.shapes if sh.name == "Rectangle"][:4]

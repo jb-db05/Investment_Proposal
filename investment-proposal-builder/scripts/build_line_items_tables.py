@@ -39,11 +39,11 @@ from pptx.oxml.ns import qn
 # --- visual constants, matched to the template's own title-block geometry ---
 TABLE_LEFT = Emu(665163)
 TABLE_WIDTH = Emu(9398001)
-TABLE_TOP = Emu(2260000)
-TABLE_BOTTOM_MARGIN = Emu(450000)  # keep clear of the footer/page-number
+TABLE_TOP = Emu(2140000)
+TABLE_BOTTOM_MARGIN = Emu(520000)  # keep clear of the footer/page-number
 
 COL_WIDTHS = [Emu(1900000), Emu(1500000), Emu(4573001), Emu(1425000)]  # category, ISIN, instrument, weight
-ROW_HEIGHT = Emu(228600)  # ~0.25in, comfortable for 10-10.5pt text
+ROW_HEIGHT = Emu(205000)  # tightened from 228600 to fit more rows per slide
 
 # Category bar colors, extracted directly from the reference deck's own
 # Rectangle shapes (slides 9-10) via their theme scheme references — never
@@ -161,9 +161,12 @@ def render_page(slide, page_groups: list[Group], n_rows: int, is_last_page: bool
     for r in range(n_rows):
         table.rows[r].height = ROW_HEIGHT
 
+    # column-label row: navy text on white, not a colored bar — the colored
+    # bars are reserved for the asset-class header rows below
     headers = ["Asset Allocation", "ISIN", "Instrument", "Weight"]
     for c, h in enumerate(headers):
-        _set_cell(table.cell(0, c), h, bold=True, fill=NAVY, font_color=HEADER_TEXT_COLOR, size=10, font_name=FONT_NAME)
+        _set_cell(table.cell(0, c), h, bold=True, fill=RGBColor(0xFF, 0xFF, 0xFF), font_color=NAVY,
+                  size=10, font_name=FONT_NAME)
     r = 1
     last_top_category = None
     for g in page_groups:
@@ -232,6 +235,39 @@ def delete_slide(prs, index):
     xml_slides.remove(slides[index])
 
 
+# Same fix as build_proposal.py's set_subtitle(): the subtitle placeholder
+# uses <a:spAutoFit/> with anchor="b" at the layout level, so a subtitle
+# that wraps to a second line visibly shifts down instead of growing
+# upward. Recreated as a plain, fixed-height, top-anchored textbox at the
+# template's own position (H=1.85cm, V=4.8cm) instead of edited in place.
+SUBTITLE_LEFT = Emu(665163)
+SUBTITLE_TOP = Emu(1728947)
+SUBTITLE_WIDTH = Emu(9398001)
+SUBTITLE_HEIGHT = Emu(560000)
+
+
+def set_subtitle(slide, text):
+    old = None
+    for sh in slide.shapes:
+        if sh.name == "Text Placeholder 2":
+            old = sh
+            break
+    if old is not None:
+        old._element.getparent().remove(old._element)
+    tb = slide.shapes.add_textbox(SUBTITLE_LEFT, SUBTITLE_TOP, SUBTITLE_WIDTH, SUBTITLE_HEIGHT)
+    tb.name = "Text Placeholder 2"
+    tf = tb.text_frame
+    tf.word_wrap = True
+    tf.vertical_anchor = MSO_ANCHOR.TOP
+    tf.margin_left = tf.margin_right = tf.margin_top = tf.margin_bottom = 0
+    p = tf.paragraphs[0]
+    run = p.add_run()
+    run.text = str(text)
+    run.font.size = Pt(12)
+    run.font.color.rgb = NAVY
+    return tb
+
+
 def set_placeholder_text(slide, name, text):
     for sh in slide.shapes:
         if sh.name == name and sh.has_text_frame:
@@ -293,7 +329,7 @@ def build(prs: Presentation, parsed: dict) -> Presentation:
         subtitle = (f"All positions of the proposed {ccy} {total_m:.1f}m allocation, "
                     f"part {page_num} of {n_pages}. Weights as at {date}.")
         set_placeholder_text(slide, "Title 1", title)
-        set_placeholder_text(slide, "Text Placeholder 2", subtitle)
+        set_subtitle(slide, subtitle)
 
         n_rows = 1  # column header
         last_tc = None

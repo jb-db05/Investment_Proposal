@@ -139,10 +139,33 @@ not just convention — breaking them was a real bug caught during review:
 - **Slide 8 risk-return dial**: the selected profile's dot turns orange
   (`FFA400`, `accent3`, the template's own highlight color — previously
   hardcoded onto "Moderate" regardless of which profile was actually
-  chosen); every other dot, Moderate included, reverts to the default teal
-  (`3AB7C8`, a literal color on the ovals, not a theme reference). See
-  `PROFILE_DOT_SHAPE` in `build_proposal.py` for the profile → oval-shape
-  mapping (they live inside a group named `Group 3`).
+  chosen) and grows larger (`DOT_SIZE_HIGHLIGHT`); every other dot,
+  Moderate included, reverts to the default teal (`3AB7C8`, a literal
+  color on the ovals, not a theme reference) at the default size
+  (`DOT_SIZE_DEFAULT`). Resizing keeps each dot's own center point fixed
+  (`_resize_dot_keep_center()`) so it stays anchored to the curve instead
+  of drifting when it grows/shrinks. See `PROFILE_DOT_SHAPE` in
+  `build_proposal.py` for the profile → oval-shape mapping (they live
+  inside a group named `Group 3`).
+- **Subtitle placeholder ("Text Placeholder 2") is never edited in
+  place.** Its layout definition uses `<a:spAutoFit/>` with `anchor="b"`
+  (bottom-anchored, shape grows to fit text) — a subtitle that wraps to a
+  second line visibly shifts *down* instead of the box growing upward.
+  `set_subtitle()` (in both `build_proposal.py` and
+  `build_line_items_tables.py`) deletes the placeholder and recreates it
+  as a plain textbox at the template's own position (H=1.85cm/V=4.8cm,
+  i.e. `left=665163, top=1728947` EMU), fixed height, top-anchored, no
+  autofit — so it never moves regardless of line count. Apply this same
+  pattern to any new subtitle-setting code; editing the placeholder's
+  runs in place will reintroduce the bug.
+- **Internal data-sourcing footnotes are blanked, not translated.** Two
+  footnotes reveal backend methodology the client doesn't need to see:
+  the proposed-bond-selection slide's "Source: 'Fixed Income' tab..."
+  (`Text 41`) and the equity-breakdown slide's "classified at issuer
+  level... these fields are not in the client file" (`Text 32`). Both are
+  set to `""` in `fill_proposed_bond_selection()` /
+  `fill_equity_breakdown()` rather than removed as shapes, so the layout
+  doesn't shift.
 
 ## Template-level fixes (applied once, not per-build)
 
@@ -165,9 +188,21 @@ automatically:
   `ppt/slides/slideN.xml` was replaced with `202945`; the theme's own
   `dk1` slot (still `000000`, used correctly elsewhere) was left alone.
 
+- **Slide 8's compass/gauge icon** (a decorative `Graphic 8` group near
+  the "Moderate" label, two Freeform shapes forming a speedometer icon)
+  was removed — it added visual noise without meaning.
+- **Leftover "agenda dots" section-nav cluster** on four appendix slides
+  (original template positions 26 "Your Virtual team of Experts", 27 "Our
+  Investment Universe", 29 "Syz Advisory Services", 30 "Our Value
+  Proposition") — a row of 5 small ovals plus a numbered badge and label
+  in the top-right corner, left over from a different presentation's
+  section-navigation system and inconsistent with this deck's own design.
+  Removed by bounding box (`left > 8000000 and top < 1800000`) rather than
+  by name, since the shape names differ per slide.
+
 If you re-derive `assets/template.pptx` from a fresh copy of the reference
-deck, redo both fixes — they don't survive re-deriving the template from
-scratch.
+deck, redo all of these fixes — none of them survive re-deriving the
+template from scratch.
 
 ## Market update extraction (slides 3-6)
 
