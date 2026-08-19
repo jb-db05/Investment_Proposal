@@ -10,8 +10,8 @@ from `assets/template.pptx` — no per-client data goes on it.
 | 2 | Agenda | static | — |
 | 3 | How markets moved last week | `market_update.json: headline, scoreboard, three_observations` | `build_proposal.fill_market_slides` |
 | 4 | What drove the move: four forces | `market_update.json: four_drivers` | `build_proposal.fill_market_slides` |
-| 5 | Our economic scenario | `market_update.json: scenario` | `build_proposal.fill_market_slides` |
-| 6 | Our current investment views | `market_update.json: house_view` | `build_proposal.fill_market_slides` |
+| 5 | Our economic scenario | **frozen — never updated, see note below** | — |
+| 6 | Our current investment views | **frozen — never updated, see note below** | — |
 | 7 | Section divider ("Markets this week") | static | — |
 | 8 | Portfolio strategies / risk-return trade-off | `parsed.json: risk_profile`, `slide8_profile_dial.md` | `build_proposal.fill_profile_dial` |
 | 9-N | Proposed portfolio: full holdings list | `parsed.json: line_items` | `build_line_items_tables.build` (runs **last** — see note below) |
@@ -69,18 +69,105 @@ verbatim. If your desk's taxonomy genuinely needs a combined "Alternatives"
 sleeve, merge those two `ASSET_CLASS_MAP` targets in `parse_portfolio.py`
 rather than special-casing it in the slide filler.
 
+## Slides 5-6 are permanently frozen
+
+Per explicit instruction, "Our economic scenario" and "Our current
+investment views" always ship exactly as the reference deck has them —
+`build_proposal.fill_market_slides()` never touches them, regardless of
+what `market_update.json` contains. Only slides 3-4 are dynamic. If a
+future requirement wants these unfrozen again, that's a one-line change
+(re-add the old scenario/house_view fill calls), not a redesign — the
+`market_update.json` schema below still documents the `scenario` and
+`house_view` fields in case that day comes, even though nothing currently
+reads them.
+
 ## Table column simplification (sleeve "largest holdings" tables)
 
 The reference deck used a different table column set per sleeve (Fixed
 Income: Holding/Value/Share/Duration/Yield/Price/Bid-ask; Equities:
 Holding/Value/Share/Country/Sector/Market Cap — with Country/Sector/Market
 Cap always blank, since that data isn't in the client file). This skill
-uses one uniform 4-column layout — **Holding / Value / Share / Yield or
-Coupon** — across every sleeve slide (13/15/17/18/19), for two reasons:
-the template's own tables were sized for exactly 1-5 holdings and can't
-grow, so `build_proposal.rebuild_holdings_table()` replaces them with a
-freshly-sized table on every build; and a uniform layout means the same
-code and the same "don't fabricate a blank column" rule apply everywhere.
+uses **Holding / Value / Share**, plus a **Yield / Coupon** column only on
+sleeves where that data can be real — Fixed Income and Structured Products
+(slides 13, 19). Equities, Alternatives/Private Assets and Commodities
+(slides 15, 17, 18) drop that column entirely rather than show it always
+blank. `build_proposal.rebuild_holdings_table(..., include_yield_column=...)`
+replaces the template's fixed 1-5-row table with one sized to the sleeve's
+actual holding count on every build — the template's own tables can't grow.
+
+## Line-items table layout (slides 9-10+)
+
+Each top-level asset class gets **one** colored header row carrying both
+its name (left) and its total weight (right) on the same line — never a
+separate subtotal row underneath its holdings. This matches the reference
+deck's own slide 9-10 design (a colored bar with the category name and %
+together) rather than the earlier draft of this skill, which added a
+"Subtotal — X" row after every group. Finer sub-groups (a fixed-income
+bucket, an equity region) still show their own label in the merged first
+column, but get no subtotal of their own — that breakdown lives on the
+sleeve slides (13-19) instead, so showing it twice would be redundant.
+
+Category bar colors are pulled directly from the reference deck's own
+Rectangle shapes via their theme color references (`references/
+geography_map.py` doesn't cover this — see `CATEGORY_COLORS` in
+`build_line_items_tables.py`): Cash = gold (`FFC545`, theme `bg2`/`lt2`),
+Fixed Income and Equities = slate (`4B5F80`, `accent6`), Private Assets
+(filling the "Alternatives" slot) = mauve (`AC5D85`, `accent5`),
+Commodities = mint (`3BAF90`, `accent2`), Total = navy (`202945`, `tx2`/
+`dk2`). Structured Products and Other aren't categories in the reference
+deck's own example, so they take the two theme accents that design didn't
+use — sky (`79D6FF`, `accent1`) and orange (`FFA400`, `accent3`) — keeping
+every color inside the same brand palette rather than inventing new ones.
+
+## Formatting rules that must survive every rebuild
+
+These are enforced in code (`set_shape_lines()` in `build_proposal.py`),
+not just convention — breaking them was a real bug caught during review:
+
+- **Never collapse a shape's paragraphs to one style.** A stat box's
+  number and its caption, or a driver card's title and body, are separate
+  paragraphs with their own font/size/color in the template. Setting text
+  must preserve each paragraph's own formatting by position, only cloning
+  a new paragraph (from the last existing one) when there are more lines
+  than the shape already has.
+- **Slide 3 scoreboard**: each Week/YTD value is colored green (`3BAF90`,
+  `accent2`) if positive, tiger-orange (`FF6C0E`, `accent4`) if negative,
+  based on the value string's own sign — never the header row.
+- **Slide 4 driver cards**: only the title line (`"N - Title"`) keeps
+  whatever bold the template gave it; every other line (body, inline stat)
+  is forced non-bold, overriding the template if needed.
+- **Slide 8 risk-return dial**: the selected profile's dot turns orange
+  (`FFA400`, `accent3`, the template's own highlight color — previously
+  hardcoded onto "Moderate" regardless of which profile was actually
+  chosen); every other dot, Moderate included, reverts to the default teal
+  (`3AB7C8`, a literal color on the ovals, not a theme reference). See
+  `PROFILE_DOT_SHAPE` in `build_proposal.py` for the profile → oval-shape
+  mapping (they live inside a group named `Group 3`).
+
+## Template-level fixes (applied once, not per-build)
+
+Two things were wrong with `assets/template.pptx` itself, inherited from
+the source deck, and got fixed directly on the template rather than
+patched around at build time — every deck built from it inherits the fix
+automatically:
+
+- **Leftover reviewer comments.** The source deck (`work16.pptx`) carried
+  three Google-Slides-export PowerPoint comments plus their
+  `commentAuthors.xml`/`authors.xml`/`revisionInfo.xml` parts — irrelevant
+  past review notes, not client content. Stripped entirely (parts,
+  content-type entries, relationships, and the `commentRel` extension
+  blocks on the three slides that referenced them).
+- **Literal black instead of the brand navy.** Several table headers
+  (sleeve "largest holdings" tables, the income tables) had their text
+  color hardcoded as `000000` instead of the theme's actual dark color,
+  `202945` (`dk2` in the "Syz 2024" theme — the color everything else on
+  the deck actually uses for dark text). Every literal `000000` inside
+  `ppt/slides/slideN.xml` was replaced with `202945`; the theme's own
+  `dk1` slot (still `000000`, used correctly elsewhere) was left alone.
+
+If you re-derive `assets/template.pptx` from a fresh copy of the reference
+deck, redo both fixes — they don't survive re-deriving the template from
+scratch.
 
 ## Market update extraction (slides 3-6)
 

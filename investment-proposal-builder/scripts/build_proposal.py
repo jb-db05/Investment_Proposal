@@ -16,10 +16,20 @@ SKILL.md and references/slide_recipe.md for how Claude produces
 market_update.json from the PDF before this script runs. Everything
 downstream of that JSON (and of parsed.json from parse_portfolio.py) is
 a deterministic, no-invented-numbers fill of the template.
+
+Text formatting rule (important): every fill_* function below sets text
+via set_text()/set_shape_lines(), which preserve each shape's own
+per-paragraph run formatting (size, bold, color, font) by position — never
+python-pptx's `text_frame.text = ...`, which collapses everything to one
+unstyled run. The template's own designer already put the right formatting
+on each line (e.g. a stat box's number is bold orange, its caption is
+navy 12pt) — these helpers just swap the text, never the look, unless a
+`bold_overrides` dict explicitly forces a specific line's boldness.
 """
 from __future__ import annotations
 
 import argparse
+import copy as _copy
 import json
 import subprocess
 import sys
@@ -37,6 +47,20 @@ import update_chart as chart_mod  # noqa: E402
 
 TEMPLATE_PATH = SCRIPT_DIR.parent / "assets" / "template.pptx"
 
+# Brand palette, pulled from the template's own theme (ppt/theme/theme1.xml,
+# "Syz 2024") and from the exact colors already used on its shapes — never
+# invented. See references/assumptions.md's closing section for how each
+# value was found.
+NAVY = RGBColor(0x20, 0x29, 0x45)        # dk2 — the deck's real "black": use this, never 000000
+GOLD = RGBColor(0xFF, 0xC5, 0x45)        # lt2 — table header fill, Cash category bar
+SLATE = RGBColor(0x4B, 0x5F, 0x80)       # accent6 — Fixed Income / Equity category bars
+MINT = RGBColor(0x3B, 0xAF, 0x90)        # accent2 — Commodities category bar; "positive" scoreboard color
+ORANGE = RGBColor(0xFF, 0xA4, 0x00)      # accent3 — profile-dial highlight; "Other" category bar
+TIGER = RGBColor(0xFF, 0x6C, 0x0E)       # accent4 — "negative" scoreboard color; KPI-box numbers
+MAUVE = RGBColor(0xAC, 0x5D, 0x85)       # accent5 — Alternatives / Private Assets category bar
+SKY = RGBColor(0x79, 0xD6, 0xFF)         # accent1 — Structured Products category bar
+DOT_DEFAULT = RGBColor(0x3A, 0xB7, 0xC8)  # literal color already used for the non-selected profile dots
+
 RISK_PROFILE_CHARACTERISTICS = {
     "Fixed Income":  {"horizon": "Short term (1 to 3 years)",       "liquidity": "High liquidity, capital preservation priority"},
     "Conservative":  {"horizon": "Short to medium term (3 to 5 years)", "liquidity": "Regular distribution, stable capital"},
@@ -50,6 +74,20 @@ RISK_PROFILE_GROWTH_BAND = {
     "Fixed Income": (0, 10), "Conservative": (10, 25), "Moderate": (25, 45),
     "Balanced": (45, 65), "Growth": (65, 85), "Equity": (85, 100),
 }
+# Slide 8's risk-return graph: one oval per profile, inside group "Group 3".
+# Shape names extracted directly from the template — see references/assumptions.md.
+PROFILE_DOT_SHAPE = {
+    "Fixed Income": "Oval 8",
+    "Conservative": "Oval 9",
+    "Moderate": "Oval 11",
+    "Balanced": "Oval 17",
+    "Growth": "Oval 13",
+    "Equity": "Oval 15",
+}
+# Sleeve slides where the "largest holdings" table's Yield/Coupon column is
+# always empty (equities, alternatives and commodities don't carry
+# yield/coupon data) -- dropped per user instruction rather than shown blank.
+SLEEVES_WITHOUT_YIELD_COLUMN = {"Equities", "Private Assets", "Commodities"}
 
 
 def find_shape(slide, name):
@@ -59,50 +97,84 @@ def find_shape(slide, name):
     return None
 
 
-def set_plain_text(slide, name, text):
-    """Simple, robust single/multi-paragraph text replacement: keeps the
-    first paragraph's run formatting for every line, drops the rest."""
-    sh = find_shape(slide, name)
-    if sh is None or not sh.has_text_frame:
-        return False
-    tf = sh.text_frame
-    lines = str(text).split("\n")
-    # Set first paragraph text via its first run (preserves that run's style)
-    p0 = tf.paragraphs[0]
-    for run in list(p0.runs)[1:]:
-        run._r.getparent().remove(run._r)
-    if not p0.runs:
-        p0.add_run()
-    p0.runs[0].text = lines[0]
+def set_shape_lines(shape, lines, bold_overrides=None):
+    """Set a shape's text to `lines` (one paragraph per line), preserving
+    each existing paragraph's own run formatting (size/color/bold/font) by
+    position — only the text changes. If there are more lines than existing
+    paragraphs, extra paragraphs are cloned from the last existing one; if
+    fewer, trailing paragraphs are removed. `bold_overrides` is an optional
+    {line_index: bool} dict to force specific lines bold/not-bold regardless
+    of what the template had (e.g. slide 4's driver boxes: title stays
+    however the template had it, every other line is forced non-bold)."""
+    if shape is None or not shape.has_text_frame:
+        return
+    tf = shape.text_frame
+    lines = [str(l) for l in lines]
+    bold_overrides = bold_overrides or {}
 
-    # remove all paragraphs after the first, then re-add clones of paragraph 0
-    # (with its formatting) for each additional line
-    for extra in list(tf.paragraphs)[1:]:
-        extra._p.getparent().remove(extra._p)
-    import copy as _copy
-    anchor = tf.paragraphs[0]._p
-    for line in lines[1:]:
-        clone = _copy.deepcopy(anchor)
-        anchor.addnext(clone)
-        anchor = clone
-    # now walk paragraphs in order and assign remaining lines
-    for para, line in zip(tf.paragraphs, lines):
+    existing = list(tf.paragraphs)
+    n_existing, n_lines = len(existing), len(lines)
+    if n_lines > n_existing and n_existing > 0:
+        anchor = existing[-1]._p
+        for _ in range(n_lines - n_existing):
+            clone = _copy.deepcopy(anchor)
+            anchor.addnext(clone)
+            anchor = clone
+    elif n_lines < n_existing:
+        for extra in list(tf.paragraphs)[n_lines:]:
+            extra._p.getparent().remove(extra._p)
+
+    for i, (para, line) in enumerate(zip(tf.paragraphs, lines)):
         if not para.runs:
             para.add_run()
         for run in list(para.runs)[1:]:
             run._r.getparent().remove(run._r)
         para.runs[0].text = line
-    return True
+        if i in bold_overrides:
+            para.runs[0].font.bold = bold_overrides[i]
 
 
-def replace_token(slide, old: str, new: str):
-    for sh in slide.shapes:
-        if not sh.has_text_frame:
+def set_text(slide, name, text, bold_overrides=None):
+    """set_shape_lines() by shape name, splitting text on '\\n'."""
+    set_shape_lines(find_shape(slide, name), str(text).split("\n"), bold_overrides)
+
+
+def color_scoreboard_column(shape, values):
+    """Color each value paragraph (paragraph index 1+, index 0 is the
+    column header) green if positive, tiger-orange if negative — matching
+    the sign of the value string itself, not a guess."""
+    if shape is None or not shape.has_text_frame:
+        return
+    tf = shape.text_frame
+    for i, val in enumerate(values, start=1):
+        if i >= len(tf.paragraphs) or not tf.paragraphs[i].runs:
             continue
-        for p in sh.text_frame.paragraphs:
-            for run in p.runs:
-                if old in run.text:
-                    run.text = run.text.replace(old, new)
+        run = tf.paragraphs[i].runs[0]
+        v = str(val).strip()
+        if v.startswith("-"):
+            run.font.color.rgb = TIGER
+        elif v.startswith("+"):
+            run.font.color.rgb = MINT
+
+
+def recolor_profile_dial(slide, selected_profile):
+    """Slide 8's risk-return graph: the selected profile's dot turns
+    orange (the template's own highlight color, previously hardcoded onto
+    Moderate); every other dot -- including Moderate when it's not
+    selected -- reverts to the default teal."""
+    group = find_shape(slide, "Group 3")
+    if group is None:
+        return
+    for sub in group.shapes:
+        if sub.name.startswith("Oval"):
+            sub.fill.solid()
+            sub.fill.fore_color.rgb = DOT_DEFAULT
+    highlight_name = PROFILE_DOT_SHAPE.get(selected_profile)
+    if highlight_name:
+        dot = next((sub for sub in group.shapes if sub.name == highlight_name), None)
+        if dot is not None:
+            dot.fill.solid()
+            dot.fill.fore_color.rgb = ORANGE
 
 
 def fmt_money_m(value_eur: float, currency: str) -> str:
@@ -134,12 +206,14 @@ def update_bar_by_name(slide, chart_name, data):
 
 
 # ----------------------------------------------------------------- tables --
+# Table header style matches the template's own tables exactly (all of
+# slides 13/15/17/18/19/22 use gold fill + navy bold text for headers —
+# see references/assumptions.md).
+TABLE_HEADER_FILL = GOLD
+TABLE_HEADER_FONT = NAVY
 
-HEADER_FILL = RGBColor(0x1E, 0x27, 0x61)
-HEADER_FONT = RGBColor(0xFF, 0xFF, 0xFF)
 
-
-def _cell(cell, text, *, bold=False, fill=None, font_color=RGBColor(0x22, 0x22, 0x22), size=10, align=PP_ALIGN.LEFT):
+def _cell(cell, text, *, bold=False, fill=None, font_color=NAVY, size=10, align=PP_ALIGN.LEFT):
     cell.margin_left = Emu(45720)
     cell.margin_right = Emu(45720)
     cell.vertical_anchor = MSO_ANCHOR.MIDDLE
@@ -162,29 +236,31 @@ def _cell(cell, text, *, bold=False, fill=None, font_color=RGBColor(0x22, 0x22, 
     p.runs[0].font.color.rgb = font_color
 
 
-def rebuild_holdings_table(slide, table_shape_name, holdings, currency_fallback="USD"):
+def rebuild_holdings_table(slide, table_shape_name, holdings, currency_fallback="USD", include_yield_column=True):
     """Replace the sleeve's 'largest holdings' table with one sized to the
     actual number of top holdings (assumptions.md doesn't fabricate empty
     rows, and the reference template's tables are too small for a sleeve
-    with more than 1-5 real holdings)."""
+    with more than 1-5 real holdings). The Yield/Coupon column is only
+    included where the sleeve can actually carry that data."""
     sh = find_shape(slide, table_shape_name)
     if sh is None or not sh.has_table:
         return
     left, top, width, height = sh.left, sh.top, sh.width, sh.height
     sh._element.getparent().remove(sh._element)
 
+    n_cols = 4 if include_yield_column else 3
     n_rows = 1 + max(1, len(holdings))
-    graphic_frame = slide.shapes.add_table(n_rows, 4, left, top, width, height)
+    graphic_frame = slide.shapes.add_table(n_rows, n_cols, left, top, width, height)
     table = graphic_frame.table
-    col_w = [int(width * f) for f in (0.46, 0.18, 0.14, 0.22)]
-    for i, w in enumerate(col_w):
-        table.columns[i].width = Emu(w)
-    headers = ["Holding", "Value", "Share", "Yield / Coupon"]
+    col_fracs = (0.46, 0.18, 0.14, 0.22) if include_yield_column else (0.52, 0.24, 0.24)
+    for i, f in enumerate(col_fracs):
+        table.columns[i].width = Emu(int(width * f))
+    headers = ["Holding", "Value", "Share"] + (["Yield / Coupon"] if include_yield_column else [])
     for c, h in enumerate(headers):
-        _cell(table.cell(0, c), h, bold=True, fill=HEADER_FILL, font_color=HEADER_FONT, size=9.5)
+        _cell(table.cell(0, c), h, bold=True, fill=TABLE_HEADER_FILL, font_color=TABLE_HEADER_FONT, size=9.5)
     if not holdings:
         _cell(table.cell(1, 0), "No holdings in this sleeve", size=9)
-        for c in range(1, 4):
+        for c in range(1, n_cols):
             _cell(table.cell(1, c), "")
         return
     for r, h in enumerate(holdings, 1):
@@ -192,8 +268,9 @@ def rebuild_holdings_table(slide, table_shape_name, holdings, currency_fallback=
         _cell(table.cell(r, 0), h.get("name") or "", size=9)
         _cell(table.cell(r, 1), fmt_money_k(h.get("value_qc") or h.get("value_eur") or 0, ccy), size=9)
         _cell(table.cell(r, 2), f"{h['weight_pct']:.1f}%", size=9, align=PP_ALIGN.RIGHT)
-        yld = h.get("yield_pct")
-        _cell(table.cell(r, 3), (f"{yld:.2f}%" if isinstance(yld, (int, float)) else "—"), size=9, align=PP_ALIGN.RIGHT)
+        if include_yield_column:
+            yld = h.get("yield_pct")
+            _cell(table.cell(r, 3), (f"{yld:.2f}%" if isinstance(yld, (int, float)) else "—"), size=9, align=PP_ALIGN.RIGHT)
 
 
 def fill_concentration_table(slide, table_shape_name, rows, currency="EUR"):
@@ -232,6 +309,9 @@ def fill_income_tables(slide, sleeve_table_name, duration_table_name, income):
                 for c in range(3):
                     _cell(table.cell(r, c), "")
 
+    # Rebuilt with the exact same header style (gold fill / navy text) as
+    # the income-by-sleeve table right next to it -- these two tables must
+    # look like one system, not two different designs.
     sh2 = find_shape(slide, duration_table_name)
     if sh2 is not None and sh2.has_table:
         left, top, width, height = sh2.left, sh2.top, sh2.width, sh2.height
@@ -242,7 +322,7 @@ def fill_income_tables(slide, sleeve_table_name, duration_table_name, income):
         table = gf.table
         headers = ["Sub-sleeve", "Value", "Avg duration", "Contribution"]
         for c, h in enumerate(headers):
-            _cell(table.cell(0, c), h, bold=True, fill=HEADER_FILL, font_color=HEADER_FONT, size=9)
+            _cell(table.cell(0, c), h, bold=True, fill=TABLE_HEADER_FILL, font_color=TABLE_HEADER_FONT, size=9)
         for r, row in enumerate(rows, 1):
             _cell(table.cell(r, 0), row["label"], size=8.5)
             _cell(table.cell(r, 1), f"{row['value_eur']:,.0f}", size=8.5, align=PP_ALIGN.RIGHT)
@@ -256,18 +336,18 @@ def fill_cover(prs, parsed):
     slide = get_slide(prs, 1)
     ccy = parsed["base_currency"]
     amount_m = parsed["total_value_eur"] / 1_000_000
-    set_plain_text(slide, "Text Placeholder 5",
-                    f"{parsed['risk_profile_input']} {ccy} {amount_m:.1f}m\n\n"
-                    f"Prepared for {parsed['client_name']}\n\n"
-                    f"Your Relationship Manager: [Name]\n\n"
-                    f"Your Advisor: ")
+    set_text(slide, "Text Placeholder 5",
+             f"{parsed['risk_profile_input']} {ccy} {amount_m:.1f}m\n\n"
+             f"Prepared for {parsed['client_name']}\n\n"
+             f"Your Relationship Manager: [Name]\n\n"
+             f"Your Advisor: ")
 
 
 def fill_profile_dial(prs, parsed):
     slide = get_slide(prs, 8)
     profile = parsed["risk_profile_input"]
     growth_pct = parsed["risk_profile"]["growth_assets_pct"]
-    set_plain_text(slide, "TextBox 23", f"Proposed profile for this portfolio: {profile} - {growth_pct:.0f}% in growth assets")
+    set_text(slide, "TextBox 23", f"Proposed profile for this portfolio: {profile} - {growth_pct:.0f}% in growth assets")
     chars = RISK_PROFILE_CHARACTERISTICS[profile]
     sh = find_shape(slide, "Table 44")
     if sh is not None and sh.has_table:
@@ -282,17 +362,18 @@ def fill_profile_dial(prs, parsed):
             label = row.cells[0].text.strip()
             if label in mapping:
                 _cell(row.cells[1], mapping[label], size=10)
+    recolor_profile_dial(slide, profile)
 
 
 def fill_portfolio_overview(prs, parsed):
     slide = get_slide(prs, 11)
     ccy = parsed["base_currency"]
-    set_plain_text(slide, "Rectangle 3", f"{ccy} {parsed['total_value_eur']/1_000_000:.1f}M\nTotal value")
-    set_plain_text(slide, "Rectangle 4", f"{parsed['num_positions']}\nPositions")
-    set_plain_text(slide, "Rectangle 5", f"{parsed['largest_position_pct']:.1f}%\nLargest position")
-    set_plain_text(slide, "Rectangle 6", f"{parsed['liquid_share_pct']:.1f}%\nLiquid share")
+    set_text(slide, "Rectangle 3", f"{ccy} {parsed['total_value_eur']/1_000_000:.1f}M\nTotal value")
+    set_text(slide, "Rectangle 4", f"{parsed['num_positions']}\nPositions")
+    set_text(slide, "Rectangle 5", f"{parsed['largest_position_pct']:.1f}%\nLargest position")
+    set_text(slide, "Rectangle 6", f"{parsed['liquid_share_pct']:.1f}%\nLiquid share")
     ry = parsed["income"]["running_yield_pct"]
-    set_plain_text(slide, "Rectangle 7", f"{ry:.1f}%\nRunning yield" if ry is not None else "n/a\nRunning yield")
+    set_text(slide, "Rectangle 7", f"{ry:.1f}%\nRunning yield" if ry is not None else "n/a\nRunning yield")
     update_donut_by_name(slide, "Chart 10", parsed["asset_allocation_pct"])
     update_donut_by_name(slide, "Chart 14", parsed["currency_exposure_pct"])
 
@@ -306,7 +387,7 @@ def set_donut_legend(slide, textbox_names, data: dict[str, float]):
     items = list(data.items())
     for i, name in enumerate(textbox_names):
         text = chart_mod.pct_label_one_decimal(*items[i]) if i < len(items) else ""
-        set_plain_text(slide, name, text)
+        set_text(slide, name, text)
 
 
 def fill_geo_sector(prs, parsed):
@@ -315,13 +396,13 @@ def fill_geo_sector(prs, parsed):
     if parsed["sector_exposure_pct"]:
         update_bar_by_name(slide, "Chart 8", parsed["sector_exposure_pct"])
     else:
-        set_plain_text(slide, "TextBox 6", "Sector exposure\n(not available: the custodian file carries no "
-                                            "sector field for these holdings — see references/assumptions.md §7)")
+        set_text(slide, "TextBox 6", "Sector exposure\n(not available: the custodian file carries no "
+                                      "sector field for these holdings — see references/assumptions.md §7)")
         update_bar_by_name(slide, "Chart 8", {"Not available": 100.0})
 
 
 SLEEVE_SLIDES = {
-    # slide_number: (parsed.json sleeve key, description text is left as-is from template)
+    # slide_number: parsed.json sleeve key
     13: "Fixed Income",
     15: "Equities",
     17: "Private Assets",
@@ -335,9 +416,11 @@ def fill_sleeve_slides(prs, parsed):
         slide = get_slide(prs, slide_num)
         sleeve = parsed["sleeves"].get(sleeve_key)
         if sleeve is None:
-            set_plain_text(slide, "TextBox 5", "No holdings in this sleeve for this portfolio.")
+            set_text(slide, "TextBox 5", "No holdings in this sleeve for this portfolio.")
             continue
-        rebuild_holdings_table(slide, "Table 6", sleeve["top_holdings"], parsed["base_currency"])
+        include_yield = sleeve_key not in SLEEVES_WITHOUT_YIELD_COLUMN
+        rebuild_holdings_table(slide, "Table 6", sleeve["top_holdings"], parsed["base_currency"],
+                                include_yield_column=include_yield)
         vehicle_chart = find_shape(slide, "Chart 9")
         if vehicle_chart is not None and vehicle_chart.has_chart:
             update_donut_by_name(slide, "Chart 9", sleeve["vehicle_breakdown_pct"])
@@ -345,11 +428,11 @@ def fill_sleeve_slides(prs, parsed):
         caveat_box = find_shape(slide, "TextBox 11")
         if caveat_box is not None:
             if sleeve_key == "Fixed Income" and cov:
-                set_plain_text(slide, "TextBox 11",
-                                f"⚠ Duration coverage: {cov} fixed-income line(s) report a modified duration; "
-                                f"portfolio duration reflects only those.")
+                set_text(slide, "TextBox 11",
+                          f"⚠ Duration coverage: {cov} fixed-income line(s) report a modified duration; "
+                          f"portfolio duration reflects only those.")
             else:
-                set_plain_text(slide, "TextBox 11", "")
+                set_text(slide, "TextBox 11", "")
 
 
 def fill_proposed_bond_selection(prs, parsed):
@@ -357,15 +440,15 @@ def fill_proposed_bond_selection(prs, parsed):
     pb = parsed.get("proposed_bond_selection")
     if not pb:
         return
-    set_plain_text(slide, "Text 1",
-                    f"Proposed bond selection: {pb['num_issues']} issues, "
-                    f"{pb['currency']} {pb['total_amount']:,.0f}, equally weighted at "
-                    f"{pb['currency']} {pb['amount_each']:,.0f} each.")
+    set_text(slide, "Text 1",
+             f"Proposed bond selection: {pb['num_issues']} issues, "
+             f"{pb['currency']} {pb['total_amount']:,.0f}, equally weighted at "
+             f"{pb['currency']} {pb['amount_each']:,.0f} each.")
     update_donut_by_name(slide, "Chart 0", pb["by_geography_pct"], label_style="one_decimal")
     update_donut_by_name(slide, "Chart 1", pb["by_currency_pct"], label_style="one_decimal")
     update_donut_by_name(slide, "Chart 2", pb["by_maturity_pct"], label_style="one_decimal")
     update_donut_by_name(slide, "Chart 3", pb["by_rating_pct"], label_style="one_decimal")
-    set_plain_text(slide, "Text 16", "By currency")
+    set_text(slide, "Text 16", "By currency")
     set_donut_legend(slide, ["Text 5", "Text 7", "Text 9", "Text 11", "Text 13", "Text 15"], pb["by_geography_pct"])
     set_donut_legend(slide, ["Text 18", "Text 20", "Text 22"], pb["by_currency_pct"])
     set_donut_legend(slide, ["Text 25", "Text 27", "Text 29"], pb["by_maturity_pct"])
@@ -381,123 +464,100 @@ def fill_equity_breakdown(prs, parsed):
         update_donut_by_name(slide, "Chart 1", eb["by_sector_pct"], label_style="one_decimal")
         set_donut_legend(slide, ["Text 16", "Text 18", "Text 20", "Text 22", "Text 24"], eb["by_sector_pct"])
     else:
-        set_plain_text(slide, "Text 14", "By sector (not available for this custodian file)")
+        set_text(slide, "Text 14", "By sector (not available for this custodian file)")
         update_donut_by_name(slide, "Chart 1", {"Not available": 100.0})
         set_donut_legend(slide, ["Text 16", "Text 18", "Text 20", "Text 22", "Text 24"], {})
     if eb["by_market_cap_pct"]:
         update_donut_by_name(slide, "Chart 2", eb["by_market_cap_pct"], label_style="one_decimal")
         set_donut_legend(slide, ["Text 27", "Text 29", "Text 31"], eb["by_market_cap_pct"])
     else:
-        set_plain_text(slide, "Text 25", "By market cap (not available for this custodian file)")
+        set_text(slide, "Text 25", "By market cap (not available for this custodian file)")
         update_donut_by_name(slide, "Chart 2", {"Not available": 100.0})
         set_donut_legend(slide, ["Text 27", "Text 29", "Text 31"], {})
     sleeve = parsed["sleeves"].get("Equities", {})
     ccy = parsed["base_currency"]
     n_lines = sleeve.get("num_lines", 0)
     val_m = (sleeve.get("total_weight_pct", 0) / 100) * parsed["total_value_eur"] / 1_000_000
-    set_plain_text(slide, "Text 1", f"Equity sleeve: {n_lines} lines, {ccy} {val_m:.1f}m, "
-                                     f"{sleeve.get('total_weight_pct', 0):.1f}% of the portfolio.")
+    set_text(slide, "Text 1", f"Equity sleeve: {n_lines} lines, {ccy} {val_m:.1f}m, "
+                               f"{sleeve.get('total_weight_pct', 0):.1f}% of the portfolio.")
 
 
 def fill_liquidity(prs, parsed):
     slide = get_slide(prs, 20)
     update_donut_by_name(slide, "Chart 5", parsed["liquidity_profile_pct"])
     illiquid = parsed["liquidity_profile_pct"].get("Illiquid (lock-up)", 0)
-    set_plain_text(slide, "TextBox 8",
-                    f"About {illiquid:.1f}% of the portfolio sits in private, hedge-fund and lock-up vehicles "
-                    f"with redemption gates and notice periods.\n\n"
-                    f"Liquidity events should be planned around these constraints; the daily-liquid sleeve "
-                    f"covers near-term needs.")
+    set_text(slide, "TextBox 8",
+             f"About {illiquid:.1f}% of the portfolio sits in private, hedge-fund and lock-up vehicles "
+             f"with redemption gates and notice periods.\n\n"
+             f"Liquidity events should be planned around these constraints; the daily-liquid sleeve "
+             f"covers near-term needs.")
 
 
 def fill_concentration(prs, parsed):
     slide = get_slide(prs, 21)
     conc = parsed["concentration"]
     fill_concentration_table(slide, "Table 3", conc["top_holdings"])
-    set_plain_text(slide, "Rectangle 4", f"{conc['top_5_pct']:.1f}%\nTop 5")
-    set_plain_text(slide, "Rectangle 5", f"{conc['top_10_pct']:.1f}%\nTop 10")
-    set_plain_text(slide, "Rectangle 6", f"{conc['top_20_pct']:.1f}%\nTop 20")
-    set_plain_text(slide, "Rectangle 7", f"{conc['positions_above_5pct']}\nPositions > 5%")
+    set_text(slide, "Rectangle 4", f"{conc['top_5_pct']:.1f}%\nTop 5")
+    set_text(slide, "Rectangle 5", f"{conc['top_10_pct']:.1f}%\nTop 10")
+    set_text(slide, "Rectangle 6", f"{conc['top_20_pct']:.1f}%\nTop 20")
+    set_text(slide, "Rectangle 7", f"{conc['positions_above_5pct']}\nPositions > 5%")
 
 
 def fill_income(prs, parsed):
     slide = get_slide(prs, 22)
     income = parsed["income"]
     ry = income["running_yield_pct"]
-    set_plain_text(slide, "Rectangle 5", f"{ry:.1f}%\nRunning yield" if ry is not None else "n/a\nRunning yield")
+    set_text(slide, "Rectangle 5", f"{ry:.1f}%\nRunning yield" if ry is not None else "n/a\nRunning yield")
     fd = income["fi_duration_years"]
-    set_plain_text(slide, "Rectangle 6", f"{fd:.1f}y\nFI duration" if fd is not None else "n/a\nFI duration")
+    set_text(slide, "Rectangle 6", f"{fd:.1f}y\nFI duration" if fd is not None else "n/a\nFI duration")
     ri = income["rate_impact_100bp_eur"]
     ccy = parsed["base_currency"]
-    set_plain_text(slide, "Rectangle 7", f"{ccy} {ri:,.0f}\nImpact +100bp" if ri is not None else "n/a\nImpact +100bp")
+    set_text(slide, "Rectangle 7", f"{ccy} {ri:,.0f}\nImpact +100bp" if ri is not None else "n/a\nImpact +100bp")
     fill_income_tables(slide, "Table 4", "Table 9", income)
 
 
 # ------------------------------------------------------------- market slides
+# Slides 5-6 (economic scenario / investment views) are permanently frozen
+# per explicit instruction — they are never touched here, always shipping
+# with the reference deck's own text. Only slides 3-4 pull from
+# market_update.json.
 
 def fill_market_slides(prs, market):
     if not market:
         return
     s3 = get_slide(prs, 3)
     h = market["headline"]
-    set_plain_text(s3, "Text Placeholder 2", h["intro_sentence"])
+    set_text(s3, "Text Placeholder 2", h["intro_sentence"])
+
     rects = [sh for sh in s3.shapes if sh.name == "Rectangle"]
-    for sh, stat in zip(rects, h["stats"]):
-        set_plain_text_shape(sh, f"{stat['value']}\n{stat['label']}")
+    stat_rects, obs_rects = rects[:4], rects[4:7]
+    for sh, stat in zip(stat_rects, h["stats"]):
+        set_shape_lines(sh, [stat["value"], stat["label"]])
+    for sh, obs in zip(obs_rects, market["three_observations"]):
+        set_shape_lines(sh, [obs["headline"], obs["body"]])
+
     textboxes = [sh for sh in s3.shapes if sh.name == "TextBox"]
-    # textboxes[0]='Cross-asset scoreboard' label, [1]=index col, [2]=week col, [3]=ytd col, [4]='Three observations', [5..7]=observation Rectangles handled below
+    # [0]='Cross-asset scoreboard' label, [1]=Index col, [2]=Week col,
+    # [3]=YTD col, [4]='Three observations' label
     if len(textboxes) >= 4:
         rows = market["scoreboard"]["rows"]
-        set_plain_text_shape(textboxes[1], "Index\n" + "\n".join(r["index"] for r in rows))
-        set_plain_text_shape(textboxes[2], "Week\n" + "\n".join(r["week"] for r in rows))
-        set_plain_text_shape(textboxes[3], "YTD\n" + "\n".join(r["ytd"] for r in rows))
-    obs_rects = [sh for sh in s3.shapes if sh.name == "Rectangle"][4:]  # observation cards follow the 4 stat cards
-    for sh, obs in zip(obs_rects, market["three_observations"]):
-        set_plain_text_shape(sh, f"{obs['headline']}\n{obs['body']}")
+        set_shape_lines(textboxes[1], ["Index"] + [r["index"] for r in rows])
+        set_shape_lines(textboxes[2], ["Week"] + [r["week"] for r in rows])
+        set_shape_lines(textboxes[3], ["YTD"] + [r["ytd"] for r in rows])
+        color_scoreboard_column(textboxes[2], [r["week"] for r in rows])
+        color_scoreboard_column(textboxes[3], [r["ytd"] for r in rows])
 
     s4 = get_slide(prs, 4)
-    set_plain_text(s4, "Text Placeholder 2", market["four_drivers"]["intro_sentence"])
-    drv_rects = [sh for sh in s4.shapes if sh.name == "Rectangle"]
-    for sh, drv in zip(drv_rects, market["four_drivers"]["drivers"]):
-        stat_line = f"\n{drv['stat']}" if drv.get("stat") else ""
-        set_plain_text_shape(sh, f"{drv['number']} - {drv['title']}\n{drv['body']}{stat_line}")
-
-    s5 = get_slide(prs, 5)
-    set_plain_text(s5, "Text Placeholder 2", market["scenario"]["intro_sentence"])
-
-    s6 = get_slide(prs, 6)
-    set_plain_text(s6, "Text Placeholder 2", market["house_view"]["intro_sentence"])
-    rect_names = ["Rectangle 4", "Rectangle 8", "Rectangle 12"]
-    box_names = ["TextBox 6", "TextBox 10", "TextBox 14"]
-    for rn, bn, view in zip(rect_names, box_names, market["house_view"]["views"]):
-        set_plain_text(s6, rn, view["asset_class"])
-        set_plain_text(s6, bn, f"{view['stance']}: {view['body']}")
-
-
-def set_plain_text_shape(shape, text):
-    if shape is None or not shape.has_text_frame:
-        return
-    lines = str(text).split("\n")
-    tf = shape.text_frame
-    p0 = tf.paragraphs[0]
-    for run in list(p0.runs)[1:]:
-        run._r.getparent().remove(run._r)
-    if not p0.runs:
-        p0.add_run()
-    for extra in list(tf.paragraphs)[1:]:
-        extra._p.getparent().remove(extra._p)
-    import copy as _copy
-    anchor = tf.paragraphs[0]._p
-    for _ in lines[1:]:
-        clone = _copy.deepcopy(anchor)
-        anchor.addnext(clone)
-        anchor = clone
-    for para, line in zip(tf.paragraphs, lines):
-        if not para.runs:
-            para.add_run()
-        for run in list(para.runs)[1:]:
-            run._r.getparent().remove(run._r)
-        para.runs[0].text = line
+    set_text(s4, "Text Placeholder 2", market["four_drivers"]["intro_sentence"])
+    # the 5th 'Rectangle' on slide 4 is a standalone policy note (no title
+    # line), not a numbered driver card — left untouched, see slide_recipe.md
+    driver_rects = [sh for sh in s4.shapes if sh.name == "Rectangle"][:4]
+    for sh, drv in zip(driver_rects, market["four_drivers"]["drivers"]):
+        lines = [f"{drv['number']} - {drv['title']}", drv["body"]]
+        if drv.get("stat"):
+            lines.append(drv["stat"])
+        # only the title (line 0) stays bold; body/stat lines forced normal
+        set_shape_lines(sh, lines, bold_overrides={i: False for i in range(1, len(lines))})
 
 
 # --------------------------------------------------------------------- main

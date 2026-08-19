@@ -97,11 +97,11 @@ rebuilds the holdings-list slides as real tables (`build_line_items_tables.py`)
 python /mnt/skills/public/pptx/scripts/office/validate.py "Investment Proposal - <Client Name>.pptx" --original assets/template.pptx
 ```
 
-Expect exactly the 3 pre-existing `ppt/comments/*` ID-uniqueness findings
-(inherited from the source reference deck, harmless, not introduced by
-this skill — see `references/assumptions.md`'s closing note if you want
-the history). Any other new error is a real regression — fix it before
-delivering.
+Expect a clean "All validations PASSED!" — the template's leftover
+reviewer-comment parts (a source of 3 harmless but noisy pre-existing
+findings) were stripped from `assets/template.pptx` directly, see
+`references/slide_recipe.md`'s "Template-level fixes" section. Any error
+now is a real regression — fix it before delivering.
 
 ### 6. Check for leftover placeholder content
 
