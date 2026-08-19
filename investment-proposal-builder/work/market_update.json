@@ -1,0 +1,97 @@
+{
+  "week_of": "17 August 2026",
+  "headline": {
+    "summary_title": "A quiet tape with energy doing all the work",
+    "intro_sentence": "The S&P 500 added 0.33% and no major benchmark moved more than 1.4% in either direction. Cooler July inflation took the front end lower, but the 30-year auction cleared at its highest yield since 2001 and crude rose 5.36% on the Hormuz deadlock; our tactical allocation stays neutral equities, underweight fixed income, overweight cash, gold and commodities.",
+    "stats": [
+      {"value": "+0.33%", "label": "S&P 500, week"},
+      {"value": "-0.01%", "label": "Nasdaq, week"},
+      {"value": "+5.36%", "label": "Oil, week"},
+      {"value": "+7.33%", "label": "Energy sector, week"}
+    ]
+  },
+  "scoreboard": {
+    "rows": [
+      {"index": "S&P 500", "week": "+0.33%", "ytd": "+13.70%"},
+      {"index": "Nasdaq Composite", "week": "-0.01%", "ytd": "+14.83%"},
+      {"index": "Russell 2000", "week": "+0.97%", "ytd": "+23.46%"},
+      {"index": "MSCI EM", "week": "+1.38%", "ytd": "+21.63%"},
+      {"index": "Bloomberg U.S. Aggregate", "week": "+0.13%", "ytd": "+0.04%"},
+      {"index": "Bloomberg High Yield", "week": "+0.19%", "ytd": "+2.64%"},
+      {"index": "Oil (WTI)", "week": "+5.36%", "ytd": "+43.5%"},
+      {"index": "Gold", "week": "+0.8%", "ytd": "+1.3%"},
+      {"index": "S&P 500 Energy", "week": "+7.33%", "ytd": "+37.80%"}
+    ]
+  },
+  "three_observations": [
+    {
+      "headline": "Energy is carrying the year",
+      "body": "It was the only sector up more than 2% on the week and, at +37.80% year to date, is more than fourteen points ahead of the next-best sector."
+    },
+    {
+      "headline": "The scoreboard flatters the tape",
+      "body": "Core bonds ended barely positive at +0.13% after a full round trip, and the Aggregate is up just 0.04% on the year."
+    },
+    {
+      "headline": "Breadth is still where the returns are",
+      "body": "The Russell 2000 leads at +23.46% year to date and MSCI EM, at +1.38%, led the week."
+    }
+  ],
+  "four_drivers": {
+    "intro_sentence": "Cooler inflation took the front end lower, the long end would not follow, energy stayed bid on the Hormuz deadlock, and the consumer is visibly cooling.",
+    "drivers": [
+      {
+        "number": 1,
+        "title": "Cooler inflation, at last",
+        "body": "July CPI confirmed US consumer inflation is cooling, headline easing to 3.4% and core to 2.5%, though annual producer inflation is still 4.7% headline and 4.2% core.",
+        "stat": "CPI 3.4% headline"
+      },
+      {
+        "number": 2,
+        "title": "The long end would not cooperate",
+        "body": "Cooler prints rallied Treasuries mid-week; Thursday's auctions took it back. The 30-year cleared at its highest yield since 2001.",
+        "stat": "30y at 25-year high"
+      },
+      {
+        "number": 3,
+        "title": "Hormuz kept a bid under energy",
+        "body": "Oil traded 85-89 USD/bbl and rose 5.36% as the deadlock held and the IEA projected the widest global supply deficit in five years.",
+        "stat": "Energy +37.80% YTD"
+      },
+      {
+        "number": 4,
+        "title": "A consumer that is cooling",
+        "body": "Retail sales fell 0.6% month on month against a 0.1% rise expected, with no growth in real worker compensation in Q2.",
+        "stat": "Retail sales -0.6%"
+      }
+    ]
+  },
+  "scenario": {
+    "intro_sentence": "The house baseline is a resilient global recovery, 'Indian Summer for 2026' at 50% probability, balanced against a 30% inflation-heatwave and a 20% growth-freeze risk scenario.",
+    "probabilities": [
+      {"name": "Baseline: Indian Summer for 2026", "pct": 50},
+      {"name": "Inflation heatwave", "pct": 30},
+      {"name": "Growth freeze", "pct": 20}
+    ]
+  },
+  "house_view": {
+    "intro_sentence": "The weight of the evidence leads us to stay neutral on equities, cash is overweight, and we maintain an overall underweight stance on fixed income; in alternatives we stay overweight gold and commodities.",
+    "views": [
+      {
+        "asset_class": "Equities",
+        "stance": "Neutral",
+        "body": "We stay neutral equities. Solid earnings growth, resilient activity and healthy consumer spending continue to support the asset class, and technicals remain positive."
+      },
+      {
+        "asset_class": "Fixed Income",
+        "stance": "Underweight",
+        "body": "We keep an overall underweight stance on fixed income. Fiscal deficits, treasury supply and duration risk argue for keeping the underweight for supply reasons rather than policy reasons."
+      },
+      {
+        "asset_class": "Commodities & Forex",
+        "stance": "Overweight",
+        "body": "We stay overweight gold and commodities as policy hedges, and cash is overweight; all currencies are underweight against the US dollar, but the yen stays neutral."
+      }
+    ]
+  }
+}
