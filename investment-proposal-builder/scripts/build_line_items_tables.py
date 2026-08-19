@@ -69,6 +69,15 @@ FONT_NAME = "Nunito Sans ExtraBold"
 BODY_FONT_NAME = "Calibri"
 
 
+def fmt_pct(value: float) -> str:
+    """1-decimal percent, except a genuinely nonzero value that rounds to
+    0.0% shows as '<0.1%' -- e.g. "INCOME TO BE RECEIVED IN GBP  0.0%"
+    reads as an error or missing data, not as a real, very small position."""
+    if 0 < value < 0.1:
+        return "<0.1%"
+    return f"{value:.1f}%"
+
+
 def category_color(top_category: str) -> RGBColor:
     return CATEGORY_COLORS.get(top_category, RGBColor(0x4B, 0x5F, 0x80))
 
@@ -189,7 +198,7 @@ def render_page(slide, page_groups: list[Group], n_rows: int, is_last_page: bool
         for li in g.rows:
             _set_cell(table.cell(r, 1), li["isin"] or "", size=9.5)
             _set_cell(table.cell(r, 2), li["instrument"] or "", size=9.5)
-            _set_cell(table.cell(r, 3), f"{li['weight_pct']:.1f}%", size=9.5, align=PP_ALIGN.RIGHT)
+            _set_cell(table.cell(r, 3), fmt_pct(li['weight_pct']), size=9.5, align=PP_ALIGN.RIGHT)
             r += 1
         _set_cell(table.cell(group_first_row, 0), g.group, bold=True, size=9.5)
         _merge_col1(table, group_first_row, r - 1)

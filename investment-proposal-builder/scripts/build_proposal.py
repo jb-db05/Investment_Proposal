@@ -84,6 +84,19 @@ PROFILE_DOT_SHAPE = {
     "Growth": "Oval 13",
     "Equity": "Oval 15",
 }
+# The profile-name captions next to each dot. Only 4 of the 6 had explicit
+# styling in the template (teal, bold, 11pt) — Moderate and Balanced had no
+# <a:rPr> at all, inheriting an unstyled default. All six now get explicit
+# styling every build, keyed off the selected profile, rather than leaving
+# two of them to whatever the template happens to default to.
+PROFILE_LABEL_SHAPE = {
+    "Fixed Income": "TextBox 7",
+    "Conservative": "TextBox 10",
+    "Moderate": "TextBox 12",
+    "Balanced": "TextBox 18",
+    "Growth": "TextBox 14",
+    "Equity": "TextBox 16",
+}
 # Sleeve slides where the "largest holdings" table's Yield/Coupon column is
 # always empty (equities, alternatives and commodities don't carry
 # yield/coupon data) -- dropped per user instruction rather than shown blank.
@@ -205,11 +218,11 @@ def _resize_dot_keep_center(shape, new_size: Emu):
 
 
 def recolor_profile_dial(slide, selected_profile):
-    """Slide 8's risk-return graph: the selected profile's dot turns
-    orange and grows a bit larger (the template's own highlight treatment,
-    previously hardcoded onto Moderate regardless of the actual selection);
-    every other dot -- including Moderate when it's not selected -- reverts
-    to the default teal at the default size."""
+    """Slide 8's risk-return graph: the selected profile's dot AND its name
+    caption turn orange and a bit larger (the template's own highlight
+    treatment); every other profile's dot and caption -- including
+    Moderate when it's not selected -- reverts to the default teal at the
+    default size."""
     group = find_shape(slide, "Group 3")
     if group is None:
         return
@@ -218,6 +231,18 @@ def recolor_profile_dial(slide, selected_profile):
             sub.fill.solid()
             sub.fill.fore_color.rgb = DOT_DEFAULT
             _resize_dot_keep_center(sub, DOT_SIZE_DEFAULT)
+    for profile, label_name in PROFILE_LABEL_SHAPE.items():
+        # these TextBoxes live nested inside "Group 3", same as the ovals --
+        # find_shape(slide, ...) only searches top-level shapes and would
+        # silently miss them
+        label = next((sub for sub in group.shapes if sub.name == label_name), None)
+        if label is None or not label.has_text_frame or not label.text_frame.paragraphs[0].runs:
+            continue
+        run = label.text_frame.paragraphs[0].runs[0]
+        selected = profile == selected_profile
+        run.font.color.rgb = ORANGE if selected else DOT_DEFAULT
+        run.font.size = Pt(12) if selected else Pt(11)
+        run.font.bold = True
     highlight_name = PROFILE_DOT_SHAPE.get(selected_profile)
     if highlight_name:
         dot = next((sub for sub in group.shapes if sub.name == highlight_name), None)
@@ -225,6 +250,16 @@ def recolor_profile_dial(slide, selected_profile):
             dot.fill.solid()
             dot.fill.fore_color.rgb = ORANGE
             _resize_dot_keep_center(dot, DOT_SIZE_HIGHLIGHT)
+
+
+def fmt_pct(value: float) -> str:
+    """1-decimal percent, except a genuinely nonzero value that rounds to
+    0.0% shows as '<0.1%' instead -- '0.0%' next to a real position (e.g.
+    "INCOME TO BE RECEIVED IN GBP  0.0%") reads as an error or missing
+    data, not as a very small real number."""
+    if 0 < value < 0.1:
+        return "<0.1%"
+    return f"{value:.1f}%"
 
 
 def fmt_money_m(value_eur: float, currency: str) -> str:
@@ -317,7 +352,7 @@ def rebuild_holdings_table(slide, table_shape_name, holdings, currency_fallback=
         ccy = h.get("currency") or currency_fallback
         _cell(table.cell(r, 0), h.get("name") or "", size=9)
         _cell(table.cell(r, 1), fmt_money_k(h.get("value_qc") or h.get("value_eur") or 0, ccy), size=9)
-        _cell(table.cell(r, 2), f"{h['weight_pct']:.1f}%", size=9, align=PP_ALIGN.RIGHT)
+        _cell(table.cell(r, 2), fmt_pct(h['weight_pct']), size=9, align=PP_ALIGN.RIGHT)
         if include_yield_column:
             yld = h.get("yield_pct")
             _cell(table.cell(r, 3), (f"{yld:.2f}%" if isinstance(yld, (int, float)) else "—"), size=9, align=PP_ALIGN.RIGHT)
@@ -336,7 +371,7 @@ def fill_concentration_table(slide, table_shape_name, rows, currency="EUR"):
             _cell(table.cell(r, 0), str(row["rank"]), size=9)
             _cell(table.cell(r, 1), row["name"] or "", size=9)
             _cell(table.cell(r, 2), f"{row['value_eur']:,.0f}", size=9, align=PP_ALIGN.RIGHT)
-            _cell(table.cell(r, 3), f"{row['weight_pct']:.1f}%", size=9, align=PP_ALIGN.RIGHT)
+            _cell(table.cell(r, 3), fmt_pct(row['weight_pct']), size=9, align=PP_ALIGN.RIGHT)
             _cell(table.cell(r, 4), f"{row['cumulative_pct']:.1f}%", size=9, align=PP_ALIGN.RIGHT)
         else:
             for c in range(5):
@@ -356,7 +391,7 @@ def fill_income_tables(slide, sleeve_table_name, duration_table_name, income):
                 row = rows[i]
                 _cell(table.cell(r, 0), row["sleeve"], size=9)
                 _cell(table.cell(r, 1), f"{row['income_eur']:,.0f}", size=9, align=PP_ALIGN.RIGHT)
-                _cell(table.cell(r, 2), f"{row['pct_of_income']:.1f}%", size=9, align=PP_ALIGN.RIGHT)
+                _cell(table.cell(r, 2), fmt_pct(row['pct_of_income']), size=9, align=PP_ALIGN.RIGHT)
             else:
                 for c in range(3):
                     _cell(table.cell(r, c), "")
@@ -453,8 +488,9 @@ def fill_geo_sector(prs, parsed):
     if parsed["sector_exposure_pct"]:
         update_bar_by_name(slide, "Chart 8", parsed["sector_exposure_pct"])
     else:
-        set_text(slide, "TextBox 6", "Sector exposure\n(not available: the custodian file carries no "
-                                      "sector field for these holdings — see references/assumptions.md §7)")
+        # title stays "Sector exposure" as-is; the chart itself already
+        # shows "Not available" as its one bar, so the caveat isn't
+        # repeated in the title too (assumptions.md §7 has the full reason)
         update_bar_by_name(slide, "Chart 8", {"Not available": 100.0})
 
 
@@ -519,18 +555,18 @@ def fill_equity_breakdown(prs, parsed):
     eb = parsed["equity_breakdown"]
     update_donut_by_name(slide, "Chart 0", eb["by_geography_pct"], label_style="one_decimal")
     set_donut_legend(slide, ["Text 5", "Text 7", "Text 9", "Text 11", "Text 13"], eb["by_geography_pct"])
+    # titles stay "By sector" / "By market cap" as-is when unavailable; the
+    # chart itself already shows "Not available" as its one slice
     if eb["by_sector_pct"]:
         update_donut_by_name(slide, "Chart 1", eb["by_sector_pct"], label_style="one_decimal")
         set_donut_legend(slide, ["Text 16", "Text 18", "Text 20", "Text 22", "Text 24"], eb["by_sector_pct"])
     else:
-        set_text(slide, "Text 14", "By sector (not available for this custodian file)")
         update_donut_by_name(slide, "Chart 1", {"Not available": 100.0})
         set_donut_legend(slide, ["Text 16", "Text 18", "Text 20", "Text 22", "Text 24"], {})
     if eb["by_market_cap_pct"]:
         update_donut_by_name(slide, "Chart 2", eb["by_market_cap_pct"], label_style="one_decimal")
         set_donut_legend(slide, ["Text 27", "Text 29", "Text 31"], eb["by_market_cap_pct"])
     else:
-        set_text(slide, "Text 25", "By market cap (not available for this custodian file)")
         update_donut_by_name(slide, "Chart 2", {"Not available": 100.0})
         set_donut_legend(slide, ["Text 27", "Text 29", "Text 31"], {})
     sleeve = parsed["sleeves"].get("Equities", {})

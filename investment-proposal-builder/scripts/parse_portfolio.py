@@ -302,7 +302,13 @@ def parse_proposed_bonds(wb) -> dict:
 
 
 def pct(x: float) -> float:
-    return round(x * 100, 4)
+    # 6dp, not 4: a genuinely nonzero weight this small (e.g. a residual
+    # CAD cash balance at ~0.00003%) must survive rounding as a small
+    # positive number, not collapse to exactly 0.0 -- the build scripts'
+    # display layer (fmt_pct) is what decides whether to show "<0.1%" for
+    # it, and it can only do that if this function hasn't already erased
+    # the distinction between "genuinely zero" and "just very small".
+    return round(x * 100, 6)
 
 
 def val_eur(row: dict) -> float:

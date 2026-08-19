@@ -34,7 +34,10 @@ def pct_label_whole(name: str, pct_value: float) -> str:
 
 
 def pct_label_one_decimal(name: str, pct_value: float) -> str:
-    return f"{name}   {pct_value:.1f}%"
+    # a genuinely nonzero value that rounds to 0.0% reads as an error or
+    # missing data next to a real category name, not as "very small"
+    pct_str = "<0.1%" if 0 < pct_value < 0.1 else f"{pct_value:.1f}%"
+    return f"{name}   {pct_str}"
 
 
 def find_chart_shape(slide, chart_name: str):

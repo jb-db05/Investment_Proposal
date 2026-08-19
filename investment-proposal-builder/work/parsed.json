@@ -6,37 +6,37 @@
   "dominant_holding_currency": "USD",
   "total_value_eur": 21300577.63,
   "num_positions": 68,
-  "largest_position_pct": 20.0598,
-  "liquid_share_pct": 83.7297,
+  "largest_position_pct": 20.059796,
+  "liquid_share_pct": 83.72969,
   "asset_allocation_pct": {
-    "Equities": 33.7047,
-    "Commodities": 25.0436,
-    "Private Assets": 16.2703,
-    "Fixed Income": 15.0846,
-    "Structured Products": 5.502,
-    "Cash": 3.7979,
-    "Other": 0.5968
+    "Equities": 33.704701,
+    "Commodities": 25.043606,
+    "Private Assets": 16.27031,
+    "Fixed Income": 15.084641,
+    "Structured Products": 5.502035,
+    "Cash": 3.797906,
+    "Other": 0.596802
   },
   "currency_exposure_pct": {
-    "USD": 40.3899,
-    "CHF": 29.6214,
-    "EUR": 22.914,
-    "GBP": 3.9212,
-    "XAG": 1.0934,
-    "SEK": 1.0481,
-    "XPT": 1.012,
-    "CAD": 0.0
+    "USD": 40.389931,
+    "CHF": 29.621392,
+    "EUR": 22.91397,
+    "GBP": 3.921222,
+    "XAG": 1.093388,
+    "SEK": 1.048082,
+    "XPT": 1.011987,
+    "CAD": 2.9e-05
   },
   "geographic_exposure_pct": {
-    "Global": 55.617,
-    "Europe DM": 31.0913,
-    "US": 12.5588,
-    "MEA EM": 0.7329
+    "Global": 55.616955,
+    "Europe DM": 31.091342,
+    "US": 12.558847,
+    "MEA EM": 0.732856
   },
   "sector_exposure_pct": null,
   "sleeves": {
     "Cash": {
-      "total_weight_pct": 3.7979,
+      "total_weight_pct": 3.797906,
       "num_lines": 9,
       "top_holdings": [
         {
@@ -45,7 +45,7 @@
           "value_eur": 232897.868911939,
           "value_qc": 4150.0,
           "currency": "XAG",
-          "weight_pct": 1.0934,
+          "weight_pct": 1.093388,
           "duration": 0,
           "yield_pct": 0,
           "price": 56.1199684125
@@ -56,7 +56,7 @@
           "value_eur": 215558.970418748,
           "value_qc": 144.0,
           "currency": "XPT",
-          "weight_pct": 1.012,
+          "weight_pct": 1.011987,
           "duration": 0,
           "yield_pct": 0,
           "price": 1496.9372945746
@@ -67,7 +67,7 @@
           "value_eur": 211225.2,
           "value_qc": 211225.2,
           "currency": "EUR",
-          "weight_pct": 0.9916,
+          "weight_pct": 0.991641,
           "duration": 0,
           "yield_pct": 0,
           "price": 1
@@ -78,7 +78,7 @@
           "value_eur": 105179.542792504,
           "value_qc": 121418.72,
           "currency": "USD",
-          "weight_pct": 0.4938,
+          "weight_pct": 0.493787,
           "duration": 0,
           "yield_pct": 0,
           "price": 1.154394826
@@ -89,7 +89,7 @@
           "value_eur": 30570.4849105733,
           "value_qc": 28646.99,
           "currency": "CHF",
-          "weight_pct": 0.1435,
+          "weight_pct": 0.14352,
           "duration": 0,
           "yield_pct": 0,
           "price": 0.93708
@@ -101,7 +101,7 @@
       "duration_coverage": null
     },
     "Commodities": {
-      "total_weight_pct": 25.0436,
+      "total_weight_pct": 25.043606,
       "num_lines": 6,
       "top_holdings": [
         {
@@ -110,7 +110,7 @@
           "value_eur": 4272852.39911747,
           "value_qc": 4004004.526165,
           "currency": "CHF",
-          "weight_pct": 20.0598,
+          "weight_pct": 20.059796,
           "duration": null,
           "yield_pct": null,
           "price": 114400.129319
@@ -121,7 +121,7 @@
           "value_eur": 267291.262098754,
           "value_qc": 308559.65,
           "currency": "USD",
-          "weight_pct": 1.2549,
+          "weight_pct": 1.254855,
           "duration": null,
           "yield_pct": null,
           "price": 4407.995
@@ -132,7 +132,7 @@
           "value_eur": 214748.313911299,
           "value_qc": 201236.35,
           "currency": "CHF",
-          "weight_pct": 1.0082,
+          "weight_pct": 1.008181,
           "duration": null,
           "yield_pct": null,
           "price": 409.85
@@ -143,7 +143,7 @@
           "value_eur": 208361.05168182,
           "value_qc": 240530.92,
           "currency": "USD",
-          "weight_pct": 0.9782,
+          "weight_pct": 0.978194,
           "duration": null,
           "yield_pct": null,
           "price": 56.89
@@ -154,7 +154,7 @@
           "value_eur": 199141.433090024,
           "value_qc": 229887.84,
           "currency": "USD",
-          "weight_pct": 0.9349,
+          "weight_pct": 0.934911,
           "duration": null,
           "yield_pct": null,
           "price": 4.368
@@ -166,7 +166,7 @@
       "duration_coverage": null
     },
     "Equities": {
-      "total_weight_pct": 33.7047,
+      "total_weight_pct": 33.704701,
       "num_lines": 23,
       "top_holdings": [
         {
@@ -175,7 +175,7 @@
           "value_eur": 615109.0,
           "value_qc": 615109.0,
           "currency": "EUR",
-          "weight_pct": 2.8878,
+          "weight_pct": 2.887757,
           "duration": null,
           "yield_pct": null,
           "price": 437.8
@@ -186,7 +186,7 @@
           "value_eur": 590957.444668545,
           "value_qc": 553774.40225,
           "currency": "CHF",
-          "weight_pct": 2.7744,
+          "weight_pct": 2.774373,
           "duration": null,
           "yield_pct": null,
           "price": 20.75
@@ -197,7 +197,7 @@
           "value_eur": 551911.6,
           "value_qc": 551911.6,
           "currency": "EUR",
-          "weight_pct": 2.5911,
+          "weight_pct": 2.591064,
           "duration": null,
           "yield_pct": null,
           "price": 58.28
@@ -208,7 +208,7 @@
           "value_eur": 461847.461366852,
           "value_qc": 533154.3198,
           "currency": "USD",
-          "weight_pct": 2.1682,
+          "weight_pct": 2.168239,
           "duration": null,
           "yield_pct": null,
           "price": 112.38
@@ -219,20 +219,20 @@
           "value_eur": 444453.06976,
           "value_qc": 444453.06976,
           "currency": "EUR",
-          "weight_pct": 2.0866,
+          "weight_pct": 2.086578,
           "duration": null,
           "yield_pct": null,
           "price": 1188.32
         }
       ],
       "vehicle_breakdown_pct": {
-        "Fund": 93.9471,
-        "Direct line": 6.0529
+        "Fund": 93.947145,
+        "Direct line": 6.052855
       },
       "duration_coverage": null
     },
     "Fixed Income": {
-      "total_weight_pct": 15.0846,
+      "total_weight_pct": 15.084641,
       "num_lines": 15,
       "top_holdings": [
         {
@@ -241,7 +241,7 @@
           "value_eur": 622738.757843514,
           "value_qc": 718886.4,
           "currency": "USD",
-          "weight_pct": 2.9236,
+          "weight_pct": 2.923577,
           "duration": null,
           "yield_pct": null,
           "price": 1235.2
@@ -252,7 +252,7 @@
           "value_eur": 465463.22008,
           "value_qc": 465463.22008,
           "currency": "EUR",
-          "weight_pct": 2.1852,
+          "weight_pct": 2.185214,
           "duration": null,
           "yield_pct": null,
           "price": 158.12
@@ -263,7 +263,7 @@
           "value_eur": 320000.0,
           "value_qc": 320000.0,
           "currency": "EUR",
-          "weight_pct": 1.5023,
+          "weight_pct": 1.502307,
           "duration": 0.18356164383562,
           "yield_pct": 2.53,
           "price": 1
@@ -274,7 +274,7 @@
           "value_eur": 200997.97260274,
           "value_qc": 200997.97260274,
           "currency": "EUR",
-          "weight_pct": 0.9436,
+          "weight_pct": 0.943627,
           "duration": 5.4483230664,
           "yield_pct": 3.824157181,
           "price": 98.562
@@ -285,21 +285,21 @@
           "value_eur": 200152.794520548,
           "value_qc": 200152.794520548,
           "currency": "EUR",
-          "weight_pct": 0.9397,
+          "weight_pct": 0.939659,
           "duration": 5.5685772782,
           "yield_pct": 3.995250275,
           "price": 97.449
         }
       ],
       "vehicle_breakdown_pct": {
-        "Direct line": 57.8522,
-        "Fund": 22.7667,
-        "Structured / AMC": 19.3812
+        "Direct line": 57.852169,
+        "Fund": 22.766681,
+        "Structured / AMC": 19.38115
       },
       "duration_coverage": "11 of 15"
     },
     "Other": {
-      "total_weight_pct": 0.5968,
+      "total_weight_pct": 0.596802,
       "num_lines": 1,
       "top_holdings": [
         {
@@ -308,7 +308,7 @@
           "value_eur": 127122.191381739,
           "value_qc": 146749.2,
           "currency": "USD",
-          "weight_pct": 0.5968,
+          "weight_pct": 0.596802,
           "duration": null,
           "yield_pct": null,
           "price": 35.88
@@ -320,7 +320,7 @@
       "duration_coverage": null
     },
     "Private Assets": {
-      "total_weight_pct": 16.2703,
+      "total_weight_pct": 16.27031,
       "num_lines": 8,
       "top_holdings": [
         {
@@ -329,7 +329,7 @@
           "value_eur": 1428238.85512454,
           "value_qc": 1648751.54463825,
           "currency": "USD",
-          "weight_pct": 6.7052,
+          "weight_pct": 6.705165,
           "duration": null,
           "yield_pct": null,
           "price": 235.536
@@ -340,7 +340,7 @@
           "value_eur": 1268546.37256466,
           "value_qc": 1464403.36902112,
           "currency": "USD",
-          "weight_pct": 5.9555,
+          "weight_pct": 5.955455,
           "duration": null,
           "yield_pct": null,
           "price": 163.2961
@@ -351,7 +351,7 @@
           "value_eur": 378045.826008416,
           "value_qc": 436414.14553245,
           "currency": "USD",
-          "weight_pct": 1.7748,
+          "weight_pct": 1.774815,
           "duration": null,
           "yield_pct": null,
           "price": 69.2931
@@ -362,7 +362,7 @@
           "value_eur": 271232.66395434,
           "value_qc": 271232.66395434,
           "currency": "EUR",
-          "weight_pct": 1.2734,
+          "weight_pct": 1.273358,
           "duration": null,
           "yield_pct": null,
           "price": 81.3698
@@ -373,7 +373,7 @@
           "value_eur": 77937.3928859484,
           "value_qc": 89970.52309894,
           "currency": "USD",
-          "weight_pct": 0.3659,
+          "weight_pct": 0.365893,
           "duration": null,
           "yield_pct": null,
           "price": 64.3361
@@ -385,7 +385,7 @@
       "duration_coverage": null
     },
     "Structured Products": {
-      "total_weight_pct": 5.502,
+      "total_weight_pct": 5.502035,
       "num_lines": 6,
       "top_holdings": [
         {
@@ -394,7 +394,7 @@
           "value_eur": 248628.967999886,
           "value_qc": 232985.233333333,
           "currency": "CHF",
-          "weight_pct": 1.1672,
+          "weight_pct": 1.16724,
           "duration": 0.8410958908,
           "yield_pct": 4.096868527,
           "price": 101.67
@@ -405,7 +405,7 @@
           "value_eur": 212578.915354079,
           "value_qc": 245400.0,
           "currency": "USD",
-          "weight_pct": 0.998,
+          "weight_pct": 0.997996,
           "duration": null,
           "yield_pct": null,
           "price": 98.16
@@ -416,7 +416,7 @@
           "value_eur": 182485.225380971,
           "value_qc": 210660.0,
           "currency": "USD",
-          "weight_pct": 0.8567,
+          "weight_pct": 0.856715,
           "duration": null,
           "yield_pct": null,
           "price": 105.33
@@ -427,7 +427,7 @@
           "value_eur": 179760.532718658,
           "value_qc": 168450.0,
           "currency": "CHF",
-          "weight_pct": 0.8439,
+          "weight_pct": 0.843923,
           "duration": null,
           "yield_pct": null,
           "price": 112.3
@@ -438,26 +438,26 @@
           "value_eur": 174325.10564733,
           "value_qc": 201240.0,
           "currency": "USD",
-          "weight_pct": 0.8184,
+          "weight_pct": 0.818406,
           "duration": null,
           "yield_pct": null,
           "price": 100.62
         }
       ],
       "vehicle_breakdown_pct": {
-        "Structured / AMC": 63.4469,
-        "Direct line": 36.5531
+        "Structured / AMC": 63.446911,
+        "Direct line": 36.553089
       },
       "duration_coverage": null
     }
   },
   "equity_breakdown": {
     "by_geography_pct": {
-      "Global / thematic": 43.5879,
-      "Eurozone": 26.5443,
-      "Switzerland": 18.9847,
-      "UK": 5.9899,
-      "US": 4.8933
+      "Global / thematic": 43.587864,
+      "Eurozone": 26.544267,
+      "Switzerland": 18.984689,
+      "UK": 5.989882,
+      "US": 4.893299
     },
     "by_sector_pct": null,
     "by_market_cap_pct": null
@@ -468,152 +468,152 @@
         "rank": 1,
         "name": "GOLD KG 1 999.9 CHF",
         "value_eur": 4272852.39911747,
-        "weight_pct": 20.0598,
-        "cumulative_pct": 20.0598
+        "weight_pct": 20.059796,
+        "cumulative_pct": 20.059796
       },
       {
         "rank": 2,
         "name": "COA KONA III REF3 LP",
         "value_eur": 1428238.85512454,
-        "weight_pct": 6.7052,
-        "cumulative_pct": 26.765
+        "weight_pct": 6.705165,
+        "cumulative_pct": 26.764961
       },
       {
         "rank": 3,
         "name": "LEFT LANE CP II CLT2",
         "value_eur": 1268546.37256466,
-        "weight_pct": 5.9555,
-        "cumulative_pct": 32.7204
+        "weight_pct": 5.955455,
+        "cumulative_pct": 32.720416
       },
       {
         "rank": 4,
         "name": "SYZ EM BONDS CERTIFICATE",
         "value_eur": 622738.757843514,
-        "weight_pct": 2.9236,
-        "cumulative_pct": 35.644
+        "weight_pct": 2.923577,
+        "cumulative_pct": 35.643993
       },
       {
         "rank": 5,
         "name": "ALLIANZ (NOM)",
         "value_eur": 615109.0,
-        "weight_pct": 2.8878,
-        "cumulative_pct": 38.5318
+        "weight_pct": 2.887757,
+        "cumulative_pct": 38.53175
       },
       {
         "rank": 6,
         "name": "UBS(CH) EQ-SWISS INC CHFP",
         "value_eur": 590957.444668545,
-        "weight_pct": 2.7744,
-        "cumulative_pct": 41.3061
+        "weight_pct": 2.774373,
+        "cumulative_pct": 41.306123
       },
       {
         "rank": 7,
         "name": "VANECK VECTORS DEF A ETF",
         "value_eur": 551911.6,
-        "weight_pct": 2.5911,
-        "cumulative_pct": 43.8972
+        "weight_pct": 2.591064,
+        "cumulative_pct": 43.897187
       },
       {
         "rank": 8,
         "name": "STORM II BOND RC EUR",
         "value_eur": 465463.22008,
-        "weight_pct": 2.1852,
-        "cumulative_pct": 46.0824
+        "weight_pct": 2.185214,
+        "cumulative_pct": 46.082401
       },
       {
         "rank": 9,
         "name": "BRGF WORLD MINING(REG)A2",
         "value_eur": 461847.461366852,
-        "weight_pct": 2.1682,
-        "cumulative_pct": 48.2506
+        "weight_pct": 2.168239,
+        "cumulative_pct": 48.25064
       },
       {
         "rank": 10,
         "name": "GOLDMAN EU HIGH DIV P CAP",
         "value_eur": 444453.06976,
-        "weight_pct": 2.0866,
-        "cumulative_pct": 50.3372
+        "weight_pct": 2.086578,
+        "cumulative_pct": 50.337218
       },
       {
         "rank": 11,
         "name": "SG CHINA NEXT WINNERS  01.06.2099",
         "value_eur": 434552.36345883,
-        "weight_pct": 2.0401,
-        "cumulative_pct": 52.3773
+        "weight_pct": 2.040097,
+        "cumulative_pct": 52.377315
       },
       {
         "rank": 12,
         "name": "ZURICH INSURANCE GRP(NOM)",
         "value_eur": 427363.939044692,
-        "weight_pct": 2.0063,
-        "cumulative_pct": 54.3837
+        "weight_pct": 2.006349,
+        "cumulative_pct": 54.383664
       },
       {
         "rank": 13,
         "name": "ACE BUYOUT III SPC A",
         "value_eur": 378045.826008416,
-        "weight_pct": 1.7748,
-        "cumulative_pct": 56.1585
+        "weight_pct": 1.774815,
+        "cumulative_pct": 56.158479
       },
       {
         "rank": 14,
         "name": "BERKSHIRE HATHAWAY B",
         "value_eur": 351304.415844965,
-        "weight_pct": 1.6493,
-        "cumulative_pct": 57.8078
+        "weight_pct": 1.649272,
+        "cumulative_pct": 57.80775
       },
       {
         "rank": 15,
         "name": "SWISSCOM (NOM)",
         "value_eur": 344645.601229351,
-        "weight_pct": 1.618,
-        "cumulative_pct": 59.4258
+        "weight_pct": 1.618011,
+        "cumulative_pct": 59.425761
       },
       {
         "rank": 16,
         "name": "2.53% Fid. 17.08.2026 - 19.10.2026 QATAR NATIONAL BANK - DOHA No. 263303",
         "value_eur": 320000.0,
-        "weight_pct": 1.5023,
-        "cumulative_pct": 60.9281
+        "weight_pct": 1.502307,
+        "cumulative_pct": 60.928068
       },
       {
         "rank": 17,
         "name": "AIRBUS",
         "value_eur": 312963.0,
-        "weight_pct": 1.4693,
-        "cumulative_pct": 62.3973
+        "weight_pct": 1.46927,
+        "cumulative_pct": 62.397338
       },
       {
         "rank": 18,
         "name": "BAE SYSTEMS",
         "value_eur": 304824.236671362,
-        "weight_pct": 1.4311,
-        "cumulative_pct": 63.8284
+        "weight_pct": 1.431061,
+        "cumulative_pct": 63.828398
       },
       {
         "rank": 19,
         "name": "ISHS DIGITAL SECURITY ETF",
         "value_eur": 302979.528428736,
-        "weight_pct": 1.4224,
-        "cumulative_pct": 65.2508
+        "weight_pct": 1.422401,
+        "cumulative_pct": 65.250799
       },
       {
         "rank": 20,
         "name": "FTGF CB INF VAL X DIST Q",
         "value_eur": 275042.91540688,
-        "weight_pct": 1.2912,
-        "cumulative_pct": 66.542
+        "weight_pct": 1.291246,
+        "cumulative_pct": 66.542045
       }
     ],
-    "top_5_pct": 38.5318,
-    "top_10_pct": 50.3372,
-    "top_20_pct": 66.542,
+    "top_5_pct": 38.53175,
+    "top_10_pct": 50.337218,
+    "top_20_pct": 66.542045,
     "positions_above_5pct": 3
   },
   "liquidity_profile_pct": {
-    "Daily-liquid fund": 64.5372,
+    "Daily-liquid fund": 64.53719,
     "Listed": 19.1925,
-    "Illiquid (lock-up)": 16.2703
+    "Illiquid (lock-up)": 16.27031
   },
   "income": {
     "running_yield_pct": 0.3939,
@@ -623,12 +623,12 @@
       {
         "sleeve": "Fixed Income",
         "income_eur": 73709.94,
-        "pct_of_income": 64.4867
+        "pct_of_income": 64.486682
       },
       {
         "sleeve": "Structured Products",
         "income_eur": 40592.64,
-        "pct_of_income": 35.5133
+        "pct_of_income": 35.513318
       },
       {
         "sleeve": "Cash",
@@ -664,8 +664,8 @@
   },
   "risk_profile": {
     "selected_profile": "Balanced",
-    "growth_assets_pct": 80.5207,
-    "defensive_assets_pct": 18.8825
+    "growth_assets_pct": 80.520651,
+    "defensive_assets_pct": 18.882547
   },
   "uncalled_commitments": [
     {
@@ -705,476 +705,476 @@
       "group": "Cash",
       "isin": null,
       "instrument": "CURRENT ACCOUNT IN XAG",
-      "weight_pct": 1.0934
+      "weight_pct": 1.093388
     },
     {
       "top_category": "Cash",
       "group": "Cash",
       "isin": null,
       "instrument": "CURRENT ACCOUNT IN XPT",
-      "weight_pct": 1.012
+      "weight_pct": 1.011987
     },
     {
       "top_category": "Cash",
       "group": "Cash",
       "isin": null,
       "instrument": "CURRENT ACCOUNT IN EUR",
-      "weight_pct": 0.9916
+      "weight_pct": 0.991641
     },
     {
       "top_category": "Cash",
       "group": "Cash",
       "isin": null,
       "instrument": "CURRENT ACCOUNT IN USD",
-      "weight_pct": 0.4938
+      "weight_pct": 0.493787
     },
     {
       "top_category": "Cash",
       "group": "Cash",
       "isin": null,
       "instrument": "CURRENT ACCOUNT IN CHF",
-      "weight_pct": 0.1435
+      "weight_pct": 0.14352
     },
     {
       "top_category": "Cash",
       "group": "Cash",
       "isin": null,
       "instrument": "CURRENT ACCOUNT IN GBP",
-      "weight_pct": 0.053
+      "weight_pct": 0.053029
     },
     {
       "top_category": "Cash",
       "group": "Cash",
       "isin": null,
       "instrument": "INCOME TO BE RECEIVED IN GBP",
-      "weight_pct": 0.0081
+      "weight_pct": 0.008055
     },
     {
       "top_category": "Cash",
       "group": "Cash",
       "isin": null,
       "instrument": "CURRENT ACCOUNT IN SEK",
-      "weight_pct": 0.0025
+      "weight_pct": 0.002472
     },
     {
       "top_category": "Cash",
       "group": "Cash",
       "isin": null,
       "instrument": "CURRENT ACCOUNT IN CAD",
-      "weight_pct": 0.0
+      "weight_pct": 2.9e-05
     },
     {
       "top_category": "Fixed Income",
       "group": "Govies 1-10 (local)",
       "isin": "US30303MAC64",
       "instrument": "4.6% META PLATFORMS NOV32  15.11.2032",
-      "weight_pct": 0.7976
+      "weight_pct": 0.79762
     },
     {
       "top_category": "Fixed Income",
       "group": "Govies 1-10 (local)",
       "isin": "US023135CR56",
       "instrument": "4.7% AMAZON DEC32  01.12.2032",
-      "weight_pct": 0.6107
+      "weight_pct": 0.610699
     },
     {
       "top_category": "Fixed Income",
       "group": "High Yield (local or global hdg)",
       "isin": "CH0414256021",
       "instrument": "SYZ EM BONDS CERTIFICATE",
-      "weight_pct": 2.9236
+      "weight_pct": 2.923577
     },
     {
       "top_category": "Fixed Income",
       "group": "High Yield (local or global hdg)",
       "isin": "LU0840158819",
       "instrument": "STORM II BOND RC EUR",
-      "weight_pct": 2.1852
+      "weight_pct": 2.185214
     },
     {
       "top_category": "Fixed Income",
       "group": "High Yield (local or global hdg)",
       "isin": null,
       "instrument": "2.53% Fid. 17.08.2026 - 19.10.2026 QATAR NATIONAL BANK - DOHA No. 263303",
-      "weight_pct": 1.5023
+      "weight_pct": 1.502307
     },
     {
       "top_category": "Fixed Income",
       "group": "High Yield (local or global hdg)",
       "isin": "CH0103254758",
       "instrument": "SYZ AM(CH) 1 LIQUID MGT D",
-      "weight_pct": 0.8248
+      "weight_pct": 0.824764
     },
     {
       "top_category": "Fixed Income",
       "group": "High Yield (local or global hdg)",
       "isin": "US88167AAP66",
       "instrument": "4 3/4 TEVA PHARMA MAY27  09.05.2027",
-      "weight_pct": 0.8236
+      "weight_pct": 0.823597
     },
     {
       "top_category": "Fixed Income",
       "group": "High Yield (local or global hdg)",
       "isin": null,
       "instrument": "3.35% Fid. On Call 48 Hrs Natixis, Paris On Call No. 96289",
-      "weight_pct": 0.55
+      "weight_pct": 0.55002
     },
     {
       "top_category": "Fixed Income",
       "group": "High Yield (local or global hdg)",
       "isin": null,
       "instrument": "1.75% Fid. On Call 48 Hrs Soci\u00e9t\u00e9 G\u00e9n\u00e9rale, Paris On Call No. 20843",
-      "weight_pct": 0.4698
+      "weight_pct": 0.469768
     },
     {
       "top_category": "Fixed Income",
       "group": "High Yield (local or global hdg)",
       "isin": "IE00BD5CTX77",
       "instrument": "BNY MELLON S/D H/Y H HDG",
-      "weight_pct": 0.4243
+      "weight_pct": 0.424294
     },
     {
       "top_category": "Fixed Income",
       "group": "Corporate IG (local)",
       "isin": "XS2983840518",
       "instrument": "3.5% GOLDMAN SACHS JAN33  23.01.2033",
-      "weight_pct": 0.9436
+      "weight_pct": 0.943627
     },
     {
       "top_category": "Fixed Income",
       "group": "Corporate IG (local)",
       "isin": "XS3222746375",
       "instrument": "3.5% VONOVIA NOV32  12.11.2032",
-      "weight_pct": 0.9397
+      "weight_pct": 0.939659
     },
     {
       "top_category": "Fixed Income",
       "group": "Corporate IG (local)",
       "isin": "US718172DY22",
       "instrument": "4% PHILIP MORRIS OCT30  29.10.2030",
-      "weight_pct": 0.7987
+      "weight_pct": 0.798743
     },
     {
       "top_category": "Fixed Income",
       "group": "Corporate IG (local)",
       "isin": "US38141GZM94",
       "instrument": "3.102% GOLDMAN FLR FEB33  24.02.2033",
-      "weight_pct": 0.5579
+      "weight_pct": 0.557897
     },
     {
       "top_category": "Fixed Income",
       "group": "EM Debt",
       "isin": "XS2647371843",
       "instrument": "4.75% PKN ORLEN JUL30  13.07.2030",
-      "weight_pct": 0.7329
+      "weight_pct": 0.732856
     },
     {
       "top_category": "Equities",
       "group": "US",
       "isin": "US0846707026",
       "instrument": "BERKSHIRE HATHAWAY B",
-      "weight_pct": 1.6493
+      "weight_pct": 1.649272
     },
     {
       "top_category": "Equities",
       "group": "Eurozone",
       "isin": "DE0008404005",
       "instrument": "ALLIANZ (NOM)",
-      "weight_pct": 2.8878
+      "weight_pct": 2.887757
     },
     {
       "top_category": "Equities",
       "group": "Eurozone",
       "isin": "XS3315944077",
       "instrument": "SG CHINA NEXT WINNERS  01.06.2099",
-      "weight_pct": 2.0401
+      "weight_pct": 2.040097
     },
     {
       "top_category": "Equities",
       "group": "Eurozone",
       "isin": "NL0000235190",
       "instrument": "AIRBUS",
-      "weight_pct": 1.4693
+      "weight_pct": 1.46927
     },
     {
       "top_category": "Equities",
       "group": "Eurozone",
       "isin": "IT0003856405",
       "instrument": "LEONARDO (RAGGR)",
-      "weight_pct": 1.0704
+      "weight_pct": 1.070433
     },
     {
       "top_category": "Equities",
       "group": "Eurozone",
       "isin": "FR0014004L86",
       "instrument": "DASSAULT AVIATION SA",
-      "weight_pct": 1.0252
+      "weight_pct": 1.025179
     },
     {
       "top_category": "Equities",
       "group": "Eurozone",
       "isin": "DE0008402215",
       "instrument": "HANNOVER RUECK (NOM)",
-      "weight_pct": 0.4539
+      "weight_pct": 0.453929
     },
     {
       "top_category": "Equities",
       "group": "UK",
       "isin": "GB0002634946",
       "instrument": "BAE SYSTEMS",
-      "weight_pct": 1.4311
+      "weight_pct": 1.431061
     },
     {
       "top_category": "Equities",
       "group": "UK",
       "isin": "GB0008706128",
       "instrument": "LLOYDS BANKING GROUP",
-      "weight_pct": 0.5878
+      "weight_pct": 0.587811
     },
     {
       "top_category": "Equities",
       "group": "Switzerland",
       "isin": "CH0017043958",
       "instrument": "UBS(CH) EQ-SWISS INC CHFP",
-      "weight_pct": 2.7744
+      "weight_pct": 2.774373
     },
     {
       "top_category": "Equities",
       "group": "Switzerland",
       "isin": "CH0011075394",
       "instrument": "ZURICH INSURANCE GRP(NOM)",
-      "weight_pct": 2.0063
+      "weight_pct": 2.006349
     },
     {
       "top_category": "Equities",
       "group": "Switzerland",
       "isin": "CH0008742519",
       "instrument": "SWISSCOM (NOM)",
-      "weight_pct": 1.618
+      "weight_pct": 1.618011
     },
     {
       "top_category": "Equities",
       "group": "Global / thematic",
       "isin": "IE000YYE6WK5",
       "instrument": "VANECK VECTORS DEF A ETF",
-      "weight_pct": 2.5911
+      "weight_pct": 2.591064
     },
     {
       "top_category": "Equities",
       "group": "Global / thematic",
       "isin": "LU0075056555",
       "instrument": "BRGF WORLD MINING(REG)A2",
-      "weight_pct": 2.1682
+      "weight_pct": 2.168239
     },
     {
       "top_category": "Equities",
       "group": "Global / thematic",
       "isin": "LU0127786431",
       "instrument": "GOLDMAN EU HIGH DIV P CAP",
-      "weight_pct": 2.0866
+      "weight_pct": 2.086578
     },
     {
       "top_category": "Equities",
       "group": "Global / thematic",
       "isin": "IE00BG0J4C88",
       "instrument": "ISHS DIGITAL SECURITY ETF",
-      "weight_pct": 1.4224
+      "weight_pct": 1.422401
     },
     {
       "top_category": "Equities",
       "group": "Global / thematic",
       "isin": "IE00BDBBPZ26",
       "instrument": "FTGF CB INF VAL X DIST Q",
-      "weight_pct": 1.2912
+      "weight_pct": 1.291246
     },
     {
       "top_category": "Equities",
       "group": "Global / thematic",
       "isin": "IE000KHX9DX6",
       "instrument": "WISD STRAT M&R EARTHS ETF",
-      "weight_pct": 1.091
+      "weight_pct": 1.091013
     },
     {
       "top_category": "Equities",
       "group": "Global / thematic",
       "isin": "SE0021921269",
       "instrument": "SAAB AB B",
-      "weight_pct": 1.0456
+      "weight_pct": 1.04561
     },
     {
       "top_category": "Equities",
       "group": "Global / thematic",
       "isin": "US92189F1066",
       "instrument": "VANECK GOLD MINERS ETF",
-      "weight_pct": 0.8705
+      "weight_pct": 0.870521
     },
     {
       "top_category": "Equities",
       "group": "Global / thematic",
       "isin": "IE00BF20LF40",
       "instrument": "ISHS VI MSCI EUROP MC ETF",
-      "weight_pct": 0.776
+      "weight_pct": 0.776024
     },
     {
       "top_category": "Equities",
       "group": "Global / thematic",
       "isin": "LU3269411313",
       "instrument": "DECALIA AEGIS DEFENSE A1",
-      "weight_pct": 0.7605
+      "weight_pct": 0.760455
     },
     {
       "top_category": "Equities",
       "group": "Global / thematic",
       "isin": "LU0234576444",
       "instrument": "G SACHS US SMALL CAP CORE",
-      "weight_pct": 0.588
+      "weight_pct": 0.588009
     },
     {
       "top_category": "Structured Products",
       "group": "Structured Products",
       "isin": "XS3164745351",
       "instrument": "CITIBTB11.3%ABBN-GALD-UBS  15.06.2027",
-      "weight_pct": 1.1672
+      "weight_pct": 1.16724
     },
     {
       "top_category": "Structured Products",
       "group": "Structured Products",
       "isin": "CH1476717926",
       "instrument": "TCM 100% CPN 125% LEONAI1  25.08.2028",
-      "weight_pct": 0.998
+      "weight_pct": 0.997996
     },
     {
       "top_category": "Structured Products",
       "group": "Structured Products",
       "isin": "XS3180169339",
       "instrument": "BNP CPN 8% ENI-TTE-CVX  10.11.2027",
-      "weight_pct": 0.8567
+      "weight_pct": 0.856715
     },
     {
       "top_category": "Structured Products",
       "group": "Structured Products",
       "isin": "CH1384269176",
       "instrument": "BIL OC 211.5% NESN  13.12.2027",
-      "weight_pct": 0.8439
+      "weight_pct": 0.843923
     },
     {
       "top_category": "Structured Products",
       "group": "Structured Products",
       "isin": "CH1587815338",
       "instrument": "8% DCI-XAGUSD-48.206 UBS  24.08.2026",
-      "weight_pct": 0.8184
+      "weight_pct": 0.818406
     },
     {
       "top_category": "Structured Products",
       "group": "Structured Products",
       "isin": "CH1511301322",
       "instrument": "RAF 9.45% GOOGL-AMZN-MSFT  24.12.2026",
-      "weight_pct": 0.8178
+      "weight_pct": 0.817755
     },
     {
       "top_category": "Private Assets",
       "group": "Private Assets",
       "isin": "XX0009936591",
       "instrument": "COA KONA III REF3 LP",
-      "weight_pct": 6.7052
+      "weight_pct": 6.705165
     },
     {
       "top_category": "Private Assets",
       "group": "Private Assets",
       "isin": "XX9970157841",
       "instrument": "LEFT LANE CP II CLT2",
-      "weight_pct": 5.9555
+      "weight_pct": 5.955455
     },
     {
       "top_category": "Private Assets",
       "group": "Private Assets",
       "isin": "XX0009936523",
       "instrument": "ACE BUYOUT III SPC A",
-      "weight_pct": 1.7748
+      "weight_pct": 1.774815
     },
     {
       "top_category": "Private Assets",
       "group": "Private Assets",
       "isin": "XX0009947993",
       "instrument": "ECHO FUND SCSP",
-      "weight_pct": 1.2734
+      "weight_pct": 1.273358
     },
     {
       "top_category": "Private Assets",
       "group": "Private Assets",
       "isin": "XX0009959644",
       "instrument": "THEMIS FUND REF2 SCSP",
-      "weight_pct": 0.3659
+      "weight_pct": 0.365893
     },
     {
       "top_category": "Private Assets",
       "group": "Private Assets",
       "isin": "XX9970157842",
       "instrument": "LEFT LANE II CLT2 CC",
-      "weight_pct": 0.1549
+      "weight_pct": 0.154917
     },
     {
       "top_category": "Private Assets",
       "group": "Private Assets",
       "isin": "XX0009959643",
       "instrument": "THEMIS FD REF2 CC",
-      "weight_pct": 0.0407
+      "weight_pct": 0.040668
     },
     {
       "top_category": "Private Assets",
       "group": "Private Assets",
       "isin": null,
       "instrument": "ACE BUYOUT III A CC",
-      "weight_pct": 0.0
+      "weight_pct": 3.9e-05
     },
     {
       "top_category": "Commodities",
       "group": "Commodities",
       "isin": "CH0002811286",
       "instrument": "GOLD KG 1 999.9 CHF",
-      "weight_pct": 20.0598
+      "weight_pct": 20.059796
     },
     {
       "top_category": "Commodities",
       "group": "Commodities",
       "isin": "ZAE000003950",
       "instrument": "OR KRUGERRAND(PCE)1OZ USD",
-      "weight_pct": 1.2549
+      "weight_pct": 1.254855
     },
     {
       "top_category": "Commodities",
       "group": "Commodities",
       "isin": "CH0183136057",
       "instrument": "SWC(CH)PLATINUM ETF EACHF",
-      "weight_pct": 1.0082
+      "weight_pct": 1.008181
     },
     {
       "top_category": "Commodities",
       "group": "Commodities",
       "isin": "GB00B15KXQ89",
       "instrument": "WISDOMT.ETC-COPPER COM ID",
-      "weight_pct": 0.9782
+      "weight_pct": 0.978194
     },
     {
       "top_category": "Commodities",
       "group": "Commodities",
       "isin": "GB00B15KXN58",
       "instrument": "WISDOMTREE-ETC-ALUMIN PER",
-      "weight_pct": 0.9349
+      "weight_pct": 0.934911
     },
     {
       "top_category": "Commodities",
       "group": "Commodities",
       "isin": "GB00B15KYH63",
       "instrument": "WISDOMTREE-ETC-AIGCI(LDN)",
-      "weight_pct": 0.8077
+      "weight_pct": 0.807669
     },
     {
       "top_category": "Other",
       "group": "Other",
       "isin": "US46438F1012",
       "instrument": "ISHARES BITCOIN ETF",
-      "weight_pct": 0.5968
+      "weight_pct": 0.596802
     }
   ],
   "proposed_bond_selection": {

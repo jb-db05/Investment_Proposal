@@ -43,16 +43,22 @@ call order in `build_proposal.build()`.
 
 ## Scope boundary
 
-Slides 24 and 26-36 (appendix, "Syz Group at a Glance", advisory service
-tiers, individual fund recommendation one-pagers) are **not** data-driven
-by this skill. They are bank collateral / marketing content that doesn't
-come from the client's portfolio or the market PDF, and none of the three
-inputs (Excel, PDF, risk profile) contains what would be needed to
-personalize them (e.g. which specific funds to recommend is an advisor
-judgment call, not a data transform). They ship as-is from the template.
-If a future version needs to vary the recommended-fund one-pagers by risk
-profile, that's a new input (a fund-recommendation-by-profile mapping),
-not something to reverse-engineer from the three existing inputs.
+The appendix (Syz Group at a Glance, advisory service tiers, investment
+universe, house-view TAA worksheet) is **not** data-driven by this skill.
+It's bank collateral / marketing content that doesn't come from the
+client's portfolio or the market PDF, and none of the three inputs (Excel,
+PDF, risk profile) contains what would be needed to personalize it. It
+ships as-is from the template.
+
+The five individual fund-recommendation one-pagers that used to follow the
+appendix (BNY Mellon Global Short-Dated High Yield, UBS Swiss Income
+Equity Fund + its characteristics page, Schroder US Large Cap Fund + its
+characteristics page) were **removed from the template entirely** per
+explicit instruction — they were specific fund picks tied to one advisor's
+recommendations, not generic collateral appropriate for every client. If a
+future need brings fund one-pagers back, that's a new input (which funds
+to recommend, keyed by risk profile or client), not something to
+reconstruct from the three existing inputs.
 
 ## "Alternatives" naming
 
@@ -247,6 +253,29 @@ automatically:
   section-navigation system and inconsistent with this deck's own design.
   Removed by bounding box (`left > 8000000 and top < 1800000`) rather than
   by name, since the shape names differ per slide.
+
+- **Slide 8's profile-name captions** ("FIXED INCOME", "MODERATE", etc.)
+  are now explicitly styled every build (color/size/bold), not left to
+  the template's own formatting: only 4 of the 6 had any explicit run
+  properties at all in the source deck (Moderate and Balanced had none,
+  inheriting an undefined default) — see `PROFILE_LABEL_SHAPE` and the
+  loop in `recolor_profile_dial()`. These live nested inside the same
+  `Group 3` as the dots; searching `slide.shapes` instead of `group.shapes`
+  for them is a real bug that shipped once already — silently no-ops
+  instead of raising, so it only shows up as "nothing changed" on
+  inspection, not as an error.
+- **Portfolio Overview's two donut hole labels** sit at fixed coordinates
+  (H=2.75cm/V=13.91cm and H=16.51cm/V=13.91cm) rather than a computed
+  donut-center position — an earlier computed-center version came out
+  visibly misaligned (the two donuts aren't quite the same size, so "center
+  of the chart's bounding box" isn't "center of the visible ring").
+- **The "Please enter client TAA" instruction text** was deleted from the
+  house-view slide — the blank preference-matrix table stays for the
+  advisor to fill in by hand, but the placeholder instruction sentence
+  above it was clutter.
+- **The "Headquartered in Geneva..." sentence on "Syz Group at a Glance"**
+  was 11pt against every other body sentence in the deck being 12pt —
+  fixed to 12pt, text and position untouched.
 
 If you re-derive `assets/template.pptx` from a fresh copy of the reference
 deck, redo all of these fixes — none of them survive re-deriving the

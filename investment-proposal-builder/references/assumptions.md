@@ -199,9 +199,27 @@ number, it is this portfolio's real figure.
 
 ## 13. Rounding
 
-All percentages are computed at full float precision and rounded only at
-render time, to 1 decimal place. Donut/bar chart category labels bake the
-rounded percentage into the label text (matching the reference deck's
-`"Fixed Income  55%"` style), so a chart rebuilt from `parsed.json` must
-round the same way `update_chart.py::pct_label()` does, or labels and
-slice sizes will disagree by a fraction of a point.
+Percentages are computed at full float precision internally, then rounded
+to 6 decimal places (`parse_portfolio.py::pct()`) before landing in
+`parsed.json` — 6dp, not fewer, specifically so a genuinely nonzero but
+very small weight (a residual currency balance worth ~0.00003% of the
+book, say) survives as a small positive number rather than collapsing to
+exactly `0.0` before the display layer ever sees it. Display-time
+formatting then rounds again to 1 decimal place. Donut/bar chart category
+labels bake the rounded percentage into the label text (matching the
+reference deck's `"Fixed Income  55%"` style), so a chart rebuilt from
+`parsed.json` must round the same way `update_chart.py::pct_label_*()`
+does, or labels and slice sizes will disagree by a fraction of a point.
+
+**`<0.1%` display rule.** Anywhere a per-holding or per-category
+percentage is shown at 1-decimal precision (`fmt_pct()` in
+`build_proposal.py` and `build_line_items_tables.py`,
+`pct_label_one_decimal()` in `update_chart.py`), a value that is
+genuinely greater than zero but would round to `0.0%` displays as `<0.1%`
+instead — `"INCOME TO BE RECEIVED IN GBP  0.0%"` reads as an error or
+missing data next to a real holding, not as a very small real position.
+An actual zero (e.g. a sleeve with no income at all) still shows `0.0%`
+as-is; only `0 < value < 0.1` gets the `<0.1%` treatment. This rule only
+works because of the 6dp rounding above — if `pct()` rounded to 1dp
+before storing, the distinction between "genuinely zero" and "just very
+small" would already be gone by the time the display layer runs.
