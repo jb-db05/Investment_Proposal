@@ -242,7 +242,7 @@ def recolor_profile_dial(slide, selected_profile):
         selected = profile == selected_profile
         run.font.color.rgb = ORANGE if selected else DOT_DEFAULT
         run.font.size = Pt(12) if selected else Pt(11)
-        run.font.bold = True
+        run.font.bold = selected
     highlight_name = PROFILE_DOT_SHAPE.get(selected_profile)
     if highlight_name:
         dot = next((sub for sub in group.shapes if sub.name == highlight_name), None)
