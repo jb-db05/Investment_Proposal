@@ -107,10 +107,20 @@ now is a real regression — fix it before delivering.
 
 Grep the built deck's extracted text for tokens that should never survive
 a real build: the reference client's own numbers (`7.0m`, `36\nPositions`,
-`86.6%`), the literal string `[Client Name`, and `Please enter client TAA`
-only being present on the one slide that's meant to stay a manual
-worksheet (the TAA preference-matrix slide — that one is intentionally
-static, see `slide_recipe.md`).
+`86.6%`), the reference client's name (`Jane Doe`), and the literal string
+`[Client Name`.
+
+The one placeholder that is *expected* to survive is `[Name]` on the cover
+slide ("Your Relationship Manager: [Name]", plus an empty "Your Advisor:"
+line) — none of the three inputs carries those names, so the advisor fills
+them in by hand before sending. Flag it to the user rather than treating it
+as a build failure.
+
+The TAA preference-matrix slide ("The house view: tactical asset
+allocation") is likewise intentionally static and advisor-filled, but it
+carries no placeholder *text* to grep for — earlier revisions of this file
+told you to check for a literal `Please enter client TAA`, which has never
+existed in `assets/template.pptx`. Don't reintroduce that check.
 
 ```bash
 python -c "
@@ -138,6 +148,25 @@ specifically: the holdings-list table(s) don't overflow the slide, no
 category got split across two slides, donut/bar chart labels aren't
 truncated, and the sleeve "largest holdings" tables aren't taller than the
 slide.
+
+When `soffice` doesn't work, these three programmatic checks catch most of
+what the rendered pass would have caught, and are worth running regardless:
+
+- **Off-slide geometry** — compare every shape's `left/top/width/height`
+  against `slide_width/slide_height`. Five overflows are pre-existing
+  template design (the cover's full-bleed `Picture 6`, `Text 43`/`TextBox 53`
+  on the Fixed Income Breakdown slide, `Text 34` on the Equity breakdown
+  slide, and slide 28's `UpSlide SubSection Marker`); diff your list against
+  `work/example_output_deck.pptx` so you flag only the new ones.
+- **Empty charts** — any chart whose plot has zero categories renders as a
+  blank frame. There should be none; one such artifact is documented under
+  "Template-level fixes" in `slide_recipe.md`.
+- **Pagination** — walk the holdings-list tables and confirm each group
+  label appears on exactly one slide, and that the total holding-row count
+  equals `parsed.json`'s `num_positions`.
+
+None of this substitutes for a human opening the file; say plainly that the
+rendered check didn't happen.
 
 ## Pagination (the hardest part)
 

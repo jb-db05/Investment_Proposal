@@ -1,3 +1,6 @@
 __pycache__/
 *.pyc
 .DS_Store
+
+# build temp artifact written by scripts/build_proposal.py
+investment-proposal-builder/work/_parsed_tmp.json

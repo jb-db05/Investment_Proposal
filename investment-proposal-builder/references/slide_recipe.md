@@ -203,6 +203,22 @@ automatically:
   they added visual noise without meaning. If a rendered check still shows
   an icon there, look for a third one; there is no principled reason to
   assume two was the final count.
+- **A stray empty chart on the Equities sleeve slide** — template slide 15
+  ("Equities: income-type specifics") carried a second `graphicFrame`,
+  `Chart 14`, stacked almost exactly on top of the real vehicle-breakdown
+  donut `Chart 9` (offsets 6.12"/2.93" vs 6.12"/2.95", near-identical
+  size). Its chart part (`ppt/charts/chart11.xml`) had zero series and zero
+  categories — an empty plot frame that nothing filled, since the builder
+  only ever writes `Chart 9` on sleeve slides. Every other sleeve slide
+  (Alternatives, Commodities) has `Chart 9` alone, which is what made this
+  one an artifact rather than a design. Removed: the `graphicFrame`, the
+  `rId4` relationship on `slide15.xml.rels`, the orphaned `chart11.xml` and
+  its `_rels`, the now-unreferenced `embeddings/Microsoft_Excel_Worksheet10.xlsx`,
+  and the `[Content_Types].xml` override for `chart11.xml`. This one was
+  invisible to the text-level QA in `SKILL.md` step 6 (an empty chart
+  contributes no text) and to `validate.py` (an unused-but-well-formed part
+  is not an error) — it only shows up by comparing chart shapes across the
+  sleeve slides, which is worth doing after any template swap.
 - **Slide 8 dial dots** are also resized, not just recolored: the selected
   profile's dot grows to `DOT_SIZE_HIGHLIGHT`, every other dot shrinks to
   `DOT_SIZE_DEFAULT`, both resized around their own fixed center point
