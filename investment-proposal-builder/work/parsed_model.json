@@ -1,0 +1,703 @@
+{
+  "client_name": "[Client Name]",
+  "risk_profile_input": "Balanced",
+  "valuation_date": "20 August 2026",
+  "base_currency": "CHF",
+  "dominant_holding_currency": "CHF",
+  "total_value_eur": 1000000.0,
+  "num_positions": 26,
+  "largest_position_pct": 10.0,
+  "liquid_share_pct": 58.0,
+  "asset_allocation_pct": {
+    "Equities": 29.0,
+    "Structured Products": 27.0,
+    "Private Assets": 15.0,
+    "Fixed Income": 12.0,
+    "Cash": 10.0,
+    "Commodities": 7.0
+  },
+  "currency_exposure_pct": {
+    "CHF": 45.0,
+    "USD": 42.0,
+    "EUR": 7.0,
+    "NOK": 3.0,
+    "JPY": 3.0
+  },
+  "geographic_exposure_pct": {
+    "Not available": 100.0
+  },
+  "sector_exposure_pct": null,
+  "sleeves": {
+    "Cash": {
+      "total_weight_pct": 10.0,
+      "num_lines": 1,
+      "top_holdings": [
+        {
+          "name": "Cash & equivalents",
+          "isin": null,
+          "value_eur": 100000.0,
+          "value_qc": 100000.0,
+          "currency": "CHF",
+          "weight_pct": 10.0,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        }
+      ],
+      "vehicle_breakdown_pct": {
+        "Cash": 100.0
+      },
+      "duration_coverage": null
+    },
+    "Commodities": {
+      "total_weight_pct": 7.0,
+      "num_lines": 3,
+      "top_holdings": [
+        {
+          "name": "Swisscanto Gold ETF",
+          "isin": null,
+          "value_eur": 30000.0,
+          "value_qc": 30000.0,
+          "currency": "CHF",
+          "weight_pct": 3.0,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        },
+        {
+          "name": "WisdomTree Copper",
+          "isin": null,
+          "value_eur": 20000.0,
+          "value_qc": 20000.0,
+          "currency": "CHF",
+          "weight_pct": 2.0,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        },
+        {
+          "name": "WisdomTree Agriculture",
+          "isin": null,
+          "value_eur": 20000.0,
+          "value_qc": 20000.0,
+          "currency": "CHF",
+          "weight_pct": 2.0,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        }
+      ],
+      "vehicle_breakdown_pct": {
+        "ETF": 100.0
+      },
+      "duration_coverage": null
+    },
+    "Equities": {
+      "total_weight_pct": 29.0,
+      "num_lines": 9,
+      "top_holdings": [
+        {
+          "name": "X-Trackers S&P500 Equal-Weight",
+          "isin": null,
+          "value_eur": 50000.0,
+          "value_qc": 50000.0,
+          "currency": "CHF",
+          "weight_pct": 5.0,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        },
+        {
+          "name": "UBS Swiss Income Equity",
+          "isin": null,
+          "value_eur": 50000.0,
+          "value_qc": 50000.0,
+          "currency": "CHF",
+          "weight_pct": 5.0,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        },
+        {
+          "name": "Theam Quant Equity Eurozone",
+          "isin": null,
+          "value_eur": 40000.0,
+          "value_qc": 40000.0,
+          "currency": "CHF",
+          "weight_pct": 4.0,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        },
+        {
+          "name": "GS US Small Cap Equity",
+          "isin": null,
+          "value_eur": 30000.0,
+          "value_qc": 30000.0,
+          "currency": "CHF",
+          "weight_pct": 3.0,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        },
+        {
+          "name": "ETF Japan",
+          "isin": null,
+          "value_eur": 30000.0,
+          "value_qc": 30000.0,
+          "currency": "CHF",
+          "weight_pct": 3.0,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        }
+      ],
+      "vehicle_breakdown_pct": {
+        "Fund": 86.206897,
+        "ETF": 13.793103
+      },
+      "duration_coverage": null
+    },
+    "Fixed Income": {
+      "total_weight_pct": 12.0,
+      "num_lines": 4,
+      "top_holdings": [
+        {
+          "name": "BNY Mellon Global Short-Dated HY",
+          "isin": null,
+          "value_eur": 35000.0,
+          "value_qc": 35000.0,
+          "currency": "CHF",
+          "weight_pct": 3.5,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        },
+        {
+          "name": "Storm Bond Fund (Nordic HY)",
+          "isin": null,
+          "value_eur": 30000.0,
+          "value_qc": 30000.0,
+          "currency": "CHF",
+          "weight_pct": 3.0,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        },
+        {
+          "name": "Axiom Obligataire (IG / crossover)",
+          "isin": null,
+          "value_eur": 30000.0,
+          "value_qc": 30000.0,
+          "currency": "CHF",
+          "weight_pct": 3.0,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        },
+        {
+          "name": "Neuberger Short Duration EM Debt",
+          "isin": null,
+          "value_eur": 25000.0,
+          "value_qc": 25000.0,
+          "currency": "CHF",
+          "weight_pct": 2.5,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        }
+      ],
+      "vehicle_breakdown_pct": {
+        "Fund": 100.0
+      },
+      "duration_coverage": null
+    },
+    "Private Assets": {
+      "total_weight_pct": 15.0,
+      "num_lines": 4,
+      "top_holdings": [
+        {
+          "name": "Millenium",
+          "isin": null,
+          "value_eur": 80000.0,
+          "value_qc": 80000.0,
+          "currency": "CHF",
+          "weight_pct": 8.0,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        },
+        {
+          "name": "Scarce Assets",
+          "isin": null,
+          "value_eur": 30000.0,
+          "value_qc": 30000.0,
+          "currency": "CHF",
+          "weight_pct": 3.0,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        },
+        {
+          "name": "StepStone \u2014 Private Credit",
+          "isin": null,
+          "value_eur": 20000.0,
+          "value_qc": 20000.0,
+          "currency": "CHF",
+          "weight_pct": 2.0,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        },
+        {
+          "name": "Ares \u2014 Private Credit (senior secured)",
+          "isin": null,
+          "value_eur": 20000.0,
+          "value_qc": 20000.0,
+          "currency": "CHF",
+          "weight_pct": 2.0,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        }
+      ],
+      "vehicle_breakdown_pct": {
+        "Hedge fund": 53.333333,
+        "Private credit": 26.666667,
+        "Actively-managed certificate": 20.0
+      },
+      "duration_coverage": null
+    },
+    "Structured Products": {
+      "total_weight_pct": 27.0,
+      "num_lines": 5,
+      "top_holdings": [
+        {
+          "name": "ARC \u2014 S&P 500 / EuroStoxx 50 / SMI",
+          "isin": null,
+          "value_eur": 70000.0,
+          "value_qc": 70000.0,
+          "currency": "CHF",
+          "weight_pct": 7.0,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        },
+        {
+          "name": "ARC \u2014 Alphabet / Amazon / Microsoft",
+          "isin": null,
+          "value_eur": 50000.0,
+          "value_qc": 50000.0,
+          "currency": "CHF",
+          "weight_pct": 5.0,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        },
+        {
+          "name": "ARC \u2014 Nvidia / CATL / Arista",
+          "isin": null,
+          "value_eur": 50000.0,
+          "value_qc": 50000.0,
+          "currency": "CHF",
+          "weight_pct": 5.0,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        },
+        {
+          "name": "ARC \u2014 Swissquote / EFG / UBS",
+          "isin": null,
+          "value_eur": 50000.0,
+          "value_qc": 50000.0,
+          "currency": "CHF",
+          "weight_pct": 5.0,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        },
+        {
+          "name": "ARC \u2014 Georg Fischer / Logitech / VAT",
+          "isin": null,
+          "value_eur": 50000.0,
+          "value_qc": 50000.0,
+          "currency": "CHF",
+          "weight_pct": 5.0,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        }
+      ],
+      "vehicle_breakdown_pct": {
+        "Structured product (ARC)": 100.0
+      },
+      "duration_coverage": null
+    }
+  },
+  "equity_breakdown": {
+    "by_geography_pct": {
+      "US": 27.586207,
+      "Eurozone": 13.793103,
+      "Switzerland": 17.241379,
+      "Japan": 10.344828,
+      "EM": 17.241379,
+      "Global / thematic": 13.793103
+    },
+    "by_sector_pct": null,
+    "by_market_cap_pct": null
+  },
+  "concentration": {
+    "top_holdings": [
+      {
+        "rank": 1,
+        "name": "Cash & equivalents",
+        "value_eur": 100000.0,
+        "weight_pct": 10.0,
+        "cumulative_pct": 10.0
+      },
+      {
+        "rank": 2,
+        "name": "Millenium",
+        "value_eur": 80000.0,
+        "weight_pct": 8.0,
+        "cumulative_pct": 18.0
+      },
+      {
+        "rank": 3,
+        "name": "ARC \u2014 S&P 500 / EuroStoxx 50 / SMI",
+        "value_eur": 70000.0,
+        "weight_pct": 7.0,
+        "cumulative_pct": 25.0
+      },
+      {
+        "rank": 4,
+        "name": "X-Trackers S&P500 Equal-Weight",
+        "value_eur": 50000.0,
+        "weight_pct": 5.0,
+        "cumulative_pct": 30.0
+      },
+      {
+        "rank": 5,
+        "name": "UBS Swiss Income Equity",
+        "value_eur": 50000.0,
+        "weight_pct": 5.0,
+        "cumulative_pct": 35.0
+      },
+      {
+        "rank": 6,
+        "name": "ARC \u2014 Alphabet / Amazon / Microsoft",
+        "value_eur": 50000.0,
+        "weight_pct": 5.0,
+        "cumulative_pct": 40.0
+      },
+      {
+        "rank": 7,
+        "name": "ARC \u2014 Nvidia / CATL / Arista",
+        "value_eur": 50000.0,
+        "weight_pct": 5.0,
+        "cumulative_pct": 45.0
+      },
+      {
+        "rank": 8,
+        "name": "ARC \u2014 Swissquote / EFG / UBS",
+        "value_eur": 50000.0,
+        "weight_pct": 5.0,
+        "cumulative_pct": 50.0
+      },
+      {
+        "rank": 9,
+        "name": "ARC \u2014 Georg Fischer / Logitech / VAT",
+        "value_eur": 50000.0,
+        "weight_pct": 5.0,
+        "cumulative_pct": 55.0
+      },
+      {
+        "rank": 10,
+        "name": "Theam Quant Equity Eurozone",
+        "value_eur": 40000.0,
+        "weight_pct": 4.0,
+        "cumulative_pct": 59.0
+      },
+      {
+        "rank": 11,
+        "name": "BNY Mellon Global Short-Dated HY",
+        "value_eur": 35000.0,
+        "weight_pct": 3.5,
+        "cumulative_pct": 62.5
+      },
+      {
+        "rank": 12,
+        "name": "Storm Bond Fund (Nordic HY)",
+        "value_eur": 30000.0,
+        "weight_pct": 3.0,
+        "cumulative_pct": 65.5
+      },
+      {
+        "rank": 13,
+        "name": "Axiom Obligataire (IG / crossover)",
+        "value_eur": 30000.0,
+        "weight_pct": 3.0,
+        "cumulative_pct": 68.5
+      },
+      {
+        "rank": 14,
+        "name": "GS US Small Cap Equity",
+        "value_eur": 30000.0,
+        "weight_pct": 3.0,
+        "cumulative_pct": 71.5
+      },
+      {
+        "rank": 15,
+        "name": "ETF Japan",
+        "value_eur": 30000.0,
+        "weight_pct": 3.0,
+        "cumulative_pct": 74.5
+      },
+      {
+        "rank": 16,
+        "name": "Different Emerging Markets ETF",
+        "value_eur": 30000.0,
+        "weight_pct": 3.0,
+        "cumulative_pct": 77.5
+      },
+      {
+        "rank": 17,
+        "name": "Swisscanto Gold ETF",
+        "value_eur": 30000.0,
+        "weight_pct": 3.0,
+        "cumulative_pct": 80.5
+      },
+      {
+        "rank": 18,
+        "name": "Scarce Assets",
+        "value_eur": 30000.0,
+        "weight_pct": 3.0,
+        "cumulative_pct": 83.5
+      },
+      {
+        "rank": 19,
+        "name": "Neuberger Short Duration EM Debt",
+        "value_eur": 25000.0,
+        "weight_pct": 2.5,
+        "cumulative_pct": 86.0
+      },
+      {
+        "rank": 20,
+        "name": "SG Bernstein China Next Winners",
+        "value_eur": 20000.0,
+        "weight_pct": 2.0,
+        "cumulative_pct": 88.0
+      }
+    ],
+    "top_5_pct": 35.0,
+    "top_10_pct": 59.0,
+    "top_20_pct": 88.0,
+    "positions_above_5pct": 3
+  },
+  "liquidity_profile_pct": {
+    "Daily-liquid fund / ETF": 48.0,
+    "Structured product (periodic liquidity)": 30.0,
+    "Illiquid (lock-up)": 12.0,
+    "Cash & equivalents": 10.0
+  },
+  "income": {
+    "running_yield_pct": null,
+    "fi_duration_years": null,
+    "rate_impact_100bp_eur": null,
+    "income_by_sleeve": [],
+    "fi_duration_subsleeves": []
+  },
+  "risk_profile": {
+    "selected_profile": "Balanced",
+    "growth_assets_pct": 78.0,
+    "defensive_assets_pct": 22.0
+  },
+  "uncalled_commitments": [],
+  "line_items": [
+    {
+      "top_category": "Cash",
+      "group": "Cash",
+      "isin": null,
+      "instrument": "Cash & equivalents",
+      "weight_pct": 10.0
+    },
+    {
+      "top_category": "Fixed Income",
+      "group": "High Yield (local or global hdg)",
+      "isin": null,
+      "instrument": "BNY Mellon Global Short-Dated HY",
+      "weight_pct": 3.5
+    },
+    {
+      "top_category": "Fixed Income",
+      "group": "High Yield (local or global hdg)",
+      "isin": null,
+      "instrument": "Storm Bond Fund (Nordic HY)",
+      "weight_pct": 3.0
+    },
+    {
+      "top_category": "Fixed Income",
+      "group": "Corporate IG (local)",
+      "isin": null,
+      "instrument": "Axiom Obligataire (IG / crossover)",
+      "weight_pct": 3.0
+    },
+    {
+      "top_category": "Fixed Income",
+      "group": "EM Debt",
+      "isin": null,
+      "instrument": "Neuberger Short Duration EM Debt",
+      "weight_pct": 2.5
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": null,
+      "instrument": "X-Trackers S&P500 Equal-Weight",
+      "weight_pct": 5.0
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": null,
+      "instrument": "GS US Small Cap Equity",
+      "weight_pct": 3.0
+    },
+    {
+      "top_category": "Equities",
+      "group": "Eurozone",
+      "isin": null,
+      "instrument": "Theam Quant Equity Eurozone",
+      "weight_pct": 4.0
+    },
+    {
+      "top_category": "Equities",
+      "group": "Switzerland",
+      "isin": null,
+      "instrument": "UBS Swiss Income Equity",
+      "weight_pct": 5.0
+    },
+    {
+      "top_category": "Equities",
+      "group": "Japan",
+      "isin": null,
+      "instrument": "ETF Japan",
+      "weight_pct": 3.0
+    },
+    {
+      "top_category": "Equities",
+      "group": "EM",
+      "isin": null,
+      "instrument": "Different Emerging Markets ETF",
+      "weight_pct": 3.0
+    },
+    {
+      "top_category": "Equities",
+      "group": "EM",
+      "isin": null,
+      "instrument": "SG Bernstein China Next Winners",
+      "weight_pct": 2.0
+    },
+    {
+      "top_category": "Equities",
+      "group": "Global / thematic",
+      "isin": null,
+      "instrument": "ARK Automation & Robotics",
+      "weight_pct": 2.0
+    },
+    {
+      "top_category": "Equities",
+      "group": "Global / thematic",
+      "isin": null,
+      "instrument": "BlackRock World Mining",
+      "weight_pct": 2.0
+    },
+    {
+      "top_category": "Structured Products",
+      "group": "Autocallables (ARC)",
+      "isin": null,
+      "instrument": "ARC \u2014 S&P 500 / EuroStoxx 50 / SMI",
+      "weight_pct": 7.0
+    },
+    {
+      "top_category": "Structured Products",
+      "group": "Autocallables (ARC)",
+      "isin": null,
+      "instrument": "ARC \u2014 Alphabet / Amazon / Microsoft",
+      "weight_pct": 5.0
+    },
+    {
+      "top_category": "Structured Products",
+      "group": "Autocallables (ARC)",
+      "isin": null,
+      "instrument": "ARC \u2014 Nvidia / CATL / Arista",
+      "weight_pct": 5.0
+    },
+    {
+      "top_category": "Structured Products",
+      "group": "Autocallables (ARC)",
+      "isin": null,
+      "instrument": "ARC \u2014 Swissquote / EFG / UBS",
+      "weight_pct": 5.0
+    },
+    {
+      "top_category": "Structured Products",
+      "group": "Autocallables (ARC)",
+      "isin": null,
+      "instrument": "ARC \u2014 Georg Fischer / Logitech / VAT",
+      "weight_pct": 5.0
+    },
+    {
+      "top_category": "Private Assets",
+      "group": "Hedge funds",
+      "isin": null,
+      "instrument": "Millenium",
+      "weight_pct": 8.0
+    },
+    {
+      "top_category": "Private Assets",
+      "group": "Alternatives (other)",
+      "isin": null,
+      "instrument": "Scarce Assets",
+      "weight_pct": 3.0
+    },
+    {
+      "top_category": "Private Assets",
+      "group": "Private credit",
+      "isin": null,
+      "instrument": "StepStone \u2014 Private Credit",
+      "weight_pct": 2.0
+    },
+    {
+      "top_category": "Private Assets",
+      "group": "Private credit",
+      "isin": null,
+      "instrument": "Ares \u2014 Private Credit (senior secured)",
+      "weight_pct": 2.0
+    },
+    {
+      "top_category": "Commodities",
+      "group": "Commodities",
+      "isin": null,
+      "instrument": "Swisscanto Gold ETF",
+      "weight_pct": 3.0
+    },
+    {
+      "top_category": "Commodities",
+      "group": "Commodities",
+      "isin": null,
+      "instrument": "WisdomTree Copper",
+      "weight_pct": 2.0
+    },
+    {
+      "top_category": "Commodities",
+      "group": "Commodities",
+      "isin": null,
+      "instrument": "WisdomTree Agriculture",
+      "weight_pct": 2.0
+    }
+  ],
+  "proposed_bond_selection": null,
+  "is_indicative": true,
+  "basis_note": "Indicative amounts shown on a nominal CHF 1.0m base."
+}

@@ -139,6 +139,54 @@ category got split across two slides, donut/bar chart labels aren't
 truncated, and the sleeve "largest holdings" tables aren't taller than the
 slide.
 
+## Model-allocation input (weights-only)
+
+Some proposals start not from a custodian export of current holdings but
+from a **target/model allocation** — a thin sheet whose only hard number
+per line is a weight (`Instrument | Type | Ccy | Wgt`), grouped by
+section-header rows (Cash, Fixed income via funds, Equities, Equity
+structured products (ARC), Commodities, Alternatives). `parse_portfolio.py`
+cannot read this (no market values, ISINs, ratings, durations, yields);
+`scripts/parse_model_allocation.py` is its sibling for exactly this shape.
+It emits the **same** `parsed.json` schema, so every slide-filler is reused
+unchanged:
+
+```bash
+python scripts/parse_model_allocation.py "<model.xlsx>" \
+    --profile Balanced --base-currency CHF --nominal 1000000 \
+    --client-name "[Client Name]" --valuation-date "20 August 2026" \
+    -o parsed_model.json
+
+python scripts/build_proposal.py \
+    --parsed-json-in parsed_model.json --profile Balanced \
+    --client-name "[Client Name]" --market-update market_update.json \
+    -o "Investment Proposal - Balanced CHF.pptx"
+```
+
+Because a weights-only file has no portfolio value, all money figures are
+**indicative** on a nominal base (`--nominal`, default 1,000,000) and are
+labelled as such (cover, portfolio-overview "Total value (indicative)").
+What the model genuinely supports is filled for real: asset allocation and
+currency exposure by weight, the full holdings list, per-sleeve top
+holdings and vehicle breakdowns, equity geography (read from the
+self-describing fund names), concentration, liquidity, the risk-return
+dial, and the market slides. What a weights-only file cannot support is
+shown as "Not available"/"n/a" rather than invented, exactly per the
+no-fabrication rule: portfolio-wide geography/sector (needs fund
+look-through), equity sector/market-cap, running yield / coupon income /
+fixed-income duration (slide 22), and the individual bond selection
+(slide 14 — cleared to "No individual bond selection is proposed..." when
+`proposed_bond_selection` is null, so the reference client's bond donuts
+never leak through). Report which slides came back unavailable when you
+hand the deck over.
+
+Note the growth-vs-defensive split (`risk_profile.growth_assets_pct`) is
+computed deterministically (Equities + Structured Products + Commodities +
+Private Assets = growth); if the model's growth share lands outside the
+selected profile's band (`RISK_PROFILE_GROWTH_BAND`), the dial still
+highlights the profile you asked for but the % text tells the truth — flag
+the mismatch to the user rather than silently reconciling it.
+
 ## Pagination (the hardest part)
 
 The client's full holdings list never fits on the reference deck's
@@ -160,7 +208,8 @@ investment-proposal-builder/
 ├── assets/
 │   └── template.pptx              — branded template, slides 9-10 cleared to blank canvas
 ├── scripts/
-│   ├── parse_portfolio.py         — Excel -> parsed.json (all calculations, no chart/slide code)
+│   ├── parse_portfolio.py         — custodian export -> parsed.json (all calculations, no chart/slide code)
+│   ├── parse_model_allocation.py  — weights-only model allocation -> parsed.json (same schema)
 │   ├── update_chart.py            — python-pptx chart.replace_data() helpers
 │   ├── build_line_items_tables.py — rebuilds the holdings-list slides as real tables
 │   └── build_proposal.py          — orchestrator: runs all of the above, fills every other slide

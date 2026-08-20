@@ -428,8 +428,12 @@ def fill_cover(prs, parsed):
     slide = get_slide(prs, 1)
     ccy = parsed["base_currency"]
     amount_m = parsed["total_value_eur"] / 1_000_000
+    # A weights-only model allocation has no real portfolio value; money
+    # figures are indicative on a nominal base, flagged here so the reader
+    # never mistakes the cover amount for a real valuation.
+    indicative = " (indicative)" if parsed.get("is_indicative") else ""
     set_text(slide, "Text Placeholder 5",
-             f"{parsed['risk_profile_input']} {ccy} {amount_m:.1f}m\n\n"
+             f"{parsed['risk_profile_input']} {ccy} {amount_m:.1f}m{indicative}\n\n"
              f"Prepared for {parsed['client_name']}\n\n"
              f"Your Relationship Manager: [Name]\n\n"
              f"Your Advisor: ")
@@ -460,12 +464,24 @@ def fill_profile_dial(prs, parsed):
 def fill_portfolio_overview(prs, parsed):
     slide = get_slide(prs, 11)
     ccy = parsed["base_currency"]
-    set_text(slide, "Rectangle 3", f"{ccy} {parsed['total_value_eur']/1_000_000:.1f}M\nTotal value")
+    total_caption = "Total value (indicative)" if parsed.get("is_indicative") else "Total value"
+    set_text(slide, "Rectangle 3", f"{ccy} {parsed['total_value_eur']/1_000_000:.1f}M\n{total_caption}")
     set_text(slide, "Rectangle 4", f"{parsed['num_positions']}\nPositions")
     set_text(slide, "Rectangle 5", f"{parsed['largest_position_pct']:.1f}%\nLargest position")
     set_text(slide, "Rectangle 6", f"{parsed['liquid_share_pct']:.1f}%\nLiquid share")
     ry = parsed["income"]["running_yield_pct"]
     set_text(slide, "Rectangle 7", f"{ry:.1f}%\nRunning yield" if ry is not None else "n/a\nRunning yield")
+    # TextBox 12 carries a fixed-income duration-coverage caveat that no
+    # fill_* function populates — left unset it keeps the reference client's
+    # own "⚠ 2 of 23 ..." text (leftover placeholder content). Repopulate it
+    # from the real FI duration coverage when available, else blank it.
+    fi_cov = parsed.get("sleeves", {}).get("Fixed Income", {}).get("duration_coverage")
+    if fi_cov:
+        set_text(slide, "TextBox 12",
+                 f"⚠ Duration coverage: {fi_cov} fixed-income line(s) report a modified duration; "
+                 f"portfolio duration reflects only those.")
+    else:
+        set_text(slide, "TextBox 12", "")
     update_donut_by_name(slide, "Chart 10", parsed["asset_allocation_pct"])
     update_donut_by_name(slide, "Chart 14", parsed["currency_exposure_pct"])
 
@@ -528,10 +544,32 @@ def fill_sleeve_slides(prs, parsed):
                 set_text(slide, "TextBox 11", "")
 
 
+def clear_proposed_bond_selection(prs):
+    """When no curated bond ladder is provided (e.g. a model allocation that
+    implements fixed income via funds, not direct bonds), the template's
+    'Fixed Income Breakdown' slide would otherwise keep the reference
+    client's own bond donuts and legends — fabricated data for this deck.
+    Blank the four donuts to a single 'Not applicable' slice, wipe every
+    legend/sub-title textbox, and state plainly why the slide is empty."""
+    slide = get_slide(prs, 14)
+    set_text(slide, "Text 1",
+             "No individual bond selection is proposed for this mandate; the fixed-income "
+             "allocation is implemented via funds (see the Fixed Income sleeve).")
+    for chart_name in ("Chart 0", "Chart 1", "Chart 2", "Chart 3"):
+        update_donut_by_name(slide, chart_name, {"Not applicable": 100.0})
+    for sub in ("Text 3", "Text 16", "Text 23", "Text 30"):
+        set_text(slide, sub, "")
+    legend_texts = [5, 7, 9, 11, 13, 15, 18, 20, 22, 25, 27, 29, 32, 34, 36, 38, 40]
+    for i in legend_texts:
+        set_text(slide, f"Text {i}", "")
+    set_text(slide, "Text 41", "")  # internal data-sourcing footnote
+
+
 def fill_proposed_bond_selection(prs, parsed):
     slide = get_slide(prs, 14)
     pb = parsed.get("proposed_bond_selection")
     if not pb:
+        clear_proposed_bond_selection(prs)
         return
     set_text(slide, "Text 1",
              f"Proposed bond selection: {pb['num_issues']} issues, "
@@ -603,6 +641,13 @@ def fill_concentration(prs, parsed):
 def fill_income(prs, parsed):
     slide = get_slide(prs, 22)
     income = parsed["income"]
+    # When the source carries no yield/coupon/duration data at all (e.g. a
+    # weights-only model allocation), the KPIs and both tables are empty by
+    # necessity, not by error — say so in the subtitle rather than leaving
+    # two blank tables that read as a broken slide.
+    if income["running_yield_pct"] is None and not income["income_by_sleeve"]:
+        set_subtitle(slide, "Instrument-level yield, coupon and duration data are not available for this "
+                            "model allocation; income and rate-sensitivity metrics require a valued portfolio.")
     ry = income["running_yield_pct"]
     set_text(slide, "Rectangle 5", f"{ry:.1f}%\nRunning yield" if ry is not None else "n/a\nRunning yield")
     fd = income["fi_duration_years"]
@@ -661,22 +706,29 @@ def fill_market_slides(prs, market):
 
 def build(excel_path, profile, client_name, output_path, market_update_path=None,
           valuation_date=None, bucket_overrides=None, market_cap_overrides=None,
-          sector_overrides=None, keep_parsed_json=None):
-    parse_cmd = [sys.executable, str(SCRIPT_DIR / "parse_portfolio.py"), excel_path,
-                 "--profile", profile, "--client-name", client_name,
-                 "-o", keep_parsed_json or str(SCRIPT_DIR.parent / "work" / "_parsed_tmp.json")]
-    if valuation_date:
-        parse_cmd += ["--valuation-date", valuation_date]
-    if bucket_overrides:
-        parse_cmd += ["--bucket-overrides", bucket_overrides]
-    if market_cap_overrides:
-        parse_cmd += ["--market-cap-overrides", market_cap_overrides]
-    if sector_overrides:
-        parse_cmd += ["--sector-overrides", sector_overrides]
-    subprocess.run(parse_cmd, check=True)
+          sector_overrides=None, keep_parsed_json=None, parsed_json_in=None):
+    # parsed_json_in: use an already-built parsed.json (e.g. from
+    # parse_model_allocation.py for a weights-only model) instead of
+    # re-parsing a custodian export. Everything downstream is identical —
+    # both parsers emit the same schema.
+    if parsed_json_in:
+        parsed = json.loads(Path(parsed_json_in).read_text())
+    else:
+        parse_cmd = [sys.executable, str(SCRIPT_DIR / "parse_portfolio.py"), excel_path,
+                     "--profile", profile, "--client-name", client_name,
+                     "-o", keep_parsed_json or str(SCRIPT_DIR.parent / "work" / "_parsed_tmp.json")]
+        if valuation_date:
+            parse_cmd += ["--valuation-date", valuation_date]
+        if bucket_overrides:
+            parse_cmd += ["--bucket-overrides", bucket_overrides]
+        if market_cap_overrides:
+            parse_cmd += ["--market-cap-overrides", market_cap_overrides]
+        if sector_overrides:
+            parse_cmd += ["--sector-overrides", sector_overrides]
+        subprocess.run(parse_cmd, check=True)
 
-    parsed_path = keep_parsed_json or str(SCRIPT_DIR.parent / "work" / "_parsed_tmp.json")
-    parsed = json.loads(Path(parsed_path).read_text())
+        parsed_path = keep_parsed_json or str(SCRIPT_DIR.parent / "work" / "_parsed_tmp.json")
+        parsed = json.loads(Path(parsed_path).read_text())
 
     market = None
     if market_update_path:
@@ -709,7 +761,8 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--excel", required=True)
+    ap.add_argument("--excel", default=None,
+                     help="custodian export; omit when using --parsed-json-in")
     ap.add_argument("--profile", required=True,
                      choices=["Fixed Income", "Conservative", "Moderate", "Balanced", "Growth", "Equity"])
     ap.add_argument("--client-name", default="[Client Name]")
@@ -719,13 +772,20 @@ def main():
     ap.add_argument("--market-cap-overrides", default=None)
     ap.add_argument("--sector-overrides", default=None)
     ap.add_argument("--keep-parsed-json", default=None, help="also write parsed.json to this path")
+    ap.add_argument("--parsed-json-in", default=None,
+                     help="use this pre-built parsed.json (e.g. from parse_model_allocation.py) "
+                          "instead of parsing a custodian export")
     ap.add_argument("-o", "--output", required=True)
     args = ap.parse_args()
+
+    if not args.excel and not args.parsed_json_in:
+        ap.error("one of --excel or --parsed-json-in is required")
 
     build(args.excel, args.profile, args.client_name, args.output,
           market_update_path=args.market_update, valuation_date=args.valuation_date,
           bucket_overrides=args.bucket_overrides, market_cap_overrides=args.market_cap_overrides,
-          sector_overrides=args.sector_overrides, keep_parsed_json=args.keep_parsed_json)
+          sector_overrides=args.sector_overrides, keep_parsed_json=args.keep_parsed_json,
+          parsed_json_in=args.parsed_json_in)
 
 
 if __name__ == "__main__":
