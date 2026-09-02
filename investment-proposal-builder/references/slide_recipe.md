@@ -18,7 +18,7 @@ from `assets/template.pptx` — no per-client data goes on it.
 | N+1 | Portfolio overview | `parsed.json`: KPIs, `asset_allocation_pct`, `currency_exposure_pct` | `build_proposal.fill_portfolio_overview` |
 | N+2 | Geographic & sector exposure | `parsed.json: geographic_exposure_pct`, `sector_exposure_pct` (may be unavailable, see assumptions.md §7) | `build_proposal.fill_geo_sector` |
 | N+3 | Fixed Income: income-type specifics | `parsed.json: sleeves["Fixed Income"]` | `build_proposal.fill_sleeve_slides` |
-| N+4 | Fixed Income Breakdown (proposed bond selection) | `parsed.json: proposed_bond_selection` (from the `Fixed Income` Excel tab — a curated proposal, NOT current holdings) | `build_proposal.fill_proposed_bond_selection` |
+| N+4 | Fixed Income Breakdown (proposed bond selection) | `parsed.json: proposed_bond_selection` (from the `Fixed Income` Excel tab — a curated proposal, NOT current holdings); **slide is removed when the Excel has no such tab** | `build_proposal.fill_proposed_bond_selection` / `drop_proposed_bond_selection` |
 | N+5 | Equities: income-type specifics | `parsed.json: sleeves["Equities"]` | `build_proposal.fill_sleeve_slides` |
 | N+6 | Equity breakdown | `parsed.json: equity_breakdown` | `build_proposal.fill_equity_breakdown` |
 | N+7 | Alternatives: income-type specifics | `parsed.json: sleeves["Private Assets"]` (closest conceptual match — see note below) | `build_proposal.fill_sleeve_slides` |
@@ -166,6 +166,13 @@ not just convention — breaking them was a real bug caught during review:
   autofit — so it never moves regardless of line count. Apply this same
   pattern to any new subtitle-setting code; editing the placeholder's
   runs in place will reintroduce the bug.
+- **Two stale page numbers.** The source deck left a hardcoded page number
+  in the bottom-right corner of exactly two slides ("12" on the proposed
+  bond selection, "13" on the equity breakdown) and nowhere else — already
+  wrong in the reference deck itself, since those are slides 16 and 18.
+  Both are blanked, not renumbered, by the fill function for their own
+  slide (`Text 33` in `fill_equity_breakdown()`, `Text 42` in
+  `fill_proposed_bond_selection()`).
 - **Internal data-sourcing footnotes are blanked, not translated.** Two
   footnotes reveal backend methodology the client doesn't need to see:
   the proposed-bond-selection slide's "Source: 'Fixed Income' tab..."
@@ -293,19 +300,29 @@ built from a real PDF (`work/20260817_Weekly_Investment_Meeting_Summary.pdf`)
 for reference and for testing `build_proposal.py` without re-reading a PDF
 every time.
 
-Schema (see the worked example for real values):
+Schema (see the worked example for real values; every field marked
+*optional* falls back to the template's own weekly-recap wording):
 
 ```
 {
   "week_of": str,
-  "headline": {"summary_title": str, "intro_sentence": str,
+  "headline": {"slide_title": str (optional — slide 3's title),
+               "summary_title": str, "intro_sentence": str,
                "stats": [{"value": str, "label": str}, ...4 of them]},
-  "scoreboard": {"rows": [{"index": str, "week": str, "ytd": str}, ...
+  "scoreboard": {"label": str (optional — the block's heading),
+                 "headers": [str, str, str] (optional — default
+                              ["Index", "Week", "YTD"]),
+                 "colorize": bool (optional — default true: green/orange by
+                              the value's own +/- sign),
+                 "rows": [{"index": str, "week": str, "ytd": str}, ...
                            up to 9 — matches the template's 9 table rows]},
   "three_observations": [{"headline": str, "body": str}, ...3 of them],
-  "four_drivers": {"intro_sentence": str,
+  "four_drivers": {"slide_title": str (optional — slide 4's title),
+                    "intro_sentence": str,
                     "drivers": [{"number": int, "title": str, "body": str,
-                                 "stat": str|null}, ...4 of them]},
+                                 "stat": str|null}, ...4 of them],
+                    "policy_note": str (the standalone sentence across the
+                                 bottom of slide 4)},
   "scenario": {"intro_sentence": str,
                "probabilities": [{"name": str, "pct": number}, ...]},
   "house_view": {"intro_sentence": str,
@@ -313,6 +330,35 @@ Schema (see the worked example for real values):
                            ...3 of them, matching the template's 3 columns]}
 }
 ```
+
+### When the source isn't a weekly market recap
+
+Slides 3-4 are built for a weekly cross-asset recap, but a monthly
+investment-conclusions summary (no index performance table anywhere in it)
+is a perfectly ordinary input. Three things make that case work without
+inventing anything:
+
+- **`slide_title`** on `headline` / `four_drivers` retitles slides 3 and 4,
+  so a monthly house-view summary doesn't ship under "How markets moved
+  last week".
+- **`scoreboard.headers` / `.label` / `.colorize`** repurpose the same
+  three-column block for whatever three-column table the source *does*
+  have — a tactical-allocation preference matrix (house view / stance /
+  change), say. Sign-based coloring is meaningless for words, hence
+  `colorize: false`, which also resets the column to navy so a stance word
+  can't inherit "this number was negative" from the template. Columns are
+  re-widened to their own longest value
+  (`build_proposal.fit_scoreboard_columns`), growing only past the
+  template's widths and never past the block's right edge, so the weekly
+  case keeps the reference deck's exact layout.
+- **Omitting `scoreboard.rows` entirely** empties the block. "Leave the
+  slide un-filled" has to mean *emptied* on slides 3-4: the template ships
+  with the reference week's own real numbers in those boxes, so leaving
+  them alone would put another week's market data in front of the client.
+  The same goes for `four_drivers.policy_note` — the sentence across the
+  bottom of slide 4 is market commentary like everything else on it, and is
+  emptied when the source has no policy line to put there. Both cases print
+  a note when they happen.
 
 Picking exactly 4 headline stats / 9 scoreboard rows / 3 observations / 4
 drivers / 3 house-view columns is a judgment call every week — pick the

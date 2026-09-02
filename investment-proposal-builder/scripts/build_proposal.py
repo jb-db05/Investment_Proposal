@@ -204,6 +204,65 @@ def color_scoreboard_column(shape, values):
             run.font.color.rgb = MINT
 
 
+# Rough average glyph advance for the deck's body font, as a fraction of the
+# font size. Only used to decide whether a scoreboard value fits its column —
+# an approximation, deliberately generous, never a layout measurement.
+AVG_CHAR_EM = 0.52
+COLUMN_PADDING_PT = 14   # a little slack, since the advance above is an estimate
+
+
+def _needed_width(values, size_pt):
+    return Pt(max(len(str(v)) for v in values) * size_pt * AVG_CHAR_EM + COLUMN_PADDING_PT)
+
+
+def fit_scoreboard_columns(label_box, boxes, columns, size_pt=11):
+    """Re-width slide 3's three scoreboard columns to their own longest value.
+
+    The template sizes them for an index name and two '+13.70%' figures, so a
+    source whose values are words ('Underweight') overflows the two narrow
+    columns. Columns are re-laid left to right from the first column's left
+    edge, keeping the template's own gaps and staying inside the width of the
+    block's label ('Cross-asset scoreboard'), which is what defines the
+    block's right edge. No-op when the template's widths already fit — the
+    weekly-scoreboard case, which keeps the reference deck's exact layout."""
+    needed = [int(_needed_width(col, size_pt)) for col in columns]
+    # A column only ever grows past the template's own width; one that already
+    # has room keeps it, so the weekly-scoreboard layout is untouched.
+    targets = [max(n, b.width) for n, b in zip(needed, boxes)]
+    if targets == [b.width for b in boxes]:
+        return
+    gaps = [boxes[1].left - (boxes[0].left + boxes[0].width),
+            boxes[2].left - (boxes[1].left + boxes[1].width)]
+    available = (label_box.left + label_box.width) - boxes[0].left - sum(gaps)
+    # Growing one column past the block's right edge is paid for by columns
+    # that are wider than their own content needs — the label column, usually,
+    # which the template sizes for long index names.
+    over = sum(targets) - available
+    for i in sorted(range(len(targets)), key=lambda i: needed[i] - targets[i]):
+        if over <= 0:
+            break
+        take = min(targets[i] - needed[i], over)
+        targets[i] -= take
+        over -= take
+    if over > 0:  # every column is at its minimum: shrink them all in proportion
+        targets = [int(t * available / sum(targets)) for t in targets]
+    left = boxes[0].left
+    for box, width, gap in zip(boxes, targets, gaps + [0]):
+        box.left, box.width = Emu(int(left)), Emu(int(width))
+        left += int(width) + gap
+
+
+def recolor_column(shape, color):
+    """Force every value paragraph (index 1+, index 0 is the column header)
+    to one color — the counterpart of color_scoreboard_column() for columns
+    whose values aren't signed numbers."""
+    if shape is None or not shape.has_text_frame:
+        return
+    for para in list(shape.text_frame.paragraphs)[1:]:
+        for run in para.runs:
+            run.font.color.rgb = color
+
+
 DOT_SIZE_DEFAULT = Emu(250065)     # matches every non-selected dot in the template
 DOT_SIZE_HIGHLIGHT = Emu(340000)   # a bit bigger than the template's own highlight size (314873)
 
@@ -528,11 +587,17 @@ def fill_sleeve_slides(prs, parsed):
                 set_text(slide, "TextBox 11", "")
 
 
+# Original template position of the "Fixed Income Breakdown" (proposed bond
+# selection) slide — the one slide dropped entirely when its source data is
+# missing, see drop_proposed_bond_selection().
+PROPOSED_BOND_SLIDE = 14
+
+
 def fill_proposed_bond_selection(prs, parsed):
-    slide = get_slide(prs, 14)
     pb = parsed.get("proposed_bond_selection")
     if not pb:
-        return
+        return  # slide removed later by drop_proposed_bond_selection()
+    slide = get_slide(prs, PROPOSED_BOND_SLIDE)
     set_text(slide, "Text 1",
              f"Proposed bond selection: {pb['num_issues']} issues, "
              f"{pb['currency']} {pb['total_amount']:,.0f}, equally weighted at "
@@ -548,6 +613,27 @@ def fill_proposed_bond_selection(prs, parsed):
     set_donut_legend(slide, ["Text 32", "Text 34", "Text 36", "Text 38", "Text 40"], pb["by_rating_pct"])
     # internal data-sourcing footnote — not for the client's eyes
     set_text(slide, "Text 41", "")
+    # ...and the source deck's hardcoded "12" in the bottom-right corner, see
+    # the note on Text 33 in fill_equity_breakdown()
+    set_text(slide, "Text 42", "")
+
+
+def drop_proposed_bond_selection(prs, slide):
+    """Remove the Fixed Income Breakdown slide. It is driven entirely by the
+    Excel's 'Fixed Income' proposal tab; when the client's file has no such
+    tab there is nothing to put on it, and leaving it in place ships the
+    template's own example selection — six issues, EUR 600,000, none of them
+    this client's — as if it were a proposal made for this client.
+
+    Takes the slide itself rather than a position: by the time this runs,
+    build_line_items_tables.build() has already inserted the extra holdings
+    pages and every position after slide 10 has moved. The slide is located
+    by part identity, which the insert doesn't disturb."""
+    parts = [s.part for s in prs.slides]
+    line_items_mod.delete_slide(prs, parts.index(slide.part))
+    print("Note: the portfolio Excel has no 'Fixed Income' proposal tab — the "
+          "'Fixed Income Breakdown' slide was removed rather than left showing "
+          "the template's own example bond selection.")
 
 
 def fill_equity_breakdown(prs, parsed):
@@ -577,6 +663,11 @@ def fill_equity_breakdown(prs, parsed):
                                f"{sleeve.get('total_weight_pct', 0):.1f}% of the portfolio.")
     # internal data-classification footnote — not for the client's eyes
     set_text(slide, "Text 32", "")
+    # ...and a hardcoded "13" in the bottom-right corner, left over from the
+    # source deck's own pagination. It was already wrong before this skill
+    # existed (it sits on slide 16) and no other data slide carries one, so
+    # it is blanked, not renumbered.
+    set_text(slide, "Text 33", "")
 
 
 def fill_liquidity(prs, parsed):
@@ -624,6 +715,12 @@ def fill_market_slides(prs, market):
         return
     s3 = get_slide(prs, 3)
     h = market["headline"]
+    # The template's own titles describe a weekly market recap ("How markets
+    # moved last week"). A source that isn't one — a monthly house-view
+    # summary, say — carries its own title in the JSON rather than shipping
+    # under a heading its content doesn't match.
+    if h.get("slide_title"):
+        set_text(s3, "Title 1", h["slide_title"])
     set_subtitle(s3, h["intro_sentence"])
 
     rects = [sh for sh in s3.shapes if sh.name == "Rectangle"]
@@ -637,24 +734,69 @@ def fill_market_slides(prs, market):
     # [0]='Cross-asset scoreboard' label, [1]=Index col, [2]=Week col,
     # [3]=YTD col, [4]='Three observations' label
     if len(textboxes) >= 4:
-        rows = market["scoreboard"]["rows"]
-        set_shape_lines(textboxes[1], ["Index"] + [r["index"] for r in rows])
-        set_shape_lines(textboxes[2], ["Week"] + [r["week"] for r in rows])
-        set_shape_lines(textboxes[3], ["YTD"] + [r["ytd"] for r in rows])
-        color_scoreboard_column(textboxes[2], [r["week"] for r in rows])
-        color_scoreboard_column(textboxes[3], [r["ytd"] for r in rows])
+        board = market.get("scoreboard") or {}
+        rows = board.get("rows") or []
+        # The block's label and its three column headers are data too, not
+        # fixture: a source with no cross-asset performance table can fill the
+        # same three columns with what it does have (e.g. a tactical-allocation
+        # preference matrix: house view / stance / change). Both default to the
+        # template's own weekly wording.
+        headers = board.get("headers") or ["Index", "Week", "YTD"]
+        if board.get("label"):
+            set_shape_lines(textboxes[0], [board["label"]])
+        if rows:
+            fit_scoreboard_columns(
+                textboxes[0], textboxes[1:4],
+                [[headers[0]] + [r["index"] for r in rows],
+                 [headers[1]] + [r["week"] for r in rows],
+                 [headers[2]] + [r["ytd"] for r in rows]])
+            set_shape_lines(textboxes[1], [headers[0]] + [r["index"] for r in rows])
+            set_shape_lines(textboxes[2], [headers[1]] + [r["week"] for r in rows])
+            set_shape_lines(textboxes[3], [headers[2]] + [r["ytd"] for r in rows])
+            if board.get("colorize", True):
+                color_scoreboard_column(textboxes[2], [r["week"] for r in rows])
+                color_scoreboard_column(textboxes[3], [r["ytd"] for r in rows])
+            else:
+                # Sign-based green/orange is meaningless for non-numeric values,
+                # and the template's own paragraphs carry the reference week's
+                # colors — reset both columns to navy so a stance word doesn't
+                # inherit "this number was negative".
+                recolor_column(textboxes[2], NAVY)
+                recolor_column(textboxes[3], NAVY)
+        else:
+            # No scoreboard in this source at all. "Leave it un-filled"
+            # (SKILL.md step 3) has to mean *emptied* here: the template ships
+            # with the reference week's real numbers in these boxes, so leaving
+            # them alone would put another week's market data on the slide.
+            for tb in textboxes[:4]:
+                set_shape_lines(tb, [""])
+            print("Note: market_update.json carries no scoreboard rows — slide 3's "
+                  "scoreboard block was emptied rather than left with the "
+                  "template's own reference-week numbers.")
 
     s4 = get_slide(prs, 4)
+    if market["four_drivers"].get("slide_title"):
+        set_text(s4, "Title 1", market["four_drivers"]["slide_title"])
     set_subtitle(s4, market["four_drivers"]["intro_sentence"])
-    # the 5th 'Rectangle' on slide 4 is a standalone policy note (no title
-    # line), not a numbered driver card — left untouched, see slide_recipe.md
-    driver_rects = [sh for sh in s4.shapes if sh.name == "Rectangle"][:4]
-    for sh, drv in zip(driver_rects, market["four_drivers"]["drivers"]):
+    s4_rects = [sh for sh in s4.shapes if sh.name == "Rectangle"]
+    for sh, drv in zip(s4_rects[:4], market["four_drivers"]["drivers"]):
         lines = [f"{drv['number']} - {drv['title']}", drv["body"]]
         if drv.get("stat"):
             lines.append(drv["stat"])
         # only the title (line 0) stays bold; body/stat lines forced normal
         set_shape_lines(sh, lines, bold_overrides={i: False for i in range(1, len(lines))})
+
+    # The 5th 'Rectangle' is a standalone policy note (no title line), not a
+    # numbered driver card — but it is still this week's market commentary.
+    # Leaving it to the template ships the reference week's own policy
+    # sentence to every client, so it is filled from the JSON, or emptied
+    # when the source has no policy line to put there.
+    if len(s4_rects) >= 5:
+        note = market["four_drivers"].get("policy_note")
+        set_shape_lines(s4_rects[4], [note or ""])
+        if not note:
+            print("Note: market_update.json has no four_drivers.policy_note — slide 4's "
+                  "policy note was emptied rather than left with the template's own.")
 
 
 # --------------------------------------------------------------------- main
@@ -701,7 +843,16 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
     fill_liquidity(prs, parsed)
     fill_concentration(prs, parsed)
     fill_income(prs, parsed)
+
+    # Grab the Fixed Income Breakdown slide now, while positions are still the
+    # template's, but delete it *after* the line-items rebuild: python-pptx
+    # names a new slide part after the current slide count, so deleting first
+    # makes the extra holdings pages reuse a partname that is still in use —
+    # a duplicate ppt/slides/slideN.xml in the saved package.
+    doomed = None if parsed.get("proposed_bond_selection") else get_slide(prs, PROPOSED_BOND_SLIDE)
     line_items_mod.build(prs, parsed)  # slides 9-10(+): rebuilt as real tables, runs last
+    if doomed is not None:
+        drop_proposed_bond_selection(prs, doomed)
 
     prs.save(output_path)
     print(f"Wrote {output_path}")

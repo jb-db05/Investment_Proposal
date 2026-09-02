@@ -69,21 +69,48 @@ def norm_header(h) -> str:
     return " ".join(str(h or "").split()).strip().lower()
 
 
-def load_sheet_rows(ws) -> tuple[dict[str, int], list[dict]]:
-    """Find the header row (first row with >=3 non-empty cells that look like
-    column names) then yield every row below it as a dict keyed by normalized
-    header name, tagging each with its section from column A."""
-    header_row_idx = None
-    headers: dict[str, int] = {}
+def find_header_row(ws) -> tuple[int | None, dict[str, int]]:
+    """The custodian export's own header row: the first row with >=5 filled
+    cells, one of which names an ISIN column. Returns its 1-based row index
+    and a {normalized header name: column index} map, or (None, {}) if this
+    sheet has no such row (i.e. it isn't a holdings export)."""
     for r in range(1, ws.max_row + 1):
         vals = [ws.cell(r, c).value for c in range(1, ws.max_column + 1)]
         non_empty = [v for v in vals if v not in (None, "")]
         if len(non_empty) >= 5 and any(isinstance(v, str) and "isin" in v.lower() for v in vals):
-            header_row_idx = r
-            for c, v in enumerate(vals, 1):
-                if v not in (None, ""):
-                    headers[norm_header(v)] = c
-            break
+            return r, {norm_header(v): c for c, v in enumerate(vals, 1) if v not in (None, "")}
+    return None, {}
+
+
+def pick_portfolio_sheet(wb):
+    """The holdings sheet. The custodian names it 'Portfolio', but the same
+    export re-saved out of Excel or forwarded by a client routinely arrives
+    with a default sheet name ('Sheet1', 'Feuil1', an account number) — that
+    is a naming accident, not a different file format, so fall back to the
+    only sheet that carries a holdings header row rather than making the user
+    rename their own file. The 'Fixed Income' proposal tab is excluded: it has
+    its own parser (parse_proposed_bonds) and its own meaning."""
+    if "Portfolio" in wb.sheetnames:
+        return wb["Portfolio"]
+    candidates = [ws for ws in wb.worksheets
+                  if ws.title != "Fixed Income" and find_header_row(ws)[0] is not None]
+    if not candidates:
+        sys.exit("Error: no sheet in this file has a holdings header row (a row "
+                 "with an 'ISIN code' column) — expected a 'Portfolio' sheet")
+    if len(candidates) > 1:
+        sys.exit("Error: more than one sheet looks like a holdings export "
+                 f"({', '.join(ws.title for ws in candidates)}) — name the "
+                 "right one 'Portfolio' so there is no ambiguity")
+    print(f"Note: no 'Portfolio' sheet — using '{candidates[0].title}', the only "
+          "sheet with a holdings header row.")
+    return candidates[0]
+
+
+def load_sheet_rows(ws) -> tuple[dict[str, int], list[dict]]:
+    """Find the header row (see find_header_row) then yield every row below it
+    as a dict keyed by normalized header name, tagging each with its section
+    from column A."""
+    header_row_idx, headers = find_header_row(ws)
     if header_row_idx is None:
         raise ValueError(f"Could not find a header row with an ISIN column in sheet '{ws.title}'")
 
@@ -340,9 +367,7 @@ def main():
     args = ap.parse_args()
 
     wb = openpyxl.load_workbook(args.excel_path, data_only=True)
-    if "Portfolio" not in wb.sheetnames:
-        sys.exit("Error: expected a 'Portfolio' sheet in the Excel file")
-    _, port_rows = load_sheet_rows(wb["Portfolio"])
+    _, port_rows = load_sheet_rows(pick_portfolio_sheet(wb))
     proposed_bond_selection = parse_proposed_bonds(wb) if "Fixed Income" in wb.sheetnames else None
 
     bucket_overrides = load_bucket_overrides(args.bucket_overrides)

@@ -1,0 +1,55 @@
+{
+  "week_of": "August 2026",
+  "source": "Syz Investment Conclusions - SUMMARY - August 2026",
+  "headline": {
+    "slide_title": "Our investment conclusions: August 2026",
+    "summary_title": "Five pillars unchanged; the only move is in currencies",
+    "intro_sentence": "No changes to our five allocation pillars this month; the one move is in FX, where EUR, CHF, GBP and EM currencies shift from underweight to neutral against the US dollar.",
+    "stats": [
+      {"value": "+32%", "label": "2026e EPS growth, US"},
+      {"value": "+18%", "label": "2026e EPS growth, Europe"},
+      {"value": "20x", "label": "S&P 500 forward P/E"},
+      {"value": "91", "label": "US market-factor score"}
+    ]
+  },
+  "scoreboard": {
+    "label": "Tactical asset allocation",
+    "headers": ["House view", "Stance", "Change"],
+    "colorize": false,
+    "rows": [
+      {"index": "Cash", "week": "Overweight", "ytd": "Unchanged"},
+      {"index": "Equities", "week": "Neutral", "ytd": "Unchanged"},
+      {"index": "Fixed income", "week": "Underweight", "ytd": "Unchanged"},
+      {"index": "Government bonds", "week": "Underweight", "ytd": "Unchanged"},
+      {"index": "Corporate IG and high yield", "week": "Neutral", "ytd": "Unchanged"},
+      {"index": "EM debt", "week": "Neutral", "ytd": "Unchanged"},
+      {"index": "Alternatives, hedge funds", "week": "Neutral", "ytd": "Unchanged"},
+      {"index": "Gold and commodities", "week": "Overweight", "ytd": "Unchanged"},
+      {"index": "EUR, CHF, GBP, EM FX vs USD", "week": "Neutral", "ytd": "Upgraded"}
+    ]
+  },
+  "three_observations": [
+    {"headline": "No changes to the five pillars", "body": "Liquidity and valuations stay neutral, market factors and earnings growth positive, the macro cycle moderately positive — none of the five moved."},
+    {"headline": "Earnings are carrying valuations", "body": "Consensus expects 2026 EPS growth of 32% in the US, 18% in Europe and 19% in Japan, with estimates rising faster than share prices."},
+    {"headline": "The dollar overweight is gone", "body": "The USD overweight is cut to neutral: all currencies are now neutral against the dollar as Fed hike expectations and the safety bid faded."}
+  ],
+  "four_drivers": {
+    "slide_title": "What is driving our view: four forces",
+    "intro_sentence": "A renewed Middle East escalation and higher energy prices are the swing factor; central banks split between holding and hiking, while earnings growth and expansive fiscal policy keep the trend positive.",
+    "drivers": [
+      {"number": 1, "title": "Middle East escalation and energy", "body": "The latest escalation is pushing energy prices higher, dampening global growth on top of weaker macro data in the US and China. We expect it settled and energy prices moderating towards the end of Q3.", "stat": "Strait of Hormuz to reopen"},
+      {"number": 2, "title": "Central banks pulling apart", "body": "Latest CPI prints mostly confirmed the first energy surge's price spikes are over and pipeline pressure has abated, but the new escalation is interrupting that trend and lifting inflation expectations.", "stat": "ECB and BoJ to hike in H2"},
+      {"number": 3, "title": "Earnings still doing the work", "body": "AI investment continues to support earnings growth, participation is broadening across sectors and regions, margins remain near record highs and management confidence is resilient.", "stat": "Key risk: higher real yields"},
+      {"number": 4, "title": "Fiscal support against trade friction", "body": "Fiscal policy stays expansive in the US, China and Europe, with extra stimulus to cushion the energy shock. Tariffs and the Middle East crisis still hamper trade, though the impacts are fading.", "stat": "UMCA talks the next test"}
+    ],
+    "policy_note": "On the policy side: we expect the Fed, the SNB and the Bank of England to hold key rates stable in H2, while the ECB and the Bank of Japan each conduct at least one hike."
+  },
+  "house_view": {
+    "intro_sentence": "We stay neutral on equities, keep an overall underweight on fixed income driven by a negative view on government bonds, and remain overweight gold and commodities as a hedge against renewed energy price surges.",
+    "views": [
+      {"asset_class": "Equities", "stance": "Neutral", "body": "We maintain a neutral equity exposure, balancing a constructive earnings outlook — AI investment, broadening participation, near-record margins — against the headwind from higher real rates. The main risk remains a further rise in real yields."},
+      {"asset_class": "Fixed Income", "stance": "Underweight", "body": "The overall underweight is driven by a negative view on government bonds, pressured by volatile energy prices and public debt dynamics. We stay constructive on credit and EM debt at short-to-medium duration; EM debt remains our favoured segment."},
+      {"asset_class": "Forex & Commodities", "stance": "Overweight commodities", "body": "The USD overweight is cut to neutral and all currencies are now neutral against the dollar. Commodities stay overweight as a hedge against renewed geopolitical escalation, and gold remains a preferred longer-term exposure."}
+    ]
+  }
+}

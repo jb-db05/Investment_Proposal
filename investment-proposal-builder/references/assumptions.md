@@ -20,7 +20,18 @@ in the client's Excel export, or to a documented rule applied to that column.
 - **`Fixed Income`** — a separate, already-curated bond selection to be
   *proposed* to the client (not part of their current holdings). Every row
   is treated as equally weighted, matching the reference deck's own framing
-  ("N issues, equally weighted at X each").
+  ("N issues, equally weighted at X each"). **Optional**: an export without
+  this tab is a portfolio review with no bond proposal attached, and the
+  "Fixed Income Breakdown" slide is dropped from the deck rather than left
+  showing the template's own example selection
+  (`build_proposal.drop_proposed_bond_selection`).
+
+Only the holdings tab is required, and only its *shape* is: if the workbook
+has no tab literally named `Portfolio` (a custodian export re-saved out of
+Excel routinely arrives as `Sheet1`), the one other sheet carrying the
+export's header row — a row of >=5 filled cells including an `ISIN code`
+column — is used instead, and the script says which one it picked. Two such
+sheets is an error, not a guess.
 
 Column names are matched case-insensitively with whitespace stripped
 (the export has trailing spaces on some headers, e.g. `"Rating  "`).
