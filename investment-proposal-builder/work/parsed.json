@@ -10,11 +10,11 @@
   "liquid_share_pct": 83.72969,
   "asset_allocation_pct": {
     "Equities": 33.704701,
-    "Commodities": 25.043606,
+    "Commodities": 27.14898,
     "Private Assets": 16.27031,
     "Fixed Income": 15.084641,
     "Structured Products": 5.502035,
-    "Cash": 3.797906,
+    "Cash": 1.692532,
     "Other": 0.596802
   },
   "currency_exposure_pct": {
@@ -36,31 +36,9 @@
   "sector_exposure_pct": null,
   "sleeves": {
     "Cash": {
-      "total_weight_pct": 3.797906,
-      "num_lines": 9,
+      "total_weight_pct": 1.692532,
+      "num_lines": 7,
       "top_holdings": [
-        {
-          "name": "CURRENT ACCOUNT IN XAG",
-          "isin": null,
-          "value_eur": 232897.868911939,
-          "value_qc": 4150.0,
-          "currency": "XAG",
-          "weight_pct": 1.093388,
-          "duration": 0,
-          "yield_pct": 0,
-          "price": 56.1199684125
-        },
-        {
-          "name": "CURRENT ACCOUNT IN XPT",
-          "isin": null,
-          "value_eur": 215558.970418748,
-          "value_qc": 144.0,
-          "currency": "XPT",
-          "weight_pct": 1.011987,
-          "duration": 0,
-          "yield_pct": 0,
-          "price": 1496.9372945746
-        },
         {
           "name": "CURRENT ACCOUNT IN EUR",
           "isin": null,
@@ -70,7 +48,8 @@
           "weight_pct": 0.991641,
           "duration": 0,
           "yield_pct": 0,
-          "price": 1
+          "price": 1,
+          "metal_account": false
         },
         {
           "name": "CURRENT ACCOUNT IN USD",
@@ -81,7 +60,8 @@
           "weight_pct": 0.493787,
           "duration": 0,
           "yield_pct": 0,
-          "price": 1.154394826
+          "price": 1.154394826,
+          "metal_account": false
         },
         {
           "name": "CURRENT ACCOUNT IN CHF",
@@ -92,7 +72,32 @@
           "weight_pct": 0.14352,
           "duration": 0,
           "yield_pct": 0,
-          "price": 0.93708
+          "price": 0.93708,
+          "metal_account": false
+        },
+        {
+          "name": "CURRENT ACCOUNT IN GBP",
+          "isin": null,
+          "value_eur": 11295.4315666752,
+          "value_qc": 9652.75,
+          "currency": "GBP",
+          "weight_pct": 0.053029,
+          "duration": 0,
+          "yield_pct": 0,
+          "price": 0.854571155,
+          "metal_account": false
+        },
+        {
+          "name": "INCOME TO BE RECEIVED IN GBP",
+          "isin": null,
+          "value_eur": 1715.76116446835,
+          "value_qc": 1466.24,
+          "currency": "GBP",
+          "weight_pct": 0.008055,
+          "duration": 0,
+          "yield_pct": 0,
+          "price": 0.854571155,
+          "metal_account": false
         }
       ],
       "vehicle_breakdown_pct": {
@@ -101,8 +106,8 @@
       "duration_coverage": null
     },
     "Commodities": {
-      "total_weight_pct": 25.043606,
-      "num_lines": 6,
+      "total_weight_pct": 27.14898,
+      "num_lines": 8,
       "top_holdings": [
         {
           "name": "GOLD KG 1 999.9 CHF",
@@ -113,7 +118,8 @@
           "weight_pct": 20.059796,
           "duration": null,
           "yield_pct": null,
-          "price": 114400.129319
+          "price": 114400.129319,
+          "metal_account": false
         },
         {
           "name": "OR KRUGERRAND(PCE)1OZ USD",
@@ -124,7 +130,32 @@
           "weight_pct": 1.254855,
           "duration": null,
           "yield_pct": null,
-          "price": 4407.995
+          "price": 4407.995,
+          "metal_account": false
+        },
+        {
+          "name": "CURRENT ACCOUNT IN XAG",
+          "isin": null,
+          "value_eur": 232897.868911939,
+          "value_qc": 4150.0,
+          "currency": "XAG",
+          "weight_pct": 1.093388,
+          "duration": 0,
+          "yield_pct": 0,
+          "price": 56.1199684125,
+          "metal_account": true
+        },
+        {
+          "name": "CURRENT ACCOUNT IN XPT",
+          "isin": null,
+          "value_eur": 215558.970418748,
+          "value_qc": 144.0,
+          "currency": "XPT",
+          "weight_pct": 1.011987,
+          "duration": 0,
+          "yield_pct": 0,
+          "price": 1496.9372945746,
+          "metal_account": true
         },
         {
           "name": "SWC(CH)PLATINUM ETF EACHF",
@@ -135,33 +166,13 @@
           "weight_pct": 1.008181,
           "duration": null,
           "yield_pct": null,
-          "price": 409.85
-        },
-        {
-          "name": "WISDOMT.ETC-COPPER COM ID",
-          "isin": "GB00B15KXQ89",
-          "value_eur": 208361.05168182,
-          "value_qc": 240530.92,
-          "currency": "USD",
-          "weight_pct": 0.978194,
-          "duration": null,
-          "yield_pct": null,
-          "price": 56.89
-        },
-        {
-          "name": "WISDOMTREE-ETC-ALUMIN PER",
-          "isin": "GB00B15KXN58",
-          "value_eur": 199141.433090024,
-          "value_qc": 229887.84,
-          "currency": "USD",
-          "weight_pct": 0.934911,
-          "duration": null,
-          "yield_pct": null,
-          "price": 4.368
+          "price": 409.85,
+          "metal_account": false
         }
       ],
       "vehicle_breakdown_pct": {
-        "Fund": 100.0
+        "Fund": 92.245108,
+        "Direct line": 7.754892
       },
       "duration_coverage": null
     },
@@ -178,7 +189,8 @@
           "weight_pct": 2.887757,
           "duration": null,
           "yield_pct": null,
-          "price": 437.8
+          "price": 437.8,
+          "metal_account": false
         },
         {
           "name": "UBS(CH) EQ-SWISS INC CHFP",
@@ -189,7 +201,8 @@
           "weight_pct": 2.774373,
           "duration": null,
           "yield_pct": null,
-          "price": 20.75
+          "price": 20.75,
+          "metal_account": false
         },
         {
           "name": "VANECK VECTORS DEF A ETF",
@@ -200,7 +213,8 @@
           "weight_pct": 2.591064,
           "duration": null,
           "yield_pct": null,
-          "price": 58.28
+          "price": 58.28,
+          "metal_account": false
         },
         {
           "name": "BRGF WORLD MINING(REG)A2",
@@ -211,7 +225,8 @@
           "weight_pct": 2.168239,
           "duration": null,
           "yield_pct": null,
-          "price": 112.38
+          "price": 112.38,
+          "metal_account": false
         },
         {
           "name": "GOLDMAN EU HIGH DIV P CAP",
@@ -222,7 +237,8 @@
           "weight_pct": 2.086578,
           "duration": null,
           "yield_pct": null,
-          "price": 1188.32
+          "price": 1188.32,
+          "metal_account": false
         }
       ],
       "vehicle_breakdown_pct": {
@@ -244,7 +260,8 @@
           "weight_pct": 2.923577,
           "duration": null,
           "yield_pct": null,
-          "price": 1235.2
+          "price": 1235.2,
+          "metal_account": false
         },
         {
           "name": "STORM II BOND RC EUR",
@@ -255,7 +272,8 @@
           "weight_pct": 2.185214,
           "duration": null,
           "yield_pct": null,
-          "price": 158.12
+          "price": 158.12,
+          "metal_account": false
         },
         {
           "name": "2.53% Fid. 17.08.2026 - 19.10.2026 QATAR NATIONAL BANK - DOHA No. 263303",
@@ -266,7 +284,8 @@
           "weight_pct": 1.502307,
           "duration": 0.18356164383562,
           "yield_pct": 2.53,
-          "price": 1
+          "price": 1,
+          "metal_account": false
         },
         {
           "name": "3.5% GOLDMAN SACHS JAN33  23.01.2033",
@@ -277,7 +296,8 @@
           "weight_pct": 0.943627,
           "duration": 5.4483230664,
           "yield_pct": 3.824157181,
-          "price": 98.562
+          "price": 98.562,
+          "metal_account": false
         },
         {
           "name": "3.5% VONOVIA NOV32  12.11.2032",
@@ -288,7 +308,8 @@
           "weight_pct": 0.939659,
           "duration": 5.5685772782,
           "yield_pct": 3.995250275,
-          "price": 97.449
+          "price": 97.449,
+          "metal_account": false
         }
       ],
       "vehicle_breakdown_pct": {
@@ -311,7 +332,8 @@
           "weight_pct": 0.596802,
           "duration": null,
           "yield_pct": null,
-          "price": 35.88
+          "price": 35.88,
+          "metal_account": false
         }
       ],
       "vehicle_breakdown_pct": {
@@ -332,7 +354,8 @@
           "weight_pct": 6.705165,
           "duration": null,
           "yield_pct": null,
-          "price": 235.536
+          "price": 235.536,
+          "metal_account": false
         },
         {
           "name": "LEFT LANE CP II CLT2",
@@ -343,7 +366,8 @@
           "weight_pct": 5.955455,
           "duration": null,
           "yield_pct": null,
-          "price": 163.2961
+          "price": 163.2961,
+          "metal_account": false
         },
         {
           "name": "ACE BUYOUT III SPC A",
@@ -354,7 +378,8 @@
           "weight_pct": 1.774815,
           "duration": null,
           "yield_pct": null,
-          "price": 69.2931
+          "price": 69.2931,
+          "metal_account": false
         },
         {
           "name": "ECHO FUND SCSP",
@@ -365,7 +390,8 @@
           "weight_pct": 1.273358,
           "duration": null,
           "yield_pct": null,
-          "price": 81.3698
+          "price": 81.3698,
+          "metal_account": false
         },
         {
           "name": "THEMIS FUND REF2 SCSP",
@@ -376,7 +402,8 @@
           "weight_pct": 0.365893,
           "duration": null,
           "yield_pct": null,
-          "price": 64.3361
+          "price": 64.3361,
+          "metal_account": false
         }
       ],
       "vehicle_breakdown_pct": {
@@ -397,7 +424,8 @@
           "weight_pct": 1.16724,
           "duration": 0.8410958908,
           "yield_pct": 4.096868527,
-          "price": 101.67
+          "price": 101.67,
+          "metal_account": false
         },
         {
           "name": "TCM 100% CPN 125% LEONAI1  25.08.2028",
@@ -408,7 +436,8 @@
           "weight_pct": 0.997996,
           "duration": null,
           "yield_pct": null,
-          "price": 98.16
+          "price": 98.16,
+          "metal_account": false
         },
         {
           "name": "BNP CPN 8% ENI-TTE-CVX  10.11.2027",
@@ -419,7 +448,8 @@
           "weight_pct": 0.856715,
           "duration": null,
           "yield_pct": null,
-          "price": 105.33
+          "price": 105.33,
+          "metal_account": false
         },
         {
           "name": "BIL OC 211.5% NESN  13.12.2027",
@@ -430,7 +460,8 @@
           "weight_pct": 0.843923,
           "duration": null,
           "yield_pct": null,
-          "price": 112.3
+          "price": 112.3,
+          "metal_account": false
         },
         {
           "name": "8% DCI-XAGUSD-48.206 UBS  24.08.2026",
@@ -441,7 +472,8 @@
           "weight_pct": 0.818406,
           "duration": null,
           "yield_pct": null,
-          "price": 100.62
+          "price": 100.62,
+          "metal_account": false
         }
       ],
       "vehicle_breakdown_pct": {
@@ -611,8 +643,8 @@
     "positions_above_5pct": 3
   },
   "liquidity_profile_pct": {
-    "Daily-liquid fund": 64.53719,
-    "Listed": 19.1925,
+    "Daily-liquid fund": 62.431816,
+    "Listed": 21.297874,
     "Illiquid (lock-up)": 16.27031
   },
   "income": {
@@ -632,6 +664,11 @@
       },
       {
         "sleeve": "Cash",
+        "income_eur": 0.0,
+        "pct_of_income": 0.0
+      },
+      {
+        "sleeve": "Commodities",
         "income_eur": 0.0,
         "pct_of_income": 0.0
       },
@@ -664,8 +701,8 @@
   },
   "risk_profile": {
     "selected_profile": "Balanced",
-    "growth_assets_pct": 80.520651,
-    "defensive_assets_pct": 18.882547
+    "growth_assets_pct": 82.626026,
+    "defensive_assets_pct": 16.777173
   },
   "uncalled_commitments": [
     {
@@ -700,20 +737,6 @@
     }
   ],
   "line_items": [
-    {
-      "top_category": "Cash",
-      "group": "Cash",
-      "isin": null,
-      "instrument": "CURRENT ACCOUNT IN XAG",
-      "weight_pct": 1.093388
-    },
-    {
-      "top_category": "Cash",
-      "group": "Cash",
-      "isin": null,
-      "instrument": "CURRENT ACCOUNT IN XPT",
-      "weight_pct": 1.011987
-    },
     {
       "top_category": "Cash",
       "group": "Cash",
@@ -1140,6 +1163,20 @@
       "isin": "ZAE000003950",
       "instrument": "OR KRUGERRAND(PCE)1OZ USD",
       "weight_pct": 1.254855
+    },
+    {
+      "top_category": "Commodities",
+      "group": "Commodities",
+      "isin": null,
+      "instrument": "CURRENT ACCOUNT IN XAG",
+      "weight_pct": 1.093388
+    },
+    {
+      "top_category": "Commodities",
+      "group": "Commodities",
+      "isin": null,
+      "instrument": "CURRENT ACCOUNT IN XPT",
+      "weight_pct": 1.011987
     },
     {
       "top_category": "Commodities",

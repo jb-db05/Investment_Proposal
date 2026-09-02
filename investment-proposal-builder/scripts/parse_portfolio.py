@@ -53,6 +53,11 @@ ASSET_CLASS_MAP = {
     "Other investments": "Other",
 }
 
+# ISO 4217 codes for the four precious metals. A "current account" denominated
+# in one of these is a metal position held in account form, not a cash balance:
+# it carries the metal's price risk, not a currency's (assumptions.md §1).
+PRECIOUS_METAL_CURRENCIES = {"XAU", "XAG", "XPT", "XPD"}
+
 GROWTH_CLASSES = {"Equities", "Alternatives", "Commodities", "Structured Products", "Private Assets"}
 DEFENSIVE_CLASSES = {"Cash", "Fixed Income"}
 
@@ -63,6 +68,15 @@ CORP_IG_RATINGS = {"A+", "A", "A-", "BBB+", "BBB", "BBB-"}
 
 FUND_KEYWORDS = ("FUND", " FD ", "SICAV", "ETF", "ETC")
 STRUCTURED_KEYWORDS = ("CERTIFICATE", " CERT", "AMC", "TRACKER", "DCI-", "RAF ", "CPN ")
+
+
+def is_precious_metal_account(description, currency) -> bool:
+    """A cash-section balance denominated in gold, silver, platinum or
+    palladium (assumptions.md §1). The currency code is what decides — the
+    description is only checked to keep the rule to account balances, so a
+    metal-denominated security would still be classified by its own section."""
+    return (str(currency or "").strip().upper() in PRECIOUS_METAL_CURRENCIES
+            and "ACCOUNT" in str(description or "").upper())
 
 
 def norm_header(h) -> str:
@@ -185,13 +199,18 @@ def classify_fi_bucket(row: dict, overrides: dict[str, str]) -> str:
     return "High Yield (local or global hdg)"
 
 
-def classify_vehicle(description: str, rating, coupon) -> str:
+def classify_vehicle(description: str, rating, coupon, currency=None) -> str:
     """assumptions.md §6"""
     d = (description or "").upper()
     if any(k in d for k in FUND_KEYWORDS):
         return "Fund"
     if any(k in d for k in STRUCTURED_KEYWORDS):
         return "Structured / AMC"
+    # A metal account is the metal itself, held directly — the blank-rating,
+    # blank-coupon signature below reads as "collective vehicle" for ordinary
+    # securities but would mislabel this one as a fund.
+    if is_precious_metal_account(description, currency):
+        return "Direct line"
     if (rating in (None, "", "Not Rated")) and coupon in (None, ""):
         return "Fund"
     return "Direct line"
@@ -391,7 +410,9 @@ def main():
                     "currency": row.get("currency"),
                 })
             continue
-        row["_asset_class"] = ASSET_CLASS_MAP[section]
+        row["_asset_class"] = (
+            "Commodities" if is_precious_metal_account(row.get("description"), row.get("currency"))
+            else ASSET_CLASS_MAP[section])
         row["_weight"] = w
         row["_value_eur"] = v
         try:
@@ -455,7 +476,7 @@ def main():
         top = sorted(rows_ac, key=lambda r: -r["_weight"])[:5]
         vehicle_weight = defaultdict(float)
         for r in rows_ac:
-            v = classify_vehicle(r.get("description"), r.get("composite rating"), r.get("coupon (%)"))
+            v = classify_vehicle(r.get("description"), r.get("composite rating"), r.get("coupon (%)"), r.get("currency"))
             vehicle_weight[v] += r["_weight"] / ac_total_w if ac_total_w else 0
         durations = [float(r["duration"]) for r in rows_ac if isinstance(r.get("duration"), (int, float))]
         n_with_dur = len(durations)
@@ -473,6 +494,9 @@ def main():
                     "duration": r.get("duration"),
                     "yield_pct": r.get("yield (%)"),
                     "price": r.get("price (qc)"),
+                    # §1a: this row's "quote currency" is a metal, so its
+                    # value_qc is an ounce count, not an amount of money
+                    "metal_account": is_precious_metal_account(r.get("description"), r.get("currency")),
                 }
                 for r in top
             ],
@@ -524,7 +548,7 @@ def main():
         desc = str(r.get("description") or "").upper()
         if r["_asset_class"] == "Private Assets" or "COMMIT" in desc:
             bucket = "Illiquid (lock-up)"
-        elif classify_vehicle(r.get("description"), r.get("composite rating"), r.get("coupon (%)")) == "Fund":
+        elif classify_vehicle(r.get("description"), r.get("composite rating"), r.get("coupon (%)"), r.get("currency")) == "Fund":
             bucket = "Daily-liquid fund"
         else:
             bucket = "Listed"

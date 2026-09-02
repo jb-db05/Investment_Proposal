@@ -16,7 +16,7 @@ in the client's Excel export, or to a documented rule applied to that column.
   `Other investments`) mark the top-level asset class of every row beneath
   them, until the next header row. This is the **only** place asset-class
   membership comes from — the script never re-derives it from instrument
-  names.
+  names — with one documented exception, below.
 - **`Fixed Income`** — a separate, already-curated bond selection to be
   *proposed* to the client (not part of their current holdings). Every row
   is treated as equally weighted, matching the reference deck's own framing
@@ -35,6 +35,28 @@ sheets is an error, not a guess.
 
 Column names are matched case-insensitively with whitespace stripped
 (the export has trailing spaces on some headers, e.g. `"Rating  "`).
+
+### 1a. Precious-metal accounts are commodities, not cash
+
+The one exception to "the section header decides". The custodian files a
+metal account (`CURRENT ACCOUNT IN XAG`, `... IN XPT`) under `Cash`,
+because it is an account. Economically it is not cash: the balance is
+ounces of silver or platinum, its value moves with the metal price, and it
+carries no deposit-rate return. Counting it as cash overstates the client's
+defensive assets and understates their commodity exposure — the two numbers
+the risk profile is actually read from.
+
+So a row is reclassified to `Commodities` when **both** hold
+(`is_precious_metal_account()`):
+
+- its `Currency` is an ISO 4217 precious-metal code — `XAU` gold, `XAG`
+  silver, `XPT` platinum, `XPD` palladium; and
+- its `Description` contains "ACCOUNT".
+
+The currency code is what carries the meaning; the description test keeps
+the rule to account balances, so a metal-denominated *security* still goes
+wherever its own section header puts it. Nothing else about the row changes
+— its weight, valuation and geography come from the same columns as before.
 
 ## 2. Row filtering
 
@@ -108,9 +130,10 @@ to `parse_portfolio.py` and any ISIN present there skips the rule above.
 
 ## 5. Asset-class donut (Portfolio Overview, slide "Allocation by asset class")
 
-One slice per `Portfolio` sheet section header, weight = sum of that
-section's `Weight (%)`. Sections with 0% total are omitted from the chart
-(not shown as a 0% slice).
+One slice per `Portfolio` sheet section header (after the §1a
+precious-metal reclassification), weight = sum of that section's
+`Weight (%)`. Sections with 0% total are omitted from the chart (not shown
+as a 0% slice).
 
 ## 6. Investment-vehicle donut (per-sleeve "across investment vehicles")
 
@@ -128,6 +151,15 @@ Within a sleeve, each holding is classified as:
 
 This is applied in the order above (first match wins) and is a heuristic
 for the same reason as §4 — the export has no vehicle-type column.
+
+The blank-rating/blank-coupon signature is a signature of *securities*, so
+it is not applied to a §1a precious-metal account: a metal account is the
+metal held directly, and is classified **Direct line**. (The same signature
+still catches the sleeve's physical bars and coins — `GOLD KG`,
+`OR KRUGERRAND` — and reports them as "Fund". That is a known misread of
+the same heuristic, left alone here because fixing it moves a fifth of the
+portfolio between liquidity buckets in §10 and is a bigger call than this
+rule.)
 
 ## 7. Geographic & sector exposure (portfolio-wide bar charts)
 

@@ -30,6 +30,11 @@ from pptx.chart.data import CategoryChartData
 
 
 def pct_label_whole(name: str, pct_value: float) -> str:
+    # A slice big enough to be drawn but smaller than 0.5% would round to
+    # "Cash  0%", which reads as an error rather than as "very small" — those
+    # fall back to the one-decimal form (same two-space whole-label spacing).
+    if round(pct_value) == 0:
+        return f"{name}  " + ("<0.1%" if pct_value < 0.1 else f"{pct_value:.1f}%")
     return f"{name}  {round(pct_value):.0f}%"
 
 

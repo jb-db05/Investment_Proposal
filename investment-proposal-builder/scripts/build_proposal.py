@@ -408,9 +408,17 @@ def rebuild_holdings_table(slide, table_shape_name, holdings, currency_fallback=
             _cell(table.cell(1, c), "")
         return
     for r, h in enumerate(holdings, 1):
-        ccy = h.get("currency") or currency_fallback
+        # A precious-metal account quotes in ounces (assumptions.md §1a), so
+        # its "value in quote currency" is an ounce count, not an amount of
+        # money — 144 XPT would print as "XPT 0k" for a 220k position. Those
+        # rows are shown in the portfolio's base currency instead.
+        if h.get("metal_account"):
+            ccy, value = currency_fallback, h.get("value_eur") or 0
+        else:
+            ccy = h.get("currency") or currency_fallback
+            value = h.get("value_qc") or h.get("value_eur") or 0
         _cell(table.cell(r, 0), h.get("name") or "", size=9)
-        _cell(table.cell(r, 1), fmt_money_k(h.get("value_qc") or h.get("value_eur") or 0, ccy), size=9)
+        _cell(table.cell(r, 1), fmt_money_k(value, ccy), size=9)
         _cell(table.cell(r, 2), fmt_pct(h['weight_pct']), size=9, align=PP_ALIGN.RIGHT)
         if include_yield_column:
             yld = h.get("yield_pct")
