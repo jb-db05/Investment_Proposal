@@ -58,6 +58,10 @@ the rule to account balances, so a metal-denominated *security* still goes
 wherever its own section header puts it. Nothing else about the row changes
 — its weight, valuation and geography come from the same columns as before.
 
+Being a commodity by asset class does not make a metal account *physical*:
+it is the currency form of the metal, so §10 groups it with cash rather
+than with the sleeve's bars and coins.
+
 ## 2. Row filtering
 
 - A holding row is included in the line-items table and every weight-based
@@ -152,14 +156,17 @@ Within a sleeve, each holding is classified as:
 This is applied in the order above (first match wins) and is a heuristic
 for the same reason as §4 — the export has no vehicle-type column.
 
-The blank-rating/blank-coupon signature is a signature of *securities*, so
-it is not applied to a §1a precious-metal account: a metal account is the
-metal held directly, and is classified **Direct line**. (The same signature
-still catches the sleeve's physical bars and coins — `GOLD KG`,
-`OR KRUGERRAND` — and reports them as "Fund". That is a known misread of
-the same heuristic, left alone here because fixing it moves a fifth of the
-portfolio between liquidity buckets in §10 and is a bigger call than this
-rule.)
+**The blank-rating/blank-coupon signature is a signature of _securities_**
+— collective vehicles that carry neither a rating nor a coupon. Three kinds
+of holding carry neither for an entirely different reason, and are
+classified **Direct line** without consulting it:
+
+- a bank account (the `Cash` section);
+- a §1a precious-metal account — the metal itself, held in account form;
+- anything left in the `Commodities` sleeve after the keyword rules above,
+  which is physical metal: bars and coins (`GOLD KG`, `OR KRUGERRAND`).
+  Funds and ETCs in that sleeve carry "FUND"/"ETF"/"ETC" in their
+  description and are caught as **Fund** before this rule is reached.
 
 ## 7. Geographic & sector exposure (portfolio-wide bar charts)
 
@@ -202,14 +209,29 @@ rule.)
 
 ## 10. Liquidity profile
 
-Each holding is classified by instrument shape, independent of asset class:
+Each holding is classified by **how it is actually realised** — not by its
+asset class, and not by its §6 vehicle alone. Five buckets, first match
+wins (`classify_liquidity()`):
 
 - **Illiquid (lock-up)** — `Private Assets` section, or `Description`
   contains "COMMIT" (already excluded per §2 if zero-valued, but a partly
   drawn commitment line still counts here).
+- **Cash & metal accounts** — the `Cash` section, plus §1a precious-metal
+  accounts. An account balance settles like money whether it is denominated
+  in a currency or in ounces: a metal account is the *currency* form of the
+  metal, not a bar in a vault, so it belongs here rather than under
+  Physical. It is still a commodity in the §5 asset-class donut — the two
+  views answer different questions.
+- **Physical assets** — holdings in the `Commodities` sleeve
+  classified "Direct line" under §6: physical bars and coins. Sellable at a
+  screen price, but neither a listed security nor a fund with a daily NAV,
+  and settlement is a delivery — so neither of those two buckets fits.
 - **Daily-liquid fund** — classified "Fund" under the §6 vehicle rule.
-- **Listed** — everything else (direct bonds, direct equities,
-  structured products, ETFs/ETCs, cash).
+- **Listed** — everything else (direct bonds, direct equities, structured
+  products, ETFs/ETCs).
+
+`liquid_share_pct` is everything that is not **Illiquid (lock-up)** — the
+four other buckets are all realisable at short notice, by different routes.
 
 ## 11. Income & interest-rate sensitivity
 

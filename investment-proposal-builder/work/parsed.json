@@ -101,7 +101,7 @@
         }
       ],
       "vehicle_breakdown_pct": {
-        "Fund": 100.0
+        "Direct line": 100.0
       },
       "duration_coverage": null
     },
@@ -171,8 +171,8 @@
         }
       ],
       "vehicle_breakdown_pct": {
-        "Fund": 92.245108,
-        "Direct line": 7.754892
+        "Direct line": 86.264842,
+        "Fund": 13.735158
       },
       "duration_coverage": null
     },
@@ -643,9 +643,11 @@
     "positions_above_5pct": 3
   },
   "liquidity_profile_pct": {
-    "Daily-liquid fund": 62.431816,
-    "Listed": 21.297874,
-    "Illiquid (lock-up)": 16.27031
+    "Daily-liquid fund": 39.424633,
+    "Physical assets": 21.31465,
+    "Listed": 19.1925,
+    "Illiquid (lock-up)": 16.27031,
+    "Cash & metal accounts": 3.797906
   },
   "income": {
     "running_yield_pct": 0.3939,

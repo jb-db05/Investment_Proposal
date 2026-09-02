@@ -199,21 +199,55 @@ def classify_fi_bucket(row: dict, overrides: dict[str, str]) -> str:
     return "High Yield (local or global hdg)"
 
 
-def classify_vehicle(description: str, rating, coupon, currency=None) -> str:
+def classify_vehicle(description: str, rating, coupon, currency=None, asset_class=None) -> str:
     """assumptions.md §6"""
     d = (description or "").upper()
     if any(k in d for k in FUND_KEYWORDS):
         return "Fund"
     if any(k in d for k in STRUCTURED_KEYWORDS):
         return "Structured / AMC"
-    # A metal account is the metal itself, held directly — the blank-rating,
-    # blank-coupon signature below reads as "collective vehicle" for ordinary
-    # securities but would mislabel this one as a fund.
-    if is_precious_metal_account(description, currency):
+    # The blank-rating/blank-coupon signature below is a signature of
+    # *securities* — collective vehicles that carry neither. Three kinds of
+    # holding carry neither for an entirely different reason and are not
+    # funds: a bank account, a metal account (the metal itself, held in
+    # account form), and physical metal in the commodities sleeve (bars and
+    # coins — GOLD KG, OR KRUGERRAND). Funds and ETCs in that sleeve are
+    # already caught by the keyword rule above, so what is left there is
+    # physical: a direct line.
+    if asset_class in ("Cash", "Commodities") or is_precious_metal_account(description, currency):
         return "Direct line"
     if (rating in (None, "", "Not Rated")) and coupon in (None, ""):
         return "Fund"
     return "Direct line"
+
+
+def vehicle_of(row: dict) -> str:
+    """classify_vehicle() for a parsed row (which already knows its asset class)."""
+    return classify_vehicle(row.get("description"), row.get("composite rating"),
+                            row.get("coupon (%)"), row.get("currency"), row.get("_asset_class"))
+
+
+ILLIQUID_BUCKET = "Illiquid (lock-up)"
+
+
+def classify_liquidity(row: dict, asset_class: str, vehicle: str) -> str:
+    """assumptions.md §10. Five buckets, by how a holding is actually
+    realised — not by its asset class and not by its vehicle alone."""
+    if asset_class == "Private Assets" or "COMMIT" in str(row.get("description") or "").upper():
+        return ILLIQUID_BUCKET
+    # Account balances settle like money, whether the account is denominated
+    # in a currency or in a metal (§1a) — a metal account is the currency form
+    # of the metal, not a bar in a vault.
+    if asset_class == "Cash" or is_precious_metal_account(row.get("description"), row.get("currency")):
+        return "Cash & metal accounts"
+    # What is left holding metal directly in the commodities sleeve is
+    # physical: sellable at a screen price, but neither a listed security nor
+    # a fund with a daily NAV.
+    if asset_class == "Commodities" and vehicle == "Direct line":
+        return "Physical assets"
+    if vehicle == "Fund":
+        return "Daily-liquid fund"
+    return "Listed"
 
 
 def describe_bond_subsleeve(row: dict) -> str:
@@ -476,7 +510,7 @@ def main():
         top = sorted(rows_ac, key=lambda r: -r["_weight"])[:5]
         vehicle_weight = defaultdict(float)
         for r in rows_ac:
-            v = classify_vehicle(r.get("description"), r.get("composite rating"), r.get("coupon (%)"), r.get("currency"))
+            v = vehicle_of(r)
             vehicle_weight[v] += r["_weight"] / ac_total_w if ac_total_w else 0
         durations = [float(r["duration"]) for r in rows_ac if isinstance(r.get("duration"), (int, float))]
         n_with_dur = len(durations)
@@ -545,14 +579,7 @@ def main():
     # --- §10 liquidity profile ---
     liq_weight = defaultdict(float)
     for r in included:
-        desc = str(r.get("description") or "").upper()
-        if r["_asset_class"] == "Private Assets" or "COMMIT" in desc:
-            bucket = "Illiquid (lock-up)"
-        elif classify_vehicle(r.get("description"), r.get("composite rating"), r.get("coupon (%)"), r.get("currency")) == "Fund":
-            bucket = "Daily-liquid fund"
-        else:
-            bucket = "Listed"
-        liq_weight[bucket] += r["_weight"]
+        liq_weight[classify_liquidity(r, r["_asset_class"], vehicle_of(r))] += r["_weight"]
     liquidity_profile = {k: pct(v) for k, v in sorted(liq_weight.items(), key=lambda kv: -kv[1])}
 
     # --- §11 income & rate sensitivity ---
@@ -669,7 +696,7 @@ def main():
         "total_value_eur": round(total_value_eur, 2),
         "num_positions": len(included),
         "largest_position_pct": pct(by_weight[0]["_weight"]) if by_weight else 0,
-        "liquid_share_pct": pct(liq_weight.get("Listed", 0) + liq_weight.get("Daily-liquid fund", 0)),
+        "liquid_share_pct": pct(sum(v for k, v in liq_weight.items() if k != ILLIQUID_BUCKET)),
         "asset_allocation_pct": asset_allocation,
         "currency_exposure_pct": currency_exposure,
         "geographic_exposure_pct": geographic_exposure,

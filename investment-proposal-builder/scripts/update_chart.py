@@ -27,6 +27,14 @@ import json
 
 from pptx import Presentation
 from pptx.chart.data import CategoryChartData
+from pptx.dml.color import RGBColor
+from pptx.oxml.ns import qn
+
+# Brand palette (theme "Syz 2024") for donut slices the template does not
+# color itself. Same values as build_proposal.py's constants, kept here as
+# plain hex so this module stays importable on its own.
+SLICE_PALETTE = ["3BAF90", "4B5F80", "AC5D85", "FFA400", "202945",
+                 "FF6C0E", "FFC545", "79D6FF"]
 
 
 def pct_label_whole(name: str, pct_value: float) -> str:
@@ -43,6 +51,31 @@ def pct_label_one_decimal(name: str, pct_value: float) -> str:
     # missing data next to a real category name, not as "very small"
     pct_str = "<0.1%" if 0 < pct_value < 0.1 else f"{pct_value:.1f}%"
     return f"{name}   {pct_str}"
+
+
+def color_unstyled_slices(chart, n_slices: int) -> None:
+    """Give an explicit brand color to every slice the template doesn't
+    already color. Each donut in the deck carries a handful of hardcoded
+    data-point colors (three on the liquidity donut, five on the asset-class
+    one); slices past that are left to PowerPoint's own varied-color default,
+    which lands outside the palette. Colors the template did specify are never
+    touched — only the ones it left to chance get filled in."""
+    series = chart.plots[0].series[0]
+    styled = {int(dPt.find(qn("c:idx")).get("val")) for dPt in series._element.findall(qn("c:dPt"))}
+    if styled >= set(range(n_slices)):
+        return
+    taken = {c.upper() for c in _explicit_colors(series)}
+    spare = [c for c in SLICE_PALETTE if c not in taken] or SLICE_PALETTE
+    for i in range(n_slices):
+        if i in styled:
+            continue
+        fill = series.points[i].format.fill
+        fill.solid()
+        fill.fore_color.rgb = RGBColor.from_string(spare[i % len(spare)])
+
+
+def _explicit_colors(series) -> list[str]:
+    return [el.get("val") for el in series._element.iter(qn("a:srgbClr"))]
 
 
 def find_chart_shape(slide, chart_name: str):
@@ -63,6 +96,7 @@ def update_donut(chart_shape, data: dict[str, float], series_name: str = "", lab
     cd.categories = [label_fn(k, v) for k, v in items]
     cd.add_series(series_name, [v / 100.0 for _, v in items])
     chart_shape.chart.replace_data(cd)
+    color_unstyled_slices(chart_shape.chart, len(items))
     return chart_shape.chart
 
 
