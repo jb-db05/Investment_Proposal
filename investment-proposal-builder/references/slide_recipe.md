@@ -22,6 +22,7 @@ from `assets/template.pptx` — no per-client data goes on it.
 | N+5 | Equities: income-type specifics | `parsed.json: sleeves["Equities"]` | `build_proposal.fill_sleeve_slides` |
 | N+6 | Equity breakdown | `parsed.json: equity_breakdown` | `build_proposal.fill_equity_breakdown` |
 | N+7 | Alternatives: income-type specifics | `parsed.json: sleeves["Private Assets"]` (closest conceptual match — see note below) | `build_proposal.fill_sleeve_slides` |
+| N+7a | Private equity: fund-by-fund review (**optional**, only when `--pe-monitoring` is given) | `private_equity_monitoring.json` — manager-reported fund metrics, a separate input | `build_proposal.build_pe_monitoring_slide` (inserted last) |
 | N+8 | Commodities | `parsed.json: sleeves["Commodities"]` | `build_proposal.fill_sleeve_slides` |
 | N+9 | Structured products | `parsed.json: sleeves["Structured Products"]` | `build_proposal.fill_sleeve_slides` |
 | N+10 | Liquidity profile | `parsed.json: liquidity_profile_pct` | `build_proposal.fill_liquidity` |
@@ -59,6 +60,53 @@ recommendations, not generic collateral appropriate for every client. If a
 future need brings fund one-pagers back, that's a new input (which funds
 to recommend, keyed by risk profile or client), not something to
 reconstruct from the three existing inputs.
+
+## The private-equity review slide (optional)
+
+`--pe-monitoring <json>` adds one slide immediately after the Alternatives
+sleeve: a table of the client's private-market funds — vintage, term,
+currency, as-of quarter, TVPI/MOIC, DPI, capital called, and expected calls
+and distributions over the next four quarters — with a commentary card per
+fund underneath.
+
+**Its content is a separate input, and deliberately so.** None of it is in
+the custodian export: TVPI, DPI, called capital and forward-looking
+expectations live in each manager's own quarterly report. The build does not
+derive, cross-check or reconcile any of it against `parsed.json` — a fund
+can appear here that the Excel does not hold, or be missing from here while
+the Excel holds it, and nothing will complain. Whoever writes the JSON owns
+that reconciliation.
+
+Schema:
+
+```
+{
+  "slide_title": str (optional),
+  "intro_sentence": str,
+  "funds": [{"name": str, "vintage": str, "term": str, "currency": str,
+             "as_of": str, "multiple": str, "dpi": str,
+             "capital_called": str, "expected_calls": str,
+             "expected_distributions": str,
+             "comments": [str, ...]}, ...]
+}
+```
+
+Every field is a **string, printed verbatim** — "0.98x Net TVPI" and "1.9x
+Gross MOIC" say different things, and forcing them into one numeric format
+would flatten a distinction the managers themselves are making. Nothing is
+parsed or recomputed.
+
+Sizing: four funds fit the table comfortably and four cards fill the band
+between it and the page footnote, each holding a title line plus **six lines
+of roughly 82 characters**. More funds than four, or longer commentary, will
+overflow — the slide does not paginate itself the way the holdings list does
+(`build_line_items_tables.py`). If a client's private-market book outgrows
+one page, that pagination is the change to make, not a smaller font.
+
+The slide is built **last**, after the line-items rebuild and the
+proposed-bond-selection removal have both moved every slide position after
+10, so it finds its anchor by part identity rather than by position — same
+reason as `drop_proposed_bond_selection()`.
 
 ## "Alternatives" naming
 

@@ -39,6 +39,7 @@ from pptx import Presentation
 from pptx.util import Emu, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.oxml.ns import qn
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
@@ -353,6 +354,7 @@ def update_bar_by_name(slide, chart_name, data):
 # Table header style matches the template's own tables exactly (all of
 # slides 13/15/17/18/19/22 use gold fill + navy bold text for headers —
 # see references/assumptions.md).
+CARD_FILL = RGBColor(0xF2, 0xF4, 0xF7)   # the pale panel behind the sleeve slides' text blocks
 TABLE_HEADER_FILL = GOLD
 TABLE_HEADER_FONT = NAVY
 
@@ -807,11 +809,143 @@ def fill_market_slides(prs, market):
                   "policy note was emptied rather than left with the template's own.")
 
 
+
+# --------------------------------------------- private-equity monitoring ---
+
+# The Alternatives sleeve slide (original template position 17) is the anchor:
+# the fund-by-fund review goes immediately after it, inside the sleeve.
+ALTERNATIVES_SLIDE = 17
+
+# Column header, JSON key, and width in cm. Widths sum to the deck's own
+# content width (26.11cm, the title placeholder's width).
+PE_COLUMNS = [
+    ("Fund",                   "name",                   4.00),
+    ("Vintage",                "vintage",                1.50),
+    ("Term",                   "term",                   1.30),
+    ("Ccy",                    "currency",               1.00),
+    ("As of",                  "as_of",                  1.80),
+    ("TVPI / MOIC",            "multiple",               3.70),
+    ("DPI",                    "dpi",                    1.30),
+    ("Called",                 "capital_called",         1.50),
+    ("Expected calls (4Q)",    "expected_calls",         4.00),
+    ("Expected distrib. (4Q)", "expected_distributions", 6.01),
+]
+PE_TABLE_TOP = Emu(int(6.20 * 360000))
+PE_ROW_HEIGHT = Emu(int(0.95 * 360000))
+# The cards fill the band between the table and the page footnote (19.40cm),
+# which leaves room for a title line plus six lines of 8pt commentary each.
+PE_CARD_TOP = Emu(int(11.20 * 360000))
+PE_CARD_WIDTH = Emu(int(12.85 * 360000))
+PE_CARD_HEIGHT = Emu(int(3.85 * 360000))
+PE_CARD_GAP_X = Emu(int(0.41 * 360000))
+PE_CARD_GAP_Y = Emu(int(0.35 * 360000))
+CONTENT_LEFT = Emu(665163)
+CONTENT_WIDTH = Emu(9398001)
+
+
+def _clone_decoration(shape, dest_slide):
+    """Copy one decorative shape (the page footnote, the corner mark) onto a
+    slide built from a bare layout.
+
+    A picture also owns relationships, which do not travel with the XML: every
+    r:embed in the copy still names an rId that only exists on the source
+    slide, and PowerPoint reports the file as corrupt. Each one is re-related
+    to the destination slide and rewritten. Note the corner mark is an SVG
+    picture, so it carries *two* — `a:blip` for the raster fallback and
+    `asvg:svgBlip` inside an extension for the vector original; walking every
+    element with an r:embed catches both, where matching on `a:blip` alone
+    silently leaves the second one dangling."""
+    new_el = _copy.deepcopy(shape._element)
+    dest_slide.shapes._spTree.append(new_el)
+    embed_attr = qn("r:embed")
+    remapped = {}
+    for el in new_el.iter():
+        old_rid = el.get(embed_attr)
+        if not old_rid:
+            continue
+        if old_rid not in remapped:
+            rel = shape.part.rels[old_rid]
+            remapped[old_rid] = dest_slide.part.relate_to(rel.target_part, rel.reltype)
+        el.set(embed_attr, remapped[old_rid])
+
+
+def build_pe_monitoring_slide(prs, anchor_slide, pe):
+    """Add the private-equity fund-by-fund review, immediately after the
+    Alternatives sleeve slide it belongs to.
+
+    Its content is a separate input (`--pe-monitoring`), not something the
+    custodian Excel carries: manager-reported fund metrics — TVPI, DPI, called
+    capital, expected calls and distributions — live in the managers' own
+    quarterly reports, not in a custodian position file. Nothing here is
+    derived from or reconciled against parsed.json.
+
+    Like drop_proposed_bond_selection(), this runs after the line-items
+    rebuild, so the anchor is located by part identity rather than by a slide
+    position the rebuild has already moved."""
+    anchor_idx = [sl.part for sl in prs.slides].index(anchor_slide.part)
+    slide = line_items_mod.duplicate_slide_after(prs, anchor_idx)
+
+    # A slide built from the bare layout has the title and body placeholders
+    # and nothing else — the footnote and corner mark live on each slide, so
+    # they are copied from the anchor to keep the page furniture consistent.
+    for name in ("TextBox 11", "Oval 12", "Graphic 20"):
+        src = find_shape(anchor_slide, name)
+        if src is not None:
+            _clone_decoration(src, slide)
+    # The title placeholder arrives empty (no runs), so its text goes in as a
+    # new run and the font comes from the layout — the same inheritance every
+    # other title on the deck uses. set_subtitle() then replaces the body
+    # placeholder with the deck's standard fixed-position subtitle textbox.
+    title = find_shape(slide, "Title 1")
+    title.text_frame.paragraphs[0].add_run().text = pe.get(
+        "slide_title", "Private equity: fund-by-fund review")
+    set_subtitle(slide, pe["intro_sentence"])
+
+    funds = pe["funds"]
+    table_height = PE_ROW_HEIGHT * (len(funds) + 1)
+    frame = slide.shapes.add_table(len(funds) + 1, len(PE_COLUMNS),
+                                   CONTENT_LEFT, PE_TABLE_TOP, CONTENT_WIDTH, table_height)
+    table = frame.table
+    for c, (_, _, width_cm) in enumerate(PE_COLUMNS):
+        table.columns[c].width = Emu(int(width_cm * 360000))
+    for r in range(len(funds) + 1):
+        table.rows[r].height = PE_ROW_HEIGHT
+    for c, (header, _, _) in enumerate(PE_COLUMNS):
+        _cell(table.cell(0, c), header, bold=True, fill=TABLE_HEADER_FILL,
+              font_color=TABLE_HEADER_FONT, size=9)
+    for r, fund in enumerate(funds, 1):
+        for c, (_, key, _) in enumerate(PE_COLUMNS):
+            _cell(table.cell(r, c), fund.get(key, "—"), size=9, bold=(c == 0))
+
+    # One commentary card per fund, two by two under the table.
+    for i, fund in enumerate(funds):
+        left = CONTENT_LEFT + (PE_CARD_WIDTH + PE_CARD_GAP_X) * (i % 2)
+        top = PE_CARD_TOP + (PE_CARD_HEIGHT + PE_CARD_GAP_Y) * (i // 2)
+        box = slide.shapes.add_textbox(Emu(int(left)), Emu(int(top)), PE_CARD_WIDTH, PE_CARD_HEIGHT)
+        box.name = f"PE Card {i + 1}"
+        box.fill.solid()
+        box.fill.fore_color.rgb = CARD_FILL
+        box.line.fill.background()
+        tf = box.text_frame
+        tf.word_wrap = True
+        tf.margin_left = tf.margin_right = Emu(144000)
+        tf.margin_top = tf.margin_bottom = Emu(108000)
+        for j, line in enumerate([fund["name"]] + list(fund["comments"])):
+            para = tf.paragraphs[0] if j == 0 else tf.add_paragraph()
+            run = para.add_run()
+            run.text = line if j == 0 else f"- {line}"
+            run.font.size = Pt(10 if j == 0 else 8)
+            run.font.bold = (j == 0)
+            run.font.color.rgb = NAVY
+            para.space_after = Pt(3 if j == 0 else 2)
+    return slide
+
+
 # --------------------------------------------------------------------- main
 
 def build(excel_path, profile, client_name, output_path, market_update_path=None,
           valuation_date=None, bucket_overrides=None, market_cap_overrides=None,
-          sector_overrides=None, keep_parsed_json=None):
+          sector_overrides=None, keep_parsed_json=None, pe_monitoring_path=None):
     parse_cmd = [sys.executable, str(SCRIPT_DIR / "parse_portfolio.py"), excel_path,
                  "--profile", profile, "--client-name", client_name,
                  "-o", keep_parsed_json or str(SCRIPT_DIR.parent / "work" / "_parsed_tmp.json")]
@@ -831,6 +965,10 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
     market = None
     if market_update_path:
         market = json.loads(Path(market_update_path).read_text())
+
+    pe_monitoring = None
+    if pe_monitoring_path:
+        pe_monitoring = json.loads(Path(pe_monitoring_path).read_text())
 
     prs = Presentation(str(TEMPLATE_PATH))
 
@@ -852,15 +990,20 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
     fill_concentration(prs, parsed)
     fill_income(prs, parsed)
 
-    # Grab the Fixed Income Breakdown slide now, while positions are still the
-    # template's, but delete it *after* the line-items rebuild: python-pptx
-    # names a new slide part after the current slide count, so deleting first
-    # makes the extra holdings pages reuse a partname that is still in use —
-    # a duplicate ppt/slides/slideN.xml in the saved package.
+    # Grab the slides addressed by their original template position now, while
+    # those positions are still the template's; both operations below happen
+    # after the line-items rebuild has moved everything after slide 10, and
+    # find their slide by part identity instead.
     doomed = None if parsed.get("proposed_bond_selection") else get_slide(prs, PROPOSED_BOND_SLIDE)
+    # Same reason, for the slide the private-equity review is inserted after.
+    pe_anchor = get_slide(prs, ALTERNATIVES_SLIDE) if pe_monitoring else None
     line_items_mod.build(prs, parsed)  # slides 9-10(+): rebuilt as real tables, runs last
     if doomed is not None:
         drop_proposed_bond_selection(prs, doomed)
+    if pe_anchor is not None:
+        build_pe_monitoring_slide(prs, pe_anchor, pe_monitoring)
+        print(f"Added the private-equity review slide ({len(pe_monitoring['funds'])} funds) "
+              "after the Alternatives sleeve.")
 
     prs.save(output_path)
     print(f"Wrote {output_path}")
@@ -873,6 +1016,10 @@ def main():
                      choices=["Fixed Income", "Conservative", "Moderate", "Balanced", "Growth", "Equity"])
     ap.add_argument("--client-name", default="[Client Name]")
     ap.add_argument("--market-update", default=None, help="market_update.json produced from the market PDF")
+    ap.add_argument("--pe-monitoring", default=None,
+                     help="JSON of manager-reported private-market fund metrics; adds the "
+                          "fund-by-fund review slide after the Alternatives sleeve (schema: "
+                          "work/private_equity_monitoring_202608.json)")
     ap.add_argument("--valuation-date", default=None)
     ap.add_argument("--bucket-overrides", default=None)
     ap.add_argument("--market-cap-overrides", default=None)
@@ -882,7 +1029,8 @@ def main():
     args = ap.parse_args()
 
     build(args.excel, args.profile, args.client_name, args.output,
-          market_update_path=args.market_update, valuation_date=args.valuation_date,
+          market_update_path=args.market_update, pe_monitoring_path=args.pe_monitoring,
+          valuation_date=args.valuation_date,
           bucket_overrides=args.bucket_overrides, market_cap_overrides=args.market_cap_overrides,
           sector_overrides=args.sector_overrides, keep_parsed_json=args.keep_parsed_json)
 

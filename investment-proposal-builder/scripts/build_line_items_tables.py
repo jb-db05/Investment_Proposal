@@ -34,6 +34,7 @@ from pptx import Presentation
 from pptx.util import Emu, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.opc.packuri import PackURI
 from pptx.oxml.ns import qn
 
 # --- visual constants, matched to the template's own title-block geometry ---
@@ -224,11 +225,25 @@ def is_line_items_slide(slide) -> bool:
     return names == {"Title 1", "Text Placeholder 2"}
 
 
+def _claim_free_slide_partname(prs, slide_part):
+    """python-pptx names a new slide part after the current slide count, so
+    once any slide has been deleted the next one added reuses a partname that
+    is still in use — two `ppt/slides/slideN.xml` entries in the saved package,
+    and PowerPoint reads back whichever it hit first. Rename the fresh part to
+    the first number nothing else has claimed."""
+    used = {str(part.partname) for part in prs.part.package.iter_parts()}
+    n = len(prs.slides) + 1
+    while f"/ppt/slides/slide{n}.xml" in used:
+        n += 1
+    slide_part.partname = PackURI(f"/ppt/slides/slide{n}.xml")
+
+
 def duplicate_slide_after(prs, index):
     """Insert a new slide using the same layout as prs.slides[index],
     positioned immediately after it. Returns the new slide."""
     src = prs.slides[index]
     new_slide = prs.slides.add_slide(src.slide_layout)  # appended at the end
+    _claim_free_slide_partname(prs, new_slide.part)
     xml_slides = prs.slides._sldIdLst
     slides = list(xml_slides)
     new_el = slides[-1]

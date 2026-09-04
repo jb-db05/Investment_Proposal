@@ -1,0 +1,74 @@
+{
+  "slide_title": "Private equity: fund-by-fund review",
+  "intro_sentence": "Manager-reported metrics for the four private-market funds held in the portfolio, as at Q1 2026 — ECHO as at Q1 2025, the latest reporting available.",
+  "funds": [
+    {
+      "name": "Themis I",
+      "vintage": "2020",
+      "term": "2028",
+      "currency": "$",
+      "as_of": "2026 Q1",
+      "multiple": "0.98x Net TVPI",
+      "dpi": "0.33x",
+      "capital_called": "70%",
+      "expected_calls": "10-20%",
+      "expected_distributions": "10-20%",
+      "comments": [
+        "69.9% of commitments paid in at Q1-26, with a further 5% called in April. Next distribution expected Q3/Q4 2026.",
+        "Diversified across 107 cases, 74 still ongoing — competition, commercial, class action and litigation finance in Europe, the US and Australia.",
+        "20 wins against 13 losses, ~$19.7m cumulative profit from resolved matters. Still largely in the maturation phase."
+      ]
+    },
+    {
+      "name": "Left Lane CP II LP 2",
+      "vintage": "2021",
+      "term": "—",
+      "currency": "$",
+      "as_of": "2026 Q1",
+      "multiple": "1.60x Net MOIC",
+      "dpi": "0.00x",
+      "capital_called": "88%",
+      "expected_calls": "3-4% (April 2026)",
+      "expected_distributions": "Not indicated",
+      "comments": [
+        "29.6% Gross IRR / 2.0x Gross MOIC; 20.8% Net IRR / 1.6x Net MOIC.",
+        "$1.16bn invested across 70 companies, ~$70m dry powder. $27.7m of Q1 follow-ons into 11 existing positions.",
+        "DPI still zero; only 39 of 68 unrealised positions above cost. First exits building — Steno secondary at 2.7x, Composer acquired, Rei Do Pitaco pending."
+      ]
+    },
+    {
+      "name": "ACE Buyout III",
+      "vintage": "2017",
+      "term": "2027",
+      "currency": "$",
+      "as_of": "2026 Q1",
+      "multiple": "1.9x Gross MOIC",
+      "dpi": "0.98x",
+      "capital_called": "98%",
+      "expected_calls": "0%",
+      "expected_distributions": "Expected, size not indicated",
+      "comments": [
+        "1.9x Gross MOIC on $161.9m invested; $174m distributed against $177m contributed after a 6% distribution in May.",
+        "Wide dispersion: Osaic 5.5x, Clarios 4.9x, GFL 2.7x against GoHealth 0.5x and Vesta 0.3x (in forbearance).",
+        "Osaic continuation vehicle in process, targeting up to 50% liquidity at the 5.5x mark — the near-term catalyst."
+      ]
+    },
+    {
+      "name": "ECHO",
+      "vintage": "2019",
+      "term": "2026",
+      "currency": "€",
+      "as_of": "2025 Q1",
+      "multiple": "0.95x Net TVPI",
+      "dpi": "0.30x",
+      "capital_called": "66%",
+      "expected_calls": "0%",
+      "expected_distributions": "Full distribution in 2026",
+      "comments": [
+        "Two hotels left in the portfolio, in Vienna and Amsterdam. Both will probably sell below NAV.",
+        "Full distribution expected in 2026; the fund reaches the end of its term this year.",
+        "Awaiting information from the liquidator. Figures are as at Q1 2025, a year older than the other three funds."
+      ]
+    }
+  ]
+}

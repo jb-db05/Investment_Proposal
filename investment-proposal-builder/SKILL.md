@@ -17,6 +17,11 @@ Turns three client-specific inputs into a client-ready PowerPoint deck:
 3. **Risk profile** — one of `Fixed Income`, `Conservative`, `Moderate`,
    `Balanced`, `Growth`, `Equity`.
 
+Optionally, a fourth: **private-market fund monitoring** (`--pe-monitoring`),
+manager-reported metrics for the client's private-equity funds. It adds one
+slide after the Alternatives sleeve. This never comes from the custodian
+Excel — see `references/slide_recipe.md`, "The private-equity review slide".
+
 Output: a ~36-39 slide `.pptx` (slide count varies with how many holdings
 the client has — see "Pagination" below), with every number, chart and
 table traced back to the Excel file, and every piece of market commentary
@@ -94,6 +99,7 @@ python scripts/build_proposal.py \
     --client-name "<Client Name>" \
     --market-update market_update.json \
     --valuation-date "<same date as step 2>" \
+    [--pe-monitoring private_equity_monitoring.json] \
     -o "Investment Proposal - <Client Name>.pptx"
 ```
 
