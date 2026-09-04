@@ -178,10 +178,13 @@ classified **Direct line** without consulting it:
   discloses the same gap in its own footnote: "these fields are not in the
   client file"). `sector_exposure_pct` is therefore `null` in `parsed.json`
   unless the caller supplies `--sector-overrides overrides.csv` (columns
-  `isin,sector`, a desk-maintained issuer→GICS-style mapping). When `null`,
-  `build_proposal.py` renders the sector panel with a "sector data not
-  available for this custodian file" note instead of a chart — it never
-  fabricates a single fake "Diversified 100%" slice.
+  `isin,sector`, a desk-maintained issuer→GICS-style mapping).
+
+  **No slide renders it.** Sector and market-cap breakdowns were dropped
+  from this deck (slide_recipe.md, "Sector and market-cap breakdowns are not
+  in this deck"), so `--sector-overrides` now affects `parsed.json` alone.
+  The calculation stays because the instruction was about this presentation,
+  not about the rule.
 
 ## 8. Equity breakdown (geography / sector / market cap)
 
@@ -191,14 +194,15 @@ classified **Direct line** without consulting it:
   equity sleeve (not the whole portfolio). This is the same taxonomy used
   by the slide 10 line-items table, so the two slides agree with each
   other.
+  Geography is the only one of the three that reaches a slide: it sits in
+  the right-hand panel of the geographic-exposure slide, beside the
+  whole-portfolio split.
 - Sector: same `--sector-overrides` mechanism and `null`-when-absent
-  behavior as §7, renormalized to the equity sleeve.
+  behavior as §7, renormalized to the equity sleeve. Computed, not rendered.
 - Market cap is not a column in the export — every equity line is
   classified `Large cap` unless the desk supplies
   `--market-cap-overrides overrides.csv` (columns `isin,market_cap`);
-  without overrides the market-cap donut is `null` in `parsed.json` and the
-  build script leaves the market-cap panel on the slide with a "data not
-  available" placeholder rather than fabricating a split.
+  without overrides it is `null` in `parsed.json`. Computed, not rendered.
 
 ## 9. Concentration & top holdings
 

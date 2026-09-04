@@ -551,16 +551,33 @@ def set_donut_legend(slide, textbox_names, data: dict[str, float]):
         set_text(slide, name, text)
 
 
-def fill_geo_sector(prs, parsed):
-    slide = get_slide(prs, 12)
+GEOGRAPHIC_SLIDE = 12
+EQUITY_BREAKDOWN_SLIDE = 16
+
+
+def fill_geographic_exposure(prs, parsed):
+    """Both geographic views on one slide: the whole portfolio on the left,
+    the equity sleeve on the right.
+
+    The template's right-hand panel was "Sector exposure", and the equity
+    sleeve's regional split had a slide of its own. Sector and market-cap
+    breakdowns are out of this deck entirely (see build(): the equity-
+    breakdown slide is dropped), so the freed panel carries the equity
+    geography instead of a chart that could only ever say "Not available"
+    without a desk sector mapping — assumptions.md §7."""
+    slide = get_slide(prs, GEOGRAPHIC_SLIDE)
+    sleeve = parsed["sleeves"].get("Equities", {})
+    ccy = parsed["base_currency"]
+    val_m = (sleeve.get("total_weight_pct", 0) / 100) * parsed["total_value_eur"] / 1_000_000
+    set_text(slide, "Title 1", "Geographic exposure")
+    set_subtitle(slide,
+                 f"Regional breakdown of the whole portfolio and, separately, of the equity "
+                 f"sleeve — {sleeve.get('num_lines', 0)} lines, {ccy} {val_m:.1f}m, "
+                 f"{sleeve.get('total_weight_pct', 0):.1f}% of the portfolio.")
+    set_text(slide, "TextBox 3", "Whole portfolio")
     update_bar_by_name(slide, "Chart 5", parsed["geographic_exposure_pct"])
-    if parsed["sector_exposure_pct"]:
-        update_bar_by_name(slide, "Chart 8", parsed["sector_exposure_pct"])
-    else:
-        # title stays "Sector exposure" as-is; the chart itself already
-        # shows "Not available" as its one bar, so the caveat isn't
-        # repeated in the title too (assumptions.md §7 has the full reason)
-        update_bar_by_name(slide, "Chart 8", {"Not available": 100.0})
+    set_text(slide, "TextBox 6", "Equity sleeve")
+    update_bar_by_name(slide, "Chart 8", parsed["equity_breakdown"]["by_geography_pct"])
 
 
 SLEEVE_SLIDES = {
@@ -598,15 +615,17 @@ def fill_sleeve_slides(prs, parsed):
 
 
 # Original template position of the "Fixed Income Breakdown" (proposed bond
-# selection) slide — the one slide dropped entirely when its source data is
-# missing, see drop_proposed_bond_selection().
+# selection) slide. It is dropped when the Excel carries no 'Fixed Income'
+# proposal tab — leaving it would ship the template's own example selection,
+# six issues and EUR 600,000 of bonds, as if proposed for this client. See
+# the removal list in build().
 PROPOSED_BOND_SLIDE = 14
 
 
 def fill_proposed_bond_selection(prs, parsed):
     pb = parsed.get("proposed_bond_selection")
     if not pb:
-        return  # slide removed later by drop_proposed_bond_selection()
+        return  # slide removed later, see build()
     slide = get_slide(prs, PROPOSED_BOND_SLIDE)
     set_text(slide, "Text 1",
              f"Proposed bond selection: {pb['num_issues']} issues, "
@@ -623,61 +642,18 @@ def fill_proposed_bond_selection(prs, parsed):
     set_donut_legend(slide, ["Text 32", "Text 34", "Text 36", "Text 38", "Text 40"], pb["by_rating_pct"])
     # internal data-sourcing footnote — not for the client's eyes
     set_text(slide, "Text 41", "")
-    # ...and the source deck's hardcoded "12" in the bottom-right corner, see
-    # the note on Text 33 in fill_equity_breakdown()
+    # ...and the source deck's hardcoded "12" in the bottom-right corner: a
+    # page number left over from its own pagination, already wrong before this
+    # skill existed and carried by no other data slide. Blanked, not
+    # renumbered.
     set_text(slide, "Text 42", "")
 
 
-def drop_proposed_bond_selection(prs, slide):
-    """Remove the Fixed Income Breakdown slide. It is driven entirely by the
-    Excel's 'Fixed Income' proposal tab; when the client's file has no such
-    tab there is nothing to put on it, and leaving it in place ships the
-    template's own example selection — six issues, EUR 600,000, none of them
-    this client's — as if it were a proposal made for this client.
-
-    Takes the slide itself rather than a position: by the time this runs,
-    build_line_items_tables.build() has already inserted the extra holdings
-    pages and every position after slide 10 has moved. The slide is located
-    by part identity, which the insert doesn't disturb."""
-    parts = [s.part for s in prs.slides]
-    line_items_mod.delete_slide(prs, parts.index(slide.part))
-    print("Note: the portfolio Excel has no 'Fixed Income' proposal tab — the "
-          "'Fixed Income Breakdown' slide was removed rather than left showing "
-          "the template's own example bond selection.")
-
-
-def fill_equity_breakdown(prs, parsed):
-    slide = get_slide(prs, 16)
-    eb = parsed["equity_breakdown"]
-    update_donut_by_name(slide, "Chart 0", eb["by_geography_pct"], label_style="one_decimal")
-    set_donut_legend(slide, ["Text 5", "Text 7", "Text 9", "Text 11", "Text 13"], eb["by_geography_pct"])
-    # titles stay "By sector" / "By market cap" as-is when unavailable; the
-    # chart itself already shows "Not available" as its one slice
-    if eb["by_sector_pct"]:
-        update_donut_by_name(slide, "Chart 1", eb["by_sector_pct"], label_style="one_decimal")
-        set_donut_legend(slide, ["Text 16", "Text 18", "Text 20", "Text 22", "Text 24"], eb["by_sector_pct"])
-    else:
-        update_donut_by_name(slide, "Chart 1", {"Not available": 100.0})
-        set_donut_legend(slide, ["Text 16", "Text 18", "Text 20", "Text 22", "Text 24"], {})
-    if eb["by_market_cap_pct"]:
-        update_donut_by_name(slide, "Chart 2", eb["by_market_cap_pct"], label_style="one_decimal")
-        set_donut_legend(slide, ["Text 27", "Text 29", "Text 31"], eb["by_market_cap_pct"])
-    else:
-        update_donut_by_name(slide, "Chart 2", {"Not available": 100.0})
-        set_donut_legend(slide, ["Text 27", "Text 29", "Text 31"], {})
-    sleeve = parsed["sleeves"].get("Equities", {})
-    ccy = parsed["base_currency"]
-    n_lines = sleeve.get("num_lines", 0)
-    val_m = (sleeve.get("total_weight_pct", 0) / 100) * parsed["total_value_eur"] / 1_000_000
-    set_text(slide, "Text 1", f"Equity sleeve: {n_lines} lines, {ccy} {val_m:.1f}m, "
-                               f"{sleeve.get('total_weight_pct', 0):.1f}% of the portfolio.")
-    # internal data-classification footnote — not for the client's eyes
-    set_text(slide, "Text 32", "")
-    # ...and a hardcoded "13" in the bottom-right corner, left over from the
-    # source deck's own pagination. It was already wrong before this skill
-    # existed (it sits on slide 16) and no other data slide carries one, so
-    # it is blanked, not renumbered.
-    set_text(slide, "Text 33", "")
+def drop_slide(prs, slide):
+    """Remove a slide, located by part identity rather than by position: by
+    the time the removals run, build_line_items_tables.build() has inserted
+    the extra holdings pages and everything after slide 10 has moved."""
+    line_items_mod.delete_slide(prs, [s.part for s in prs.slides].index(slide.part))
 
 
 def fill_liquidity(prs, parsed):
@@ -879,7 +855,7 @@ def build_pe_monitoring_slide(prs, anchor_slide, pe):
     quarterly reports, not in a custodian position file. Nothing here is
     derived from or reconciled against parsed.json.
 
-    Like drop_proposed_bond_selection(), this runs after the line-items
+    Like the slide removals in build(), this runs after the line-items
     rebuild, so the anchor is located by part identity rather than by a slide
     position the rebuild has already moved."""
     anchor_idx = [sl.part for sl in prs.slides].index(anchor_slide.part)
@@ -982,10 +958,9 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
     fill_market_slides(prs, market)
     fill_profile_dial(prs, parsed)
     fill_portfolio_overview(prs, parsed)
-    fill_geo_sector(prs, parsed)
+    fill_geographic_exposure(prs, parsed)
     fill_sleeve_slides(prs, parsed)
     fill_proposed_bond_selection(prs, parsed)
-    fill_equity_breakdown(prs, parsed)
     fill_liquidity(prs, parsed)
     fill_concentration(prs, parsed)
     fill_income(prs, parsed)
@@ -994,12 +969,19 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
     # those positions are still the template's; both operations below happen
     # after the line-items rebuild has moved everything after slide 10, and
     # find their slide by part identity instead.
-    doomed = None if parsed.get("proposed_bond_selection") else get_slide(prs, PROPOSED_BOND_SLIDE)
-    # Same reason, for the slide the private-equity review is inserted after.
+    # The equity-breakdown slide always goes: its sector and market-cap donuts
+    # are out of this deck by design, and its remaining panel (the equity
+    # sleeve's regional split) has moved onto the geographic-exposure slide.
+    doomed = [get_slide(prs, EQUITY_BREAKDOWN_SLIDE)]
+    if not parsed.get("proposed_bond_selection"):
+        doomed.append(get_slide(prs, PROPOSED_BOND_SLIDE))
+        print("Note: the portfolio Excel has no 'Fixed Income' proposal tab — the "
+              "'Fixed Income Breakdown' slide was removed rather than left showing "
+              "the template's own example bond selection.")
     pe_anchor = get_slide(prs, ALTERNATIVES_SLIDE) if pe_monitoring else None
     line_items_mod.build(prs, parsed)  # slides 9-10(+): rebuilt as real tables, runs last
-    if doomed is not None:
-        drop_proposed_bond_selection(prs, doomed)
+    for slide in doomed:
+        drop_slide(prs, slide)
     if pe_anchor is not None:
         build_pe_monitoring_slide(prs, pe_anchor, pe_monitoring)
         print(f"Added the private-equity review slide ({len(pe_monitoring['funds'])} funds) "

@@ -26,8 +26,8 @@ Output: a ~36-39 slide `.pptx` (slide count varies with how many holdings
 the client has — see "Pagination" below), with every number, chart and
 table traced back to the Excel file, and every piece of market commentary
 traced back to the PDF. **Nothing is invented.** Where a number genuinely
-isn't available in the source file (e.g. equity sector classification —
-see `references/assumptions.md` §7), the deck says so instead of guessing.
+isn't available in the source file, the deck says so instead of guessing
+rather than inventing a plausible-looking split.
 
 ## Before you start
 
@@ -61,8 +61,10 @@ one. If your desk has an authoritative fixed-income bucket mapping,
 equity-sector mapping, or market-cap classification, pass
 `--bucket-overrides`, `--sector-overrides`, `--market-cap-overrides` (CSV
 files — see `references/assumptions.md` §4, §7-8 for the exact column
-names). Without them, sector and market-cap breakdowns are correctly
-reported as unavailable rather than fabricated.
+names). Note that sector and market-cap breakdowns no longer appear on any
+slide (see `references/slide_recipe.md`), so those two flags currently
+affect `parsed.json` only; `--bucket-overrides` still drives the
+fixed-income grouping on the holdings list.
 
 ### 3. Extract the market update (you do this — it's not a script)
 

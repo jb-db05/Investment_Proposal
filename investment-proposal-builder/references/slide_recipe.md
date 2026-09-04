@@ -16,11 +16,10 @@ from `assets/template.pptx` — no per-client data goes on it.
 | 8 | Portfolio strategies / risk-return trade-off | `parsed.json: risk_profile`, `slide8_profile_dial.md` | `build_proposal.fill_profile_dial` |
 | 9-N | Proposed portfolio: full holdings list | `parsed.json: line_items` | `build_line_items_tables.build` (runs **last** — see note below) |
 | N+1 | Portfolio overview | `parsed.json`: KPIs, `asset_allocation_pct`, `currency_exposure_pct` | `build_proposal.fill_portfolio_overview` |
-| N+2 | Geographic & sector exposure | `parsed.json: geographic_exposure_pct`, `sector_exposure_pct` (may be unavailable, see assumptions.md §7) | `build_proposal.fill_geo_sector` |
+| N+2 | Geographic exposure — whole portfolio and equity sleeve, side by side | `parsed.json: geographic_exposure_pct`, `equity_breakdown.by_geography_pct` | `build_proposal.fill_geographic_exposure` |
 | N+3 | Fixed Income: income-type specifics | `parsed.json: sleeves["Fixed Income"]` | `build_proposal.fill_sleeve_slides` |
 | N+4 | Fixed Income Breakdown (proposed bond selection) | `parsed.json: proposed_bond_selection` (from the `Fixed Income` Excel tab — a curated proposal, NOT current holdings); **slide is removed when the Excel has no such tab** | `build_proposal.fill_proposed_bond_selection` / `drop_proposed_bond_selection` |
 | N+5 | Equities: income-type specifics | `parsed.json: sleeves["Equities"]` | `build_proposal.fill_sleeve_slides` |
-| N+6 | Equity breakdown | `parsed.json: equity_breakdown` | `build_proposal.fill_equity_breakdown` |
 | N+7 | Alternatives: income-type specifics | `parsed.json: sleeves["Private Assets"]` (closest conceptual match — see note below) | `build_proposal.fill_sleeve_slides` |
 | N+7a | Private equity: fund-by-fund review (**optional**, only when `--pe-monitoring` is given) | `private_equity_monitoring.json` — manager-reported fund metrics, a separate input | `build_proposal.build_pe_monitoring_slide` (inserted last) |
 | N+8 | Commodities | `parsed.json: sleeves["Commodities"]` | `build_proposal.fill_sleeve_slides` |
@@ -41,6 +40,28 @@ template position (`get_slide(prs, 11)` for Portfolio Overview, etc.), and
 those positions are only correct before the holdings-list slide count
 changes. This bit us once during development — see the comment above the
 call order in `build_proposal.build()`.
+
+## Sector and market-cap breakdowns are not in this deck
+
+Dropped by explicit instruction, together with the slide that carried them.
+Two things follow:
+
+- The "Geographic & sector exposure" slide became **"Geographic exposure"**:
+  the sector panel now holds the equity sleeve's regional split, and the
+  whole-portfolio split keeps the left panel.
+- The **"Equity breakdown"** slide (equity geography / sector / market cap)
+  is removed on every build — `build()` drops it after the line-items
+  rebuild, the same way the proposed-bond-selection slide is dropped when
+  its source tab is missing. Its one surviving panel, equity geography, is
+  what moved onto the geographic slide.
+
+`parse_portfolio.py` still computes `sector_exposure_pct` and
+`equity_breakdown.by_sector_pct` / `by_market_cap_pct`, and
+`--sector-overrides` / `--market-cap-overrides` still populate them — but
+nothing renders any of it, so those two flags now affect `parsed.json`
+only. Left in place deliberately: the instruction was about this
+presentation, and re-adding a sector slide should not mean rebuilding the
+calculation behind it.
 
 ## Scope boundary
 
@@ -218,17 +239,14 @@ not just convention — breaking them was a real bug caught during review:
   in the bottom-right corner of exactly two slides ("12" on the proposed
   bond selection, "13" on the equity breakdown) and nowhere else — already
   wrong in the reference deck itself, since those are slides 16 and 18.
-  Both are blanked, not renumbered, by the fill function for their own
-  slide (`Text 33` in `fill_equity_breakdown()`, `Text 42` in
-  `fill_proposed_bond_selection()`).
+  One of the two slides is no longer in the deck at all; the other blanks
+  its number in `fill_proposed_bond_selection()` (`Text 42`).
 - **Internal data-sourcing footnotes are blanked, not translated.** Two
   footnotes reveal backend methodology the client doesn't need to see:
   the proposed-bond-selection slide's "Source: 'Fixed Income' tab..."
-  (`Text 41`) and the equity-breakdown slide's "classified at issuer
-  level... these fields are not in the client file" (`Text 32`). Both are
-  set to `""` in `fill_proposed_bond_selection()` /
-  `fill_equity_breakdown()` rather than removed as shapes, so the layout
-  doesn't shift.
+  (`Text 41`) is set to `""` in `fill_proposed_bond_selection()` rather
+  than removed as a shape, so the layout doesn't shift. (The equity-
+  breakdown slide carried a second one; that slide is no longer built.)
 
 ## Template-level fixes (applied once, not per-build)
 
