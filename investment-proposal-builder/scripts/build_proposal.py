@@ -921,7 +921,8 @@ def build_pe_monitoring_slide(prs, anchor_slide, pe):
 
 def build(excel_path, profile, client_name, output_path, market_update_path=None,
           valuation_date=None, bucket_overrides=None, market_cap_overrides=None,
-          sector_overrides=None, keep_parsed_json=None, pe_monitoring_path=None):
+          sector_overrides=None, vehicle_overrides=None, keep_parsed_json=None,
+          pe_monitoring_path=None):
     parse_cmd = [sys.executable, str(SCRIPT_DIR / "parse_portfolio.py"), excel_path,
                  "--profile", profile, "--client-name", client_name,
                  "-o", keep_parsed_json or str(SCRIPT_DIR.parent / "work" / "_parsed_tmp.json")]
@@ -933,6 +934,8 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
         parse_cmd += ["--market-cap-overrides", market_cap_overrides]
     if sector_overrides:
         parse_cmd += ["--sector-overrides", sector_overrides]
+    if vehicle_overrides:
+        parse_cmd += ["--vehicle-overrides", vehicle_overrides]
     subprocess.run(parse_cmd, check=True)
 
     parsed_path = keep_parsed_json or str(SCRIPT_DIR.parent / "work" / "_parsed_tmp.json")
@@ -1006,6 +1009,9 @@ def main():
     ap.add_argument("--bucket-overrides", default=None)
     ap.add_argument("--market-cap-overrides", default=None)
     ap.add_argument("--sector-overrides", default=None)
+    ap.add_argument("--vehicle-overrides", default=None,
+                     help="CSV isin,vehicle — the desk's own Direct line / Fund / Structured "
+                          "call, where the heuristic cannot tell them apart")
     ap.add_argument("--keep-parsed-json", default=None, help="also write parsed.json to this path")
     ap.add_argument("-o", "--output", required=True)
     args = ap.parse_args()
@@ -1014,7 +1020,8 @@ def main():
           market_update_path=args.market_update, pe_monitoring_path=args.pe_monitoring,
           valuation_date=args.valuation_date,
           bucket_overrides=args.bucket_overrides, market_cap_overrides=args.market_cap_overrides,
-          sector_overrides=args.sector_overrides, keep_parsed_json=args.keep_parsed_json)
+          sector_overrides=args.sector_overrides, vehicle_overrides=args.vehicle_overrides,
+          keep_parsed_json=args.keep_parsed_json)
 
 
 if __name__ == "__main__":

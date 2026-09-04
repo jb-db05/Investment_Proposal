@@ -156,6 +156,18 @@ Within a sleeve, each holding is classified as:
 This is applied in the order above (first match wins) and is a heuristic
 for the same reason as §4 — the export has no vehicle-type column.
 
+**A desk mapping beats the heuristic.** `--vehicle-overrides overrides.csv`
+(columns `isin,vehicle`; any further columns, e.g. a `name` for the reader,
+are ignored) sets a holding's vehicle outright. This is not a nicety: in the
+equity sleeve the heuristic **cannot** work. A single-name share and an
+equity fund both carry a blank rating and a blank coupon, so the signature
+below classifies both as "Fund", and the fund keywords do not save it —
+plenty of real funds carry none in their name (`UBS(CH) EQ-SWISS INC CHFP`,
+`BRGF WORLD MINING(REG)A2`, `GOLDMAN EU HIGH DIV P CAP`). Naming the direct
+lines in a CSV is the only way to split them that does not invent a rule the
+data cannot support. The same file is the place to reclassify a certificate
+the custodian filed under `Equities`.
+
 **The blank-rating/blank-coupon signature is a signature of _securities_**
 — collective vehicles that carry neither a rating nor a coupon. Three kinds
 of holding carry neither for an entirely different reason, and are

@@ -57,7 +57,15 @@ python scripts/parse_portfolio.py "<portfolio.xlsx>" \
 Read the printed summary line (position count, total value, dominant
 holding currency) and sanity-check it against the Excel — e.g. does the
 position count match the file's own "Segment Total (N)" label if it has
-one. If your desk has an authoritative fixed-income bucket mapping,
+one. **Check the equity sleeve's vehicle split before you build.** The export
+cannot distinguish a single-name share from an equity fund — both have a
+blank rating and a blank coupon — so every unlabelled equity defaults to
+"Fund". If the client holds direct equities, list them in a
+`--vehicle-overrides` CSV (`isin,vehicle`); it is the only non-fabricated
+way to get that chart right, and it feeds the liquidity profile too. See
+`references/assumptions.md` §6.
+
+If your desk has an authoritative fixed-income bucket mapping,
 equity-sector mapping, or market-cap classification, pass
 `--bucket-overrides`, `--sector-overrides`, `--market-cap-overrides` (CSV
 files — see `references/assumptions.md` §4, §7-8 for the exact column

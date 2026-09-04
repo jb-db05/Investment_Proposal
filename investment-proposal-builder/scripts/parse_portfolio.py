@@ -143,34 +143,15 @@ def load_sheet_rows(ws) -> tuple[dict[str, int], list[dict]]:
     return headers, rows
 
 
-def load_bucket_overrides(path: str | None) -> dict[str, str]:
+def load_overrides(path: str | None, column: str) -> dict[str, str]:
+    """A desk-maintained {isin: value} CSV — two columns, `isin` and `column`.
+    Every override file this script takes has the same shape; they exist
+    because the custodian export genuinely does not carry the field, so the
+    alternative to a desk mapping is a heuristic or a fabrication."""
     if not path:
         return {}
-    out = {}
     with open(path, newline="") as f:
-        for row in csv.DictReader(f):
-            out[row["isin"].strip()] = row["bucket"].strip()
-    return out
-
-
-def load_market_cap_overrides(path: str | None) -> dict[str, str]:
-    if not path:
-        return {}
-    out = {}
-    with open(path, newline="") as f:
-        for row in csv.DictReader(f):
-            out[row["isin"].strip()] = row["market_cap"].strip()
-    return out
-
-
-def load_sector_overrides(path: str | None) -> dict[str, str]:
-    if not path:
-        return {}
-    out = {}
-    with open(path, newline="") as f:
-        for row in csv.DictReader(f):
-            out[row["isin"].strip()] = row["sector"].strip()
-    return out
+        return {row["isin"].strip(): row[column].strip() for row in csv.DictReader(f)}
 
 
 def classify_fi_bucket(row: dict, overrides: dict[str, str]) -> str:
@@ -221,8 +202,19 @@ def classify_vehicle(description: str, rating, coupon, currency=None, asset_clas
     return "Direct line"
 
 
-def vehicle_of(row: dict) -> str:
-    """classify_vehicle() for a parsed row (which already knows its asset class)."""
+def vehicle_of(row: dict, overrides: dict[str, str] | None = None) -> str:
+    """classify_vehicle() for a parsed row (which already knows its asset
+    class), with the desk's own mapping taking precedence over the heuristic.
+
+    The override matters most in the equity sleeve: a single-name share and an
+    equity fund both carry a blank rating and a blank coupon, so the §6
+    signature cannot separate them and defaults to "Fund". Naming the direct
+    lines in a CSV is the only non-fabricated way to tell the two apart —
+    assumptions.md §6."""
+    if overrides:
+        override = overrides.get(str(row.get("isin code") or "").strip())
+        if override:
+            return override
     return classify_vehicle(row.get("description"), row.get("composite rating"),
                             row.get("coupon (%)"), row.get("currency"), row.get("_asset_class"))
 
@@ -416,6 +408,10 @@ def main():
     ap.add_argument("--bucket-overrides", default=None)
     ap.add_argument("--market-cap-overrides", default=None)
     ap.add_argument("--sector-overrides", default=None)
+    ap.add_argument("--vehicle-overrides", default=None,
+                    help="CSV isin,vehicle — 'Direct line' / 'Fund' / 'Structured / AMC'. "
+                          "Overrides the assumptions.md §6 heuristic, which cannot tell a "
+                          "single-name equity from an equity fund.")
     ap.add_argument("-o", "--output", default="parsed.json")
     args = ap.parse_args()
 
@@ -423,9 +419,10 @@ def main():
     _, port_rows = load_sheet_rows(pick_portfolio_sheet(wb))
     proposed_bond_selection = parse_proposed_bonds(wb) if "Fixed Income" in wb.sheetnames else None
 
-    bucket_overrides = load_bucket_overrides(args.bucket_overrides)
-    mcap_overrides = load_market_cap_overrides(args.market_cap_overrides)
-    sector_overrides = load_sector_overrides(args.sector_overrides)
+    bucket_overrides = load_overrides(args.bucket_overrides, "bucket")
+    mcap_overrides = load_overrides(args.market_cap_overrides, "market_cap")
+    sector_overrides = load_overrides(args.sector_overrides, "sector")
+    vehicle_overrides = load_overrides(args.vehicle_overrides, "vehicle")
 
     included, uncalled = [], []
     for row in port_rows:
@@ -510,7 +507,7 @@ def main():
         top = sorted(rows_ac, key=lambda r: -r["_weight"])[:5]
         vehicle_weight = defaultdict(float)
         for r in rows_ac:
-            v = vehicle_of(r)
+            v = vehicle_of(r, vehicle_overrides)
             vehicle_weight[v] += r["_weight"] / ac_total_w if ac_total_w else 0
         durations = [float(r["duration"]) for r in rows_ac if isinstance(r.get("duration"), (int, float))]
         n_with_dur = len(durations)
@@ -579,7 +576,7 @@ def main():
     # --- §10 liquidity profile ---
     liq_weight = defaultdict(float)
     for r in included:
-        liq_weight[classify_liquidity(r, r["_asset_class"], vehicle_of(r))] += r["_weight"]
+        liq_weight[classify_liquidity(r, r["_asset_class"], vehicle_of(r, vehicle_overrides))] += r["_weight"]
     liquidity_profile = {k: pct(v) for k, v in sorted(liq_weight.items(), key=lambda kv: -kv[1])}
 
     # --- §11 income & rate sensitivity ---

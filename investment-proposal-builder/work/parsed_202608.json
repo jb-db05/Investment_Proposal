@@ -242,8 +242,9 @@
         }
       ],
       "vehicle_breakdown_pct": {
-        "Fund": 94.268981,
-        "Direct line": 5.731019
+        "Fund": 50.623703,
+        "Direct line": 43.645277,
+        "Structured / AMC": 5.731019
       },
       "duration_coverage": null
     },
@@ -643,9 +644,9 @@
     "positions_above_5pct": 3
   },
   "liquidity_profile_pct": {
-    "Daily-liquid fund": 40.504682,
+    "Listed": 33.920504,
+    "Daily-liquid fund": 25.679113,
     "Physical assets": 21.330245,
-    "Listed": 19.094935,
     "Illiquid (lock-up)": 16.559768,
     "Cash & metal accounts": 2.51037
   },
