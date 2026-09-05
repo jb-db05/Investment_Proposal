@@ -226,7 +226,7 @@ classified **Direct line** without consulting it:
 ## 10. Liquidity profile
 
 Each holding is classified by **how it is actually realised** — not by its
-asset class, and not by its §6 vehicle alone. Five buckets, first match
+asset class, and not by its §6 vehicle alone. Four buckets, first match
 wins (`classify_liquidity()`):
 
 - **Illiquid (lock-up)** — `Private Assets` section, or `Description`
@@ -242,12 +242,14 @@ wins (`classify_liquidity()`):
   classified "Direct line" under §6: physical bars and coins. Sellable at a
   screen price, but neither a listed security nor a fund with a daily NAV,
   and settlement is a delivery — so neither of those two buckets fits.
-- **Daily-liquid fund** — classified "Fund" under the §6 vehicle rule.
-- **Listed** — everything else (direct bonds, direct equities, structured
-  products, ETFs/ETCs).
+- **Listed & daily-liquid** — everything else: direct equities and bonds,
+  ETFs and ETCs, daily-NAV funds, structured products. Listed securities and
+  funds were two buckets until an explicit instruction merged them — both
+  are realised the same way, on a normal settlement cycle, and the split
+  described the instrument's wrapper more than its liquidity.
 
 `liquid_share_pct` is everything that is not **Illiquid (lock-up)** — the
-four other buckets are all realisable at short notice, by different routes.
+three other buckets are all realisable at short notice, by different routes.
 
 ## 11. Income & interest-rate sensitivity
 

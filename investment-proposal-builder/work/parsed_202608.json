@@ -1,7 +1,7 @@
 {
   "client_name": "[Client Name]",
   "risk_profile_input": "Growth",
-  "valuation_date": "4 September 2026",
+  "valuation_date": "5 September 2026",
   "base_currency": "EUR",
   "dominant_holding_currency": "USD",
   "total_value_eur": 21067265.65,
@@ -644,8 +644,7 @@
     "positions_above_5pct": 3
   },
   "liquidity_profile_pct": {
-    "Listed": 33.920504,
-    "Daily-liquid fund": 25.679113,
+    "Listed & daily-liquid": 59.599617,
     "Physical assets": 21.330245,
     "Illiquid (lock-up)": 16.559768,
     "Cash & metal accounts": 2.51037

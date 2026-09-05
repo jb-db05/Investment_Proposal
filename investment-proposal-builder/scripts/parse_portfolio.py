@@ -223,7 +223,7 @@ ILLIQUID_BUCKET = "Illiquid (lock-up)"
 
 
 def classify_liquidity(row: dict, asset_class: str, vehicle: str) -> str:
-    """assumptions.md §10. Five buckets, by how a holding is actually
+    """assumptions.md §10. Four buckets, by how a holding is actually
     realised — not by its asset class and not by its vehicle alone."""
     if asset_class == "Private Assets" or "COMMIT" in str(row.get("description") or "").upper():
         return ILLIQUID_BUCKET
@@ -237,9 +237,10 @@ def classify_liquidity(row: dict, asset_class: str, vehicle: str) -> str:
     # a fund with a daily NAV.
     if asset_class == "Commodities" and vehicle == "Direct line":
         return "Physical assets"
-    if vehicle == "Fund":
-        return "Daily-liquid fund"
-    return "Listed"
+    # Listed securities and daily-NAV funds are one bucket: both are realised
+    # the same way, on a normal settlement cycle, and splitting them said more
+    # about the instrument's wrapper than about its liquidity.
+    return "Listed & daily-liquid"
 
 
 def describe_bond_subsleeve(row: dict) -> str:

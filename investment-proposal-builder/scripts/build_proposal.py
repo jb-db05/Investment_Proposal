@@ -659,12 +659,14 @@ def drop_slide(prs, slide):
 def fill_liquidity(prs, parsed):
     slide = get_slide(prs, 20)
     update_donut_by_name(slide, "Chart 5", parsed["liquidity_profile_pct"])
-    illiquid = parsed["liquidity_profile_pct"].get("Illiquid (lock-up)", 0)
+    profile = parsed["liquidity_profile_pct"]
+    illiquid = profile.get("Illiquid (lock-up)", 0)
+    daily = profile.get("Listed & daily-liquid", 0)
     set_text(slide, "TextBox 8",
              f"About {illiquid:.1f}% of the portfolio sits in private, hedge-fund and lock-up vehicles "
              f"with redemption gates and notice periods.\n\n"
-             f"Liquidity events should be planned around these constraints; the daily-liquid sleeve "
-             f"covers near-term needs.")
+             f"Liquidity events should be planned around these constraints; the {daily:.1f}% in listed "
+             f"securities and daily-liquid funds covers near-term needs.")
 
 
 def fill_concentration(prs, parsed):
