@@ -661,7 +661,7 @@ def fill_liquidity(prs, parsed):
     update_donut_by_name(slide, "Chart 5", parsed["liquidity_profile_pct"])
     profile = parsed["liquidity_profile_pct"]
     illiquid = profile.get("Illiquid (lock-up)", 0)
-    daily = profile.get("Listed & daily-liquid", 0)
+    daily = profile.get("Liquid assets", 0)
     set_text(slide, "TextBox 8",
              f"About {illiquid:.1f}% of the portfolio sits in private, hedge-fund and lock-up vehicles "
              f"with redemption gates and notice periods.\n\n"

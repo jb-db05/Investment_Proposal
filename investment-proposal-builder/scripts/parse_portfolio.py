@@ -240,7 +240,7 @@ def classify_liquidity(row: dict, asset_class: str, vehicle: str) -> str:
     # Listed securities and daily-NAV funds are one bucket: both are realised
     # the same way, on a normal settlement cycle, and splitting them said more
     # about the instrument's wrapper than about its liquidity.
-    return "Listed & daily-liquid"
+    return "Liquid assets"
 
 
 def describe_bond_subsleeve(row: dict) -> str:

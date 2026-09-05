@@ -242,7 +242,7 @@ wins (`classify_liquidity()`):
   classified "Direct line" under §6: physical bars and coins. Sellable at a
   screen price, but neither a listed security nor a fund with a daily NAV,
   and settlement is a delivery — so neither of those two buckets fits.
-- **Listed & daily-liquid** — everything else: direct equities and bonds,
+- **Liquid assets** — everything else: direct equities and bonds,
   ETFs and ETCs, daily-NAV funds, structured products. Listed securities and
   funds were two buckets until an explicit instruction merged them — both
   are realised the same way, on a normal settlement cycle, and the split

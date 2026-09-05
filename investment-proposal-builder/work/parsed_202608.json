@@ -644,7 +644,7 @@
     "positions_above_5pct": 3
   },
   "liquidity_profile_pct": {
-    "Listed & daily-liquid": 59.599617,
+    "Liquid assets": 59.599617,
     "Physical assets": 21.330245,
     "Illiquid (lock-up)": 16.559768,
     "Cash & metal accounts": 2.51037
