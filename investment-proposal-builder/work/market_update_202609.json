@@ -1,0 +1,156 @@
+{
+  "week_of": "14 September 2026",
+  "source": "Weekly Investment Meeting Summary, Monday 14 September 2026",
+  "headline": {
+    "summary_title": "Oil tops $100, the CPI locks in a hike",
+    "intro_sentence": "The S&P 500 lost 1.00% and no major index gained, but two prices did the work: Brent crossed $100 for the first time in four months, and the US 10-year pushed toward 5% as a hot core CPI made a September hike close to certain.",
+    "stats": [
+      {
+        "value": "+7.8%",
+        "label": "Brent oil, week"
+      },
+      {
+        "value": "-1.0%",
+        "label": "S&P 500, week"
+      },
+      {
+        "value": "5.37%",
+        "label": "30-year, 19-year high"
+      },
+      {
+        "value": "90%",
+        "label": "Odds of a Fed hike"
+      }
+    ]
+  },
+  "scoreboard": {
+    "rows": [
+      {
+        "index": "S&P 500",
+        "week": "-1.00%",
+        "ytd": "+12.80%"
+      },
+      {
+        "index": "Nasdaq 100",
+        "week": "-0.60%",
+        "ytd": "+16.80%"
+      },
+      {
+        "index": "Russell 2000",
+        "week": "-2.40%",
+        "ytd": "+18.10%"
+      },
+      {
+        "index": "MSCI World",
+        "week": "-1.00%",
+        "ytd": "+12.80%"
+      },
+      {
+        "index": "MSCI EM",
+        "week": "-0.20%",
+        "ytd": "+24.60%"
+      },
+      {
+        "index": "Bloomberg US Aggregate",
+        "week": "-0.92%",
+        "ytd": "-1.31%"
+      },
+      {
+        "index": "Bloomberg High Yield",
+        "week": "-0.58%",
+        "ytd": "+1.97%"
+      },
+      {
+        "index": "Brent Crude",
+        "week": "+7.80%",
+        "ytd": "+73.80%"
+      },
+      {
+        "index": "S&P 500 Energy",
+        "week": "+1.99%",
+        "ytd": "+43.70%"
+      }
+    ]
+  },
+  "three_observations": [
+    {
+      "headline": "No index gained on the week",
+      "body": "Five of the six are lower over one month, yet all six are still up between 9.6% and 24.6% for the year."
+    },
+    {
+      "headline": "The dispersion is in the sectors",
+      "body": "Energy is up 43.7% year to date while consumer discretionary is down 3.1% and utilities 0.9%."
+    },
+    {
+      "headline": "Neither classic hedge worked",
+      "body": "Gold fell 1.5% and core bonds are negative again at -1.31%, munis worst of all, while crude gained 9.1%."
+    }
+  ],
+  "four_drivers": {
+    "intro_sentence": "Oil supply risk, a hot core CPI, a breakout at the long end of the curve and the midterm calendar. A macro week, not a micro one: earnings, AI capex and credit all stayed supportive.",
+    "policy_note": "On the policy side: a 25 bps Fed hike is about 90% priced for Wednesday, the ECB has already hiked with a hawkish tone, and two BoE hikes by year end are 76% priced.",
+    "drivers": [
+      {
+        "number": 1,
+        "title": "Energy supply risk",
+        "body": "Drones shut Saudi Arabia's East-West pipeline, some 4 mb/d of bypass capacity, as Houthi forces completed control of Yemen's Red Sea coast. Hormuz is near 20% of pre-war capacity.",
+        "stat": "Brent closed at $104.6"
+      },
+      {
+        "number": 2,
+        "title": "A hot core CPI",
+        "body": "Headline prices rose 0.4% in August and core 0.3%, both above consensus, leaving annual inflation at 3.4%. Gasoline did the work, up 16.3% over the year, and producer prices added 5.4%.",
+        "stat": "Diesel +24.1% over the year"
+      },
+      {
+        "number": 3,
+        "title": "The long end broke out",
+        "body": "The 30-year added 8 bps to 5.37%, a fresh 19-year high, and the 2-year surged 16 bps to 4.59%, its largest one-day move since April 2025. The curve bear flattened.",
+        "stat": "Bear flattening, not recession"
+      },
+      {
+        "number": 4,
+        "title": "The midterm calendar",
+        "body": "Democrats' Senate odds rose to 56.6% from 51.1%, 52 days from the vote. The answer on offer, a $5,000 payment to every American adult, would cost $1.3 trillion. The bond market took it badly.",
+        "stat": "$1.3trn of proposed payments"
+      }
+    ]
+  },
+  "scenario": {
+    "intro_sentence": "The house baseline stays an Indian summer for 2026 at 50%, against a 30% inflation heatwave and a 20% growth freeze.",
+    "probabilities": [
+      {
+        "name": "Indian summer for 2026",
+        "pct": 50
+      },
+      {
+        "name": "Inflation heatwave",
+        "pct": 30
+      },
+      {
+        "name": "Growth freeze",
+        "pct": 20
+      }
+    ]
+  },
+  "house_view": {
+    "intro_sentence": "Tactical asset allocation is unchanged since 21 August: neutral equities, underweight fixed income, overweight cash, gold and commodities, neutral hedge funds.",
+    "views": [
+      {
+        "asset_class": "Equities",
+        "stance": "Neutral",
+        "body": "Micro is doing well and macro caps the upside. S&P 500 profits grew 50% in Q2 and analysts project 27% for Q3; within equities we combine AI-related and cyclical exposures."
+      },
+      {
+        "asset_class": "Fixed Income",
+        "stance": "Underweight",
+        "body": "The 10-year came within a hair of 5%, a level reached only once since 2007. A 10-year durably above 5% against a 5.3% earnings yield would remove the cushion under equities."
+      },
+      {
+        "asset_class": "Forex & Commodities",
+        "stance": "Overweight",
+        "body": "Gold and commodities stay overweight. EUR, CHF, GBP and EM currencies moved from underweight to neutral against the dollar, the yen already neutral."
+      }
+    ]
+  }
+}

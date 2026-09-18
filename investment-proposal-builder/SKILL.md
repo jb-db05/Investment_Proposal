@@ -7,6 +7,10 @@ description: "Build a fully populated Syz-branded Investment Proposal PowerPoint
 
 Turns three client-specific inputs into a client-ready PowerPoint deck:
 
+The deck is built in the export's **own reporting currency** — EUR or USD,
+read from the `Valuation + accr. interest (<CCY>)` column header, never
+assumed (`references/assumptions.md` §3).
+
 1. **Portfolio Excel** — a custodian export of the client's current holdings
    (a `Portfolio` sheet with section-header rows per asset class — any other
    single-sheet name works too, see `references/assumptions.md` §1) plus,
@@ -69,10 +73,11 @@ If your desk has an authoritative fixed-income bucket mapping,
 equity-sector mapping, or market-cap classification, pass
 `--bucket-overrides`, `--sector-overrides`, `--market-cap-overrides` (CSV
 files — see `references/assumptions.md` §4, §7-8 for the exact column
-names). Note that sector and market-cap breakdowns no longer appear on any
-slide (see `references/slide_recipe.md`), so those two flags currently
-affect `parsed.json` only; `--bucket-overrides` still drives the
-fixed-income grouping on the holdings list.
+names), plus `--style-overrides` for Growth / Value / Blend. Those three
+fill the equity-breakdown slide's sector, market-cap and style donuts; a
+panel with no CSV behind it says "Desk classification not supplied" rather
+than showing a split. `--bucket-overrides` drives the fixed-income grouping
+on the holdings list, and `--vehicle-overrides` the direct-line / fund split.
 
 ### 3. Extract the market update (you do this — it's not a script)
 

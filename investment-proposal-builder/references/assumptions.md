@@ -78,14 +78,16 @@ than with the sleeve's bars and coins.
 
 ## 3. Currency of record
 
-- Portfolio total value and all EUR-denominated figures use the
-  `Valuation + accr. interest (EUR)` column.
-- `base_currency` (used to label every aggregate monetary figure — total
-  value, KPIs, sleeve values, rate-impact) is **fixed at EUR**, matching
-  this column and the file's own stated total (e.g. "Total: 21'300'578
-  EUR"). This is deliberately NOT the same as `dominant_holding_currency`
+- Portfolio total value and every aggregate monetary figure use the
+  export's own base-currency valuation column.
+- `base_currency` is **read from that column's header**, not assumed: a
+  header of `Valuation + accr. interest (EUR)` makes the portfolio a euro
+  portfolio, `(USD)` a dollar one (`detect_base_currency()`). The same desk
+  sends both, and hardcoding EUR silently valued a dollar account at zero —
+  every row's lookup missed. A file with no such column is an error, not a
+  default. This is deliberately NOT the same as `dominant_holding_currency`
   (the currency with the largest weighted valuation, used only for
-  informational purposes) — conflating the two would label EUR-denominated
+  informational purposes) — conflating the two would label base-currency
   aggregates with whatever currency happens to dominate the book, which is
   wrong regardless of which currency wins. A single holding's own value is
   shown in that holding's own `Currency` column via `value_qc` — see §9.
@@ -192,11 +194,9 @@ classified **Direct line** without consulting it:
   unless the caller supplies `--sector-overrides overrides.csv` (columns
   `isin,sector`, a desk-maintained issuer→GICS-style mapping).
 
-  **No slide renders it.** Sector and market-cap breakdowns were dropped
-  from this deck (slide_recipe.md, "Sector and market-cap breakdowns are not
-  in this deck"), so `--sector-overrides` now affects `parsed.json` alone.
-  The calculation stays because the instruction was about this presentation,
-  not about the rule.
+  It feeds the equity-breakdown slide's sector donut (slide_recipe.md).
+  Without the file that panel says "Desk classification not supplied"
+  rather than showing a split.
 
 ## 8. Equity breakdown (geography / sector / market cap)
 
@@ -206,15 +206,22 @@ classified **Direct line** without consulting it:
   equity sleeve (not the whole portfolio). This is the same taxonomy used
   by the slide 10 line-items table, so the two slides agree with each
   other.
-  Geography is the only one of the three that reaches a slide: it sits in
-  the right-hand panel of the geographic-exposure slide, beside the
-  whole-portfolio split.
+  Geography sits in the right-hand panel of the geographic-exposure slide,
+  beside the whole-portfolio split; sector, market cap and style share the
+  equity-breakdown slide.
 - Sector: same `--sector-overrides` mechanism and `null`-when-absent
-  behavior as §7, renormalized to the equity sleeve. Computed, not rendered.
+  behavior as §7, renormalized to the equity sleeve.
 - Market cap is not a column in the export — every equity line is
   classified `Large cap` unless the desk supplies
-  `--market-cap-overrides overrides.csv` (columns `isin,market_cap`);
-  without overrides it is `null` in `parsed.json`. Computed, not rendered.
+  `--market-cap-overrides overrides.csv` (columns `isin,market_cap`).
+- Style (Growth / Value / Blend) is not a column either: it comes from
+  `--style-overrides overrides.csv` (columns `isin,style`), defaulting to
+  `Blend` for any equity line the file does not name.
+
+None of the three can be derived from the export. Each is `null` in
+`parsed.json` without its CSV, and its panel says so on the slide instead of
+showing a split — the same rule as everywhere else here: report the gap,
+never fill it.
 
 ## 9. Concentration & top holdings
 

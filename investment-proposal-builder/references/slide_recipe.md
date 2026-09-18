@@ -17,6 +17,7 @@ from `assets/template.pptx` — no per-client data goes on it.
 | 9-N | Proposed portfolio: full holdings list | `parsed.json: line_items` | `build_line_items_tables.build` (runs **last** — see note below) |
 | N+1 | Portfolio overview | `parsed.json`: KPIs, `asset_allocation_pct`, `currency_exposure_pct` | `build_proposal.fill_portfolio_overview` |
 | N+2 | Geographic exposure — whole portfolio and equity sleeve, side by side | `parsed.json: geographic_exposure_pct`, `equity_breakdown.by_geography_pct` | `build_proposal.fill_geographic_exposure` |
+| N+6 | Equity breakdown — sector / market cap / style | `parsed.json: equity_breakdown` (desk override CSVs) | `build_proposal.fill_equity_breakdown` |
 | N+3 | Fixed Income: income-type specifics | `parsed.json: sleeves["Fixed Income"]` | `build_proposal.fill_sleeve_slides` |
 | N+4 | Fixed Income Breakdown (proposed bond selection) | `parsed.json: proposed_bond_selection` (from the `Fixed Income` Excel tab — a curated proposal, NOT current holdings); **slide is removed when the Excel has no such tab** | `build_proposal.fill_proposed_bond_selection` / `drop_proposed_bond_selection` |
 | N+5 | Equities: income-type specifics | `parsed.json: sleeves["Equities"]` | `build_proposal.fill_sleeve_slides` |
@@ -41,27 +42,40 @@ those positions are only correct before the holdings-list slide count
 changes. This bit us once during development — see the comment above the
 call order in `build_proposal.build()`.
 
-## Sector and market-cap breakdowns are not in this deck
+## The four equity views, and where each one lives
 
-Dropped by explicit instruction, together with the slide that carried them.
-Two things follow:
+- **Geography** shares the "Geographic exposure" slide: the whole portfolio
+  on the left, the equity sleeve on the right.
+- **Sector, market cap and style** are the three donuts on the
+  "Equity breakdown" slide.
 
-- The "Geographic & sector exposure" slide became **"Geographic exposure"**:
-  the sector panel now holds the equity sleeve's regional split, and the
-  whole-portfolio split keeps the left panel.
-- The **"Equity breakdown"** slide (equity geography / sector / market cap)
-  is removed on every build — `build()` drops it after the line-items
-  rebuild, the same way the proposed-bond-selection slide is dropped when
-  its source tab is missing. Its one surviving panel, equity geography, is
-  what moved onto the geographic slide.
+All four come from desk override CSVs, because none of them is a column in
+the custodian export (assumptions.md §7-8). A panel with no CSV behind it
+reads "Desk classification not supplied" rather than inventing a split.
 
-`parse_portfolio.py` still computes `sector_exposure_pct` and
-`equity_breakdown.by_sector_pct` / `by_market_cap_pct`, and
-`--sector-overrides` / `--market-cap-overrides` still populate them — but
-nothing renders any of it, so those two flags now affect `parsed.json`
-only. Left in place deliberately: the instruction was about this
-presentation, and re-adding a sector slide should not mean rebuilding the
-calculation behind it.
+**Legend capacity is the binding constraint on that slide.** Its donuts have
+no legend and no category labels of their own — the dot-and-textbox pairs
+beside each one *are* the legend, so a donut can show only as many slices as
+the legend has rows. The template drew 5 / 5 / 3. `grow_legend()` clones the
+last dot+label pair down to a 19.0cm floor when a breakdown needs more rows
+(sector usually does), and `cap_categories()` rolls whatever still does not
+fit into one honest "Other". Legend dots are painted from the colours read
+back off the donut itself, so the two cannot drift apart.
+
+## Slides that come out when the data isn't there
+
+`build()` collects these after the line-items rebuild and drops them by part
+identity. All follow one rule: a slide with nothing behind it is worse than
+no slide.
+
+| Slide | Dropped when |
+|---|---|
+| Fixed Income / Alternatives / Commodities / Structured products sleeves | that sleeve holds no positions |
+| Fixed Income Breakdown | the Excel has no `Fixed Income` proposal tab |
+| Income & interest-rate sensitivity | nothing in the book carries a yield, a coupon or a duration |
+
+An all-equity portfolio therefore ships a visibly shorter deck, and that is
+the point — the alternative is four slides of empty charts.
 
 ## Scope boundary
 

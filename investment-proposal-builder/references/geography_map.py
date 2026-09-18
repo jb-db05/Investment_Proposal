@@ -120,7 +120,17 @@ EQUITY_REGION_MAP: dict[str, str] = {
     "Finland": "Eurozone",
     "Portugal": "Eurozone",
     "European Union": "Eurozone",
-    "Sweden": "Global / thematic",
+    "Taiwan": "EM",
+    "Taiwan, Province of China": "EM",
+    "South Korea": "EM",
+    "Korea, Republic of": "EM",
+    # Developed Europe outside the euro (and outside the UK/Switzerland buckets
+    # that already have their own). Sweden used to fall through to
+    # "Global / thematic", which put a Stockholm-listed industrial in the same
+    # slice as a world ETF.
+    "Sweden": "Europe ex-EMU",
+    "Denmark": "Europe ex-EMU",
+    "Norway": "Europe ex-EMU",
     "Misc.Europe": "Global / thematic",
     "Miscellaneous": "Global / thematic",
     "Stateless": "Global / thematic",

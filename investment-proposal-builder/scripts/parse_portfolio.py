@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -384,8 +385,25 @@ def pct(x: float) -> float:
     return round(x * 100, 6)
 
 
-def val_eur(row: dict) -> float:
-    v = row.get("valuation + accr. interest (eur)")
+# The export's own reporting currency lives in the valuation column's header:
+# "Valuation + accr. interest (EUR)" on a euro-based account, "(USD)" on a
+# dollar one. It is NOT a fixed EUR (assumptions.md §3) and it is NOT the
+# "(in QC)" column, which is each holding's own quote currency.
+BASE_VALUE_HEADER = re.compile(r"^valuation \+ accr\. interest \(([a-z]{3})\)$")
+
+
+def detect_base_currency(headers: dict[str, int]) -> tuple[str, str]:
+    """(currency, header key) of the export's base-currency valuation column."""
+    for h in headers:
+        m = BASE_VALUE_HEADER.match(h)
+        if m:
+            return m.group(1).upper(), h
+    sys.exit("Error: no 'Valuation + accr. interest (<CCY>)' column in this file — "
+             "cannot tell what currency the portfolio reports in")
+
+
+def val_base(row: dict, header: str) -> float:
+    v = row.get(header)
     try:
         return float(v or 0)
     except (TypeError, ValueError):
@@ -409,6 +427,9 @@ def main():
     ap.add_argument("--bucket-overrides", default=None)
     ap.add_argument("--market-cap-overrides", default=None)
     ap.add_argument("--sector-overrides", default=None)
+    ap.add_argument("--style-overrides", default=None,
+                    help="CSV isin,style — 'Growth' / 'Value' / 'Blend'. Equity style is not "
+                          "in the export either (assumptions.md §8).")
     ap.add_argument("--vehicle-overrides", default=None,
                     help="CSV isin,vehicle — 'Direct line' / 'Fund' / 'Structured / AMC'. "
                           "Overrides the assumptions.md §6 heuristic, which cannot tell a "
@@ -417,13 +438,15 @@ def main():
     args = ap.parse_args()
 
     wb = openpyxl.load_workbook(args.excel_path, data_only=True)
-    _, port_rows = load_sheet_rows(pick_portfolio_sheet(wb))
+    headers, port_rows = load_sheet_rows(pick_portfolio_sheet(wb))
+    base_ccy, base_value_header = detect_base_currency(headers)
     proposed_bond_selection = parse_proposed_bonds(wb) if "Fixed Income" in wb.sheetnames else None
 
     bucket_overrides = load_overrides(args.bucket_overrides, "bucket")
     mcap_overrides = load_overrides(args.market_cap_overrides, "market_cap")
     sector_overrides = load_overrides(args.sector_overrides, "sector")
     vehicle_overrides = load_overrides(args.vehicle_overrides, "vehicle")
+    style_overrides = load_overrides(args.style_overrides, "style")
 
     included, uncalled = [], []
     for row in port_rows:
@@ -431,7 +454,7 @@ def main():
         if section not in PORTFOLIO_SECTIONS:
             continue
         w = weight(row)
-        v = val_eur(row)
+        v = val_base(row, base_value_header)
         if w <= 0 or v == 0:
             desc = row.get("description") or ""
             if "COMMIT" in str(desc).upper():
@@ -446,14 +469,14 @@ def main():
             "Commodities" if is_precious_metal_account(row.get("description"), row.get("currency"))
             else ASSET_CLASS_MAP[section])
         row["_weight"] = w
-        row["_value_eur"] = v
+        row["_value_base"] = v
         try:
             row["_value_qc"] = float(row.get("valuation + accr. interest (in qc)") or 0)
         except (TypeError, ValueError):
             row["_value_qc"] = 0.0
         included.append(row)
 
-    total_value_eur = sum(r["_value_eur"] for r in included)
+    total_value_base = sum(r["_value_base"] for r in included)
 
     # Base/reporting currency: fixed at EUR, matching the custodian file's
     # own "Valuation + accr. interest (EUR)" column and its own stated
@@ -462,10 +485,10 @@ def main():
     # a property of the holdings, not of the reporting base) -- conflating
     # the two mislabels every EUR-denominated aggregate figure with
     # whatever currency happens to dominate the book.
-    base_currency = "EUR"
+    base_currency = base_ccy
     ccy_val = defaultdict(float)
     for r in included:
-        ccy_val[str(r.get("currency") or "Other")] += r["_value_eur"]
+        ccy_val[str(r.get("currency") or "Other")] += r["_value_base"]
     dominant_holding_currency = max(ccy_val.items(), key=lambda kv: kv[1])[0] if ccy_val else base_currency
 
     # --- §5 asset allocation donut ---
@@ -519,7 +542,7 @@ def main():
                 {
                     "name": r.get("description"),
                     "isin": r.get("isin code"),
-                    "value_eur": r["_value_eur"],
+                    "value_base": r["_value_base"],
                     "value_qc": r["_value_qc"],
                     "currency": r.get("currency"),
                     "weight_pct": pct(r["_weight"]),
@@ -539,21 +562,29 @@ def main():
     # --- §8 equity breakdown (renormalized to the equity sleeve) ---
     equity_rows = [r for r in included if r["_asset_class"] == "Equities"]
     eq_total_w = sum(r["_weight"] for r in equity_rows) or 1.0
-    eq_geo, eq_sector, eq_mcap = defaultdict(float), defaultdict(float), defaultdict(float)
+    eq_geo = defaultdict(float)
+    eq_sector, eq_mcap, eq_style = defaultdict(float), defaultdict(float), defaultdict(float)
     mcap_available = bool(mcap_overrides)
+    style_available = bool(style_overrides)
     for r in equity_rows:
         w_norm = r["_weight"] / eq_total_w
+        isin = str(r.get("isin code") or "").strip()
         eq_geo[equity_region_of(r.get("geographical breakdown"))] += w_norm
         if sector_data_available:
-            isin = str(r.get("isin code") or "")
             eq_sector[sector_overrides.get(isin, "Other")] += w_norm
         if mcap_available:
-            isin = str(r.get("isin code") or "")
             eq_mcap[mcap_overrides.get(isin, "Large cap")] += w_norm
+        if style_available:
+            eq_style[style_overrides.get(isin, "Blend")] += w_norm
+
+    def by_weight(d):
+        return {k: pct(v) for k, v in sorted(d.items(), key=lambda kv: -kv[1])}
+
     equity_breakdown = {
-        "by_geography_pct": {k: pct(v) for k, v in sorted(eq_geo.items(), key=lambda kv: -kv[1])},
-        "by_sector_pct": ({k: pct(v) for k, v in sorted(eq_sector.items(), key=lambda kv: -kv[1])} if sector_data_available else None),
-        "by_market_cap_pct": ({k: pct(v) for k, v in sorted(eq_mcap.items(), key=lambda kv: -kv[1])} if mcap_available else None),
+        "by_geography_pct": by_weight(eq_geo),
+        "by_sector_pct": by_weight(eq_sector) if sector_data_available else None,
+        "by_market_cap_pct": by_weight(eq_mcap) if mcap_available else None,
+        "by_style_pct": by_weight(eq_style) if style_available else None,
     }
 
     # --- §9 concentration & top holdings ---
@@ -563,7 +594,7 @@ def main():
     for i, r in enumerate(by_weight[:20], 1):
         cum += r["_weight"]
         concentration_rows.append({
-            "rank": i, "name": r.get("description"), "value_eur": r["_value_eur"],
+            "rank": i, "name": r.get("description"), "value_base": r["_value_base"],
             "weight_pct": pct(r["_weight"]), "cumulative_pct": pct(cum),
         })
     concentration = {
@@ -590,20 +621,20 @@ def main():
             running_yield_den += r["_weight"]
     running_yield_pct = round(running_yield_num, 4) if running_yield_den else None
 
-    fi_total_val = sum(r["_value_eur"] for r in fi_rows)
+    fi_total_val = sum(r["_value_base"] for r in fi_rows)
     dur_num, dur_den = 0.0, 0.0
     duration_subsleeves = defaultdict(lambda: {"value": 0.0, "dur_weighted": 0.0})
     for r in fi_rows:
         d = r.get("duration")
         if isinstance(d, (int, float)):
-            dur_num += r["_value_eur"] * d
-            dur_den += r["_value_eur"]
+            dur_num += r["_value_base"] * d
+            dur_den += r["_value_base"]
         label = describe_bond_subsleeve(r)
-        duration_subsleeves[label]["value"] += r["_value_eur"]
+        duration_subsleeves[label]["value"] += r["_value_base"]
         if isinstance(d, (int, float)):
-            duration_subsleeves[label]["dur_weighted"] += r["_value_eur"] * d
+            duration_subsleeves[label]["dur_weighted"] += r["_value_base"] * d
     fi_duration = round(dur_num / dur_den, 2) if dur_den else None
-    rate_impact_eur = round(-fi_duration * 0.01 * fi_total_val, 2) if fi_duration else None
+    rate_impact_base = round(-fi_duration * 0.01 * fi_total_val, 2) if fi_duration else None
 
     income_by_sleeve = defaultdict(float)
     for r in included:
@@ -611,21 +642,21 @@ def main():
         c = r.get("coupon (%)")
         rate = y if isinstance(y, (int, float)) else (c if isinstance(c, (int, float)) else None)
         if rate is not None:
-            income_by_sleeve[r["_asset_class"]] += r["_value_eur"] * rate / 100.0
+            income_by_sleeve[r["_asset_class"]] += r["_value_base"] * rate / 100.0
     total_income = sum(income_by_sleeve.values()) or 1.0
 
     income = {
         "running_yield_pct": running_yield_pct,
         "fi_duration_years": fi_duration,
-        "rate_impact_100bp_eur": rate_impact_eur,
+        "rate_impact_100bp_base": rate_impact_base,
         "income_by_sleeve": [
-            {"sleeve": k, "income_eur": round(v, 2), "pct_of_income": pct(v / total_income)}
+            {"sleeve": k, "income_base": round(v, 2), "pct_of_income": pct(v / total_income)}
             for k, v in sorted(income_by_sleeve.items(), key=lambda kv: -kv[1])
         ],
         "fi_duration_subsleeves": [
             {
                 "label": k,
-                "value_eur": round(v["value"], 2),
+                "value_base": round(v["value"], 2),
                 "avg_duration": round(v["dur_weighted"] / v["value"], 2) if v["value"] and v["dur_weighted"] else 0.0,
                 "contribution": round(v["dur_weighted"] / fi_total_val, 2) if fi_total_val else 0.0,
             }
@@ -646,7 +677,8 @@ def main():
     line_items = []
     fi_bucket_order = ["Govies 1-10 (local)", "Govies 10+ (local)", "High Yield (local or global hdg)",
                         "Corporate IG (local)", "EM Debt"]
-    equity_region_order = ["US", "Eurozone", "UK", "Switzerland", "Japan", "EM", "Global / thematic"]
+    equity_region_order = ["US", "Eurozone", "Europe ex-EMU", "UK", "Switzerland", "Japan",
+                            "EM", "Global / thematic"]
     for r in included:
         ac = r["_asset_class"]
         if ac == "Fixed Income":
@@ -691,7 +723,7 @@ def main():
         "valuation_date": valuation_date,
         "base_currency": base_currency,
         "dominant_holding_currency": dominant_holding_currency,
-        "total_value_eur": round(total_value_eur, 2),
+        "total_value_base": round(total_value_base, 2),
         "num_positions": len(included),
         "largest_position_pct": pct(by_weight[0]["_weight"]) if by_weight else 0,
         "liquid_share_pct": pct(sum(v for k, v in liq_weight.items() if k != ILLIQUID_BUCKET)),
@@ -712,7 +744,8 @@ def main():
 
     Path(args.output).write_text(json.dumps(parsed, indent=2, default=str))
     print(f"Wrote {args.output}: {len(included)} positions, "
-          f"{parsed['total_value_eur']:,.0f} EUR, dominant holding currency {dominant_holding_currency}")
+          f"{parsed['total_value_base']:,.0f} {base_currency}, "
+          f"dominant holding currency {dominant_holding_currency}")
 
 
 if __name__ == "__main__":

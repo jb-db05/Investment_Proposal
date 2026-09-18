@@ -1,0 +1,728 @@
+{
+  "client_name": "[Client Name]",
+  "risk_profile_input": "Growth",
+  "valuation_date": "18 September 2026",
+  "base_currency": "USD",
+  "dominant_holding_currency": "USD",
+  "total_value_base": 2380941.05,
+  "num_positions": 44,
+  "largest_position_pct": 19.135868,
+  "liquid_share_pct": 100.0,
+  "asset_allocation_pct": {
+    "Equities": 76.593931,
+    "Cash": 19.178341,
+    "Other": 2.219984,
+    "Commodities": 2.007744
+  },
+  "currency_exposure_pct": {
+    "USD": 98.647913,
+    "CHF": 1.352087
+  },
+  "geographic_exposure_pct": {
+    "US": 83.532148,
+    "Global": 13.956438,
+    "Europe DM": 2.511414
+  },
+  "sector_exposure_pct": {
+    "Information technology": 23.477781,
+    "Other": 23.406069,
+    "Broad index": 17.29778,
+    "Energy": 10.505566,
+    "Communication services": 9.414723,
+    "Health care": 6.400584,
+    "Consumer discretionary": 4.18413,
+    "Industrials": 4.095795,
+    "Materials": 0.931235,
+    "Financials": 0.286336
+  },
+  "sleeves": {
+    "Cash": {
+      "total_weight_pct": 19.178341,
+      "num_lines": 2,
+      "top_holdings": [
+        {
+          "name": "CURRENT ACCOUNT IN USD",
+          "isin": null,
+          "value_base": 455613.73,
+          "value_qc": 455613.73,
+          "currency": "USD",
+          "weight_pct": 19.135868,
+          "duration": 0,
+          "yield_pct": 0,
+          "price": 1,
+          "metal_account": false
+        },
+        {
+          "name": "INCOME TO BE RECEIVED IN USD",
+          "isin": null,
+          "value_base": 1011.27,
+          "value_qc": 1011.27,
+          "currency": "USD",
+          "weight_pct": 0.042474,
+          "duration": 0,
+          "yield_pct": 0,
+          "price": 1,
+          "metal_account": false
+        }
+      ],
+      "vehicle_breakdown_pct": {
+        "Direct line": 100.0
+      },
+      "duration_coverage": null
+    },
+    "Commodities": {
+      "total_weight_pct": 2.007744,
+      "num_lines": 1,
+      "top_holdings": [
+        {
+          "name": "SPDR GOLD TRUST",
+          "isin": "US78463V1070",
+          "value_base": 47803.2,
+          "value_qc": 47803.2,
+          "currency": "USD",
+          "weight_pct": 2.007744,
+          "duration": null,
+          "yield_pct": null,
+          "price": 398.36,
+          "metal_account": false
+        }
+      ],
+      "vehicle_breakdown_pct": {
+        "Direct line": 100.0
+      },
+      "duration_coverage": null
+    },
+    "Equities": {
+      "total_weight_pct": 76.593931,
+      "num_lines": 38,
+      "top_holdings": [
+        {
+          "name": "NVIDIA CORP",
+          "isin": "US67066G1040",
+          "value_base": 137745.52,
+          "value_qc": 137745.52,
+          "currency": "USD",
+          "weight_pct": 5.785339,
+          "duration": null,
+          "yield_pct": null,
+          "price": 219.34,
+          "metal_account": false
+        },
+        {
+          "name": "ALPHABET A",
+          "isin": "US02079K3059",
+          "value_base": 135458.7,
+          "value_qc": 135458.7,
+          "currency": "USD",
+          "weight_pct": 5.689292,
+          "duration": null,
+          "yield_pct": null,
+          "price": 347.33,
+          "metal_account": false
+        },
+        {
+          "name": "VANGUARD 500 IDX ETF",
+          "isin": "US9229083632",
+          "value_base": 121979.22,
+          "value_qc": 121979.22,
+          "currency": "USD",
+          "weight_pct": 5.123152,
+          "duration": null,
+          "yield_pct": null,
+          "price": 701.03,
+          "metal_account": false
+        },
+        {
+          "name": "APPLE",
+          "isin": "US0378331005",
+          "value_base": 120646.0,
+          "value_qc": 120646.0,
+          "currency": "USD",
+          "weight_pct": 5.067156,
+          "duration": null,
+          "yield_pct": null,
+          "price": 337,
+          "metal_account": false
+        },
+        {
+          "name": "STAT ST ENRGY SLSEC ETF",
+          "isin": "US81369Y5069",
+          "value_base": 106198.56,
+          "value_qc": 106198.56,
+          "currency": "USD",
+          "weight_pct": 4.460361,
+          "duration": null,
+          "yield_pct": null,
+          "price": 64.48,
+          "metal_account": false
+        }
+      ],
+      "vehicle_breakdown_pct": {
+        "Direct line": 54.774367,
+        "Fund": 45.225633
+      },
+      "duration_coverage": null
+    },
+    "Other": {
+      "total_weight_pct": 2.219984,
+      "num_lines": 3,
+      "top_holdings": [
+        {
+          "name": "ISHARES BITCOIN ETF",
+          "isin": "US46438F1012",
+          "value_base": 30310.0,
+          "value_qc": 30310.0,
+          "currency": "USD",
+          "weight_pct": 1.273026,
+          "duration": null,
+          "yield_pct": null,
+          "price": 43.3,
+          "metal_account": false
+        },
+        {
+          "name": "FIDL WSE ORGN BITCOIN ETF",
+          "isin": "US3159481098",
+          "value_base": 16632.5,
+          "value_qc": 16632.5,
+          "currency": "USD",
+          "weight_pct": 0.698568,
+          "duration": null,
+          "yield_pct": null,
+          "price": 66.53,
+          "metal_account": false
+        },
+        {
+          "name": "GRAYSCALE BITCOIN TR ETF",
+          "isin": "US3896371099",
+          "value_base": 5914.0,
+          "value_qc": 5914.0,
+          "currency": "USD",
+          "weight_pct": 0.248389,
+          "duration": null,
+          "yield_pct": null,
+          "price": 59.14,
+          "metal_account": false
+        }
+      ],
+      "vehicle_breakdown_pct": {
+        "Fund": 100.0
+      },
+      "duration_coverage": null
+    }
+  },
+  "equity_breakdown": {
+    "by_geography_pct": {
+      "US": 79.73613,
+      "Global / thematic": 16.985002,
+      "Switzerland": 1.765266,
+      "UK": 0.921522,
+      "Europe ex-EMU": 0.59208
+    },
+    "by_sector_pct": {
+      "Information technology": 30.652273,
+      "Broad index": 22.583748,
+      "Energy": 13.715925,
+      "Communication services": 12.291735,
+      "Health care": 8.356516,
+      "Consumer discretionary": 5.462744,
+      "Industrials": 5.347415,
+      "Materials": 1.215808,
+      "Financials": 0.373837
+    },
+    "by_market_cap_pct": {
+      "Large cap": 82.732817,
+      "All cap": 6.533086,
+      "Mid cap": 6.305062,
+      "Small/mid cap": 2.711853,
+      "Small cap": 1.717182
+    },
+    "by_style_pct": {
+      "Growth": 51.696144,
+      "Value": 24.489822,
+      "Blend": 23.814033
+    }
+  },
+  "concentration": {
+    "top_holdings": [
+      {
+        "rank": 1,
+        "name": "CURRENT ACCOUNT IN USD",
+        "value_base": 455613.73,
+        "weight_pct": 19.135868,
+        "cumulative_pct": 19.135868
+      },
+      {
+        "rank": 2,
+        "name": "NVIDIA CORP",
+        "value_base": 137745.52,
+        "weight_pct": 5.785339,
+        "cumulative_pct": 24.921207
+      },
+      {
+        "rank": 3,
+        "name": "ALPHABET A",
+        "value_base": 135458.7,
+        "weight_pct": 5.689292,
+        "cumulative_pct": 30.6105
+      },
+      {
+        "rank": 4,
+        "name": "VANGUARD 500 IDX ETF",
+        "value_base": 121979.22,
+        "weight_pct": 5.123152,
+        "cumulative_pct": 35.733651
+      },
+      {
+        "rank": 5,
+        "name": "APPLE",
+        "value_base": 120646.0,
+        "weight_pct": 5.067156,
+        "cumulative_pct": 40.800807
+      },
+      {
+        "rank": 6,
+        "name": "STAT ST ENRGY SLSEC ETF",
+        "value_base": 106198.56,
+        "weight_pct": 4.460361,
+        "cumulative_pct": 45.261168
+      },
+      {
+        "rank": 7,
+        "name": "META PLATFORMS A",
+        "value_base": 88700.3,
+        "weight_pct": 3.72543,
+        "cumulative_pct": 48.986598
+      },
+      {
+        "rank": 8,
+        "name": "VANGUARD MO T/STK MKT ETF",
+        "value_base": 86703.54,
+        "weight_pct": 3.641566,
+        "cumulative_pct": 52.628164
+      },
+      {
+        "rank": 9,
+        "name": "VANGUARD INFO TECH ETF",
+        "value_base": 77747.2,
+        "weight_pct": 3.265398,
+        "cumulative_pct": 55.893562
+      },
+      {
+        "rank": 10,
+        "name": "DIAMONDBACK ENERGY",
+        "value_base": 76806.6,
+        "weight_pct": 3.225893,
+        "cumulative_pct": 59.119455
+      },
+      {
+        "rank": 11,
+        "name": "ISHARES MSCI EM MKTS IDX",
+        "value_base": 73601.0,
+        "weight_pct": 3.091257,
+        "cumulative_pct": 62.210712
+      },
+      {
+        "rank": 12,
+        "name": "VANECK SEMICOND ETF",
+        "value_base": 61667.1,
+        "weight_pct": 2.590031,
+        "cumulative_pct": 64.800742
+      },
+      {
+        "rank": 13,
+        "name": "NIKE INC B",
+        "value_base": 54830.88,
+        "weight_pct": 2.302908,
+        "cumulative_pct": 67.10365
+      },
+      {
+        "rank": 14,
+        "name": "VANGUARD ENERGY ETF SHS",
+        "value_base": 50320.78,
+        "weight_pct": 2.113483,
+        "cumulative_pct": 69.217133
+      },
+      {
+        "rank": 15,
+        "name": "FIRST TRUST SMID CAP ETF",
+        "value_base": 49454.88,
+        "weight_pct": 2.077115,
+        "cumulative_pct": 71.294248
+      },
+      {
+        "rank": 16,
+        "name": "SPDR GOLD TRUST",
+        "value_base": 47803.2,
+        "weight_pct": 2.007744,
+        "cumulative_pct": 73.301992
+      },
+      {
+        "rank": 17,
+        "name": "1ST NASDAQ GRID INFRA ETF",
+        "value_base": 47393.12,
+        "weight_pct": 1.990521,
+        "cumulative_pct": 75.292512
+      },
+      {
+        "rank": 18,
+        "name": "MICROSOFT",
+        "value_base": 41313.25,
+        "weight_pct": 1.735165,
+        "cumulative_pct": 77.027677
+      },
+      {
+        "rank": 19,
+        "name": "VANGUARD INDUST IDX FD",
+        "value_base": 40593.75,
+        "weight_pct": 1.704946,
+        "cumulative_pct": 78.732623
+      },
+      {
+        "rank": 20,
+        "name": "ELI LILLY & CO",
+        "value_base": 40335.4,
+        "weight_pct": 1.694095,
+        "cumulative_pct": 80.426717
+      }
+    ],
+    "top_5_pct": 40.800807,
+    "top_10_pct": 59.119455,
+    "top_20_pct": 80.426717,
+    "positions_above_5pct": 5
+  },
+  "liquidity_profile_pct": {
+    "Liquid assets": 78.813915,
+    "Cash & metal accounts": 19.178341,
+    "Physical assets": 2.007744
+  },
+  "income": {
+    "running_yield_pct": 0.0,
+    "fi_duration_years": null,
+    "rate_impact_100bp_base": null,
+    "income_by_sleeve": [
+      {
+        "sleeve": "Cash",
+        "income_base": 0.0,
+        "pct_of_income": 0.0
+      }
+    ],
+    "fi_duration_subsleeves": []
+  },
+  "risk_profile": {
+    "selected_profile": "Growth",
+    "growth_assets_pct": 78.601675,
+    "defensive_assets_pct": 19.178341
+  },
+  "uncalled_commitments": [],
+  "line_items": [
+    {
+      "top_category": "Cash",
+      "group": "Cash",
+      "isin": null,
+      "instrument": "CURRENT ACCOUNT IN USD",
+      "weight_pct": 19.135868
+    },
+    {
+      "top_category": "Cash",
+      "group": "Cash",
+      "isin": null,
+      "instrument": "INCOME TO BE RECEIVED IN USD",
+      "weight_pct": 0.042474
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US67066G1040",
+      "instrument": "NVIDIA CORP",
+      "weight_pct": 5.785339
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US02079K3059",
+      "instrument": "ALPHABET A",
+      "weight_pct": 5.689292
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US9229083632",
+      "instrument": "VANGUARD 500 IDX ETF",
+      "weight_pct": 5.123152
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US0378331005",
+      "instrument": "APPLE",
+      "weight_pct": 5.067156
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US81369Y5069",
+      "instrument": "STAT ST ENRGY SLSEC ETF",
+      "weight_pct": 4.460361
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US30303M1027",
+      "instrument": "META PLATFORMS A",
+      "weight_pct": 3.72543
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US9229087690",
+      "instrument": "VANGUARD MO T/STK MKT ETF",
+      "weight_pct": 3.641566
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US92204A7028",
+      "instrument": "VANGUARD INFO TECH ETF",
+      "weight_pct": 3.265398
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US25278X1090",
+      "instrument": "DIAMONDBACK ENERGY",
+      "weight_pct": 3.225893
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US6541061031",
+      "instrument": "NIKE INC B",
+      "weight_pct": 2.302908
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US92204A3068",
+      "instrument": "VANGUARD ENERGY ETF SHS",
+      "weight_pct": 2.113483
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US5949181045",
+      "instrument": "MICROSOFT",
+      "weight_pct": 1.735165
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US92204A6038",
+      "instrument": "VANGUARD INDUST IDX FD",
+      "weight_pct": 1.704946
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US5324571083",
+      "instrument": "ELI LILLY & CO",
+      "weight_pct": 1.694095
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US11135F1012",
+      "instrument": "BROADCOM INC",
+      "weight_pct": 1.61912
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US00287Y1091",
+      "instrument": "ABBVIE",
+      "weight_pct": 1.574623
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US75886F1075",
+      "instrument": "REGENERON PHARMACEUTICALS",
+      "weight_pct": 1.326282
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US0404132054",
+      "instrument": "ARISTA NETWORKS",
+      "weight_pct": 1.298946
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US0231351067",
+      "instrument": "AMAZON COM",
+      "weight_pct": 1.266004
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US8740391003",
+      "instrument": "TAIWAN SEMICONDUCTOR(SADR",
+      "weight_pct": 0.90355
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US68989M2026",
+      "instrument": "OUSTER",
+      "weight_pct": 0.657622
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US88160R1014",
+      "instrument": "TESLA",
+      "weight_pct": 0.615219
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US5949724083",
+      "instrument": "STRATEGY",
+      "weight_pct": 0.555453
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US2473617023",
+      "instrument": "DELTA AIR LINES",
+      "weight_pct": 0.400329
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US9219464065",
+      "instrument": "VANGUARD HIGH DIV YLD ETF",
+      "weight_pct": 0.377733
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US9229085959",
+      "instrument": "VANGUARD MORN S/CAP GWTH",
+      "weight_pct": 0.355763
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US9229086114",
+      "instrument": "VANGUARD S/CAP VAL ETF",
+      "weight_pct": 0.301872
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US92204A4058",
+      "instrument": "VANGUARD WORLD FINANCIALS",
+      "weight_pct": 0.286336
+    },
+    {
+      "top_category": "Equities",
+      "group": "Europe ex-EMU",
+      "isin": "US6701002056",
+      "instrument": "NOVO NORDISK (SADR) B",
+      "weight_pct": 0.453497
+    },
+    {
+      "top_category": "Equities",
+      "group": "UK",
+      "isin": "US0556221044",
+      "instrument": "BP (ADR)",
+      "weight_pct": 0.70583
+    },
+    {
+      "top_category": "Equities",
+      "group": "Switzerland",
+      "isin": "CH1335392721",
+      "instrument": "GALDERMA GROUP AG",
+      "weight_pct": 1.352087
+    },
+    {
+      "top_category": "Equities",
+      "group": "Global / thematic",
+      "isin": "US4642872349",
+      "instrument": "ISHARES MSCI EM MKTS IDX",
+      "weight_pct": 3.091257
+    },
+    {
+      "top_category": "Equities",
+      "group": "Global / thematic",
+      "isin": "US92189F6768",
+      "instrument": "VANECK SEMICOND ETF",
+      "weight_pct": 2.590031
+    },
+    {
+      "top_category": "Equities",
+      "group": "Global / thematic",
+      "isin": "US33741X1028",
+      "instrument": "FIRST TRUST SMID CAP ETF",
+      "weight_pct": 2.077115
+    },
+    {
+      "top_category": "Equities",
+      "group": "Global / thematic",
+      "isin": "US33737A1088",
+      "instrument": "1ST NASDAQ GRID INFRA ETF",
+      "weight_pct": 1.990521
+    },
+    {
+      "top_category": "Equities",
+      "group": "Global / thematic",
+      "isin": "US9219097683",
+      "instrument": "VANGUARD TOTAL STK ETF",
+      "weight_pct": 1.362381
+    },
+    {
+      "top_category": "Equities",
+      "group": "Global / thematic",
+      "isin": "US9229086601",
+      "instrument": "VANGUARD GROWTH INDX FUND",
+      "weight_pct": 0.966942
+    },
+    {
+      "top_category": "Equities",
+      "group": "Global / thematic",
+      "isin": "US37954Y8306",
+      "instrument": "GLOBAL X COPPER MINER ETF",
+      "weight_pct": 0.931235
+    },
+    {
+      "top_category": "Commodities",
+      "group": "Commodities",
+      "isin": "US78463V1070",
+      "instrument": "SPDR GOLD TRUST",
+      "weight_pct": 2.007744
+    },
+    {
+      "top_category": "Other",
+      "group": "Other",
+      "isin": "US46438F1012",
+      "instrument": "ISHARES BITCOIN ETF",
+      "weight_pct": 1.273026
+    },
+    {
+      "top_category": "Other",
+      "group": "Other",
+      "isin": "US3159481098",
+      "instrument": "FIDL WSE ORGN BITCOIN ETF",
+      "weight_pct": 0.698568
+    },
+    {
+      "top_category": "Other",
+      "group": "Other",
+      "isin": "US3896371099",
+      "instrument": "GRAYSCALE BITCOIN TR ETF",
+      "weight_pct": 0.248389
+    }
+  ],
+  "proposed_bond_selection": null
+}

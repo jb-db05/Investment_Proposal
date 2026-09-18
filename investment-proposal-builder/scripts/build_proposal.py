@@ -322,8 +322,8 @@ def fmt_pct(value: float) -> str:
     return f"{value:.1f}%"
 
 
-def fmt_money_m(value_eur: float, currency: str) -> str:
-    return f"{currency} {value_eur / 1_000_000:.1f}m"
+def fmt_money_m(value_base: float, currency: str) -> str:
+    return f"{currency} {value_base / 1_000_000:.1f}m"
 
 
 def fmt_money_k(value: float, currency: str) -> str:
@@ -415,10 +415,10 @@ def rebuild_holdings_table(slide, table_shape_name, holdings, currency_fallback=
         # money — 144 XPT would print as "XPT 0k" for a 220k position. Those
         # rows are shown in the portfolio's base currency instead.
         if h.get("metal_account"):
-            ccy, value = currency_fallback, h.get("value_eur") or 0
+            ccy, value = currency_fallback, h.get("value_base") or 0
         else:
             ccy = h.get("currency") or currency_fallback
-            value = h.get("value_qc") or h.get("value_eur") or 0
+            value = h.get("value_qc") or h.get("value_base") or 0
         _cell(table.cell(r, 0), h.get("name") or "", size=9)
         _cell(table.cell(r, 1), fmt_money_k(value, ccy), size=9)
         _cell(table.cell(r, 2), fmt_pct(h['weight_pct']), size=9, align=PP_ALIGN.RIGHT)
@@ -439,7 +439,7 @@ def fill_concentration_table(slide, table_shape_name, rows, currency="EUR"):
             row = rows[i]
             _cell(table.cell(r, 0), str(row["rank"]), size=9)
             _cell(table.cell(r, 1), row["name"] or "", size=9)
-            _cell(table.cell(r, 2), f"{row['value_eur']:,.0f}", size=9, align=PP_ALIGN.RIGHT)
+            _cell(table.cell(r, 2), f"{row['value_base']:,.0f}", size=9, align=PP_ALIGN.RIGHT)
             _cell(table.cell(r, 3), fmt_pct(row['weight_pct']), size=9, align=PP_ALIGN.RIGHT)
             _cell(table.cell(r, 4), f"{row['cumulative_pct']:.1f}%", size=9, align=PP_ALIGN.RIGHT)
         else:
@@ -459,7 +459,7 @@ def fill_income_tables(slide, sleeve_table_name, duration_table_name, income):
             if i < len(rows):
                 row = rows[i]
                 _cell(table.cell(r, 0), row["sleeve"], size=9)
-                _cell(table.cell(r, 1), f"{row['income_eur']:,.0f}", size=9, align=PP_ALIGN.RIGHT)
+                _cell(table.cell(r, 1), f"{row['income_base']:,.0f}", size=9, align=PP_ALIGN.RIGHT)
                 _cell(table.cell(r, 2), fmt_pct(row['pct_of_income']), size=9, align=PP_ALIGN.RIGHT)
             else:
                 for c in range(3):
@@ -486,7 +486,7 @@ def fill_income_tables(slide, sleeve_table_name, duration_table_name, income):
             _cell(table.cell(0, c), h, bold=True, fill=TABLE_HEADER_FILL, font_color=TABLE_HEADER_FONT, size=9)
         for r, row in enumerate(rows, 1):
             _cell(table.cell(r, 0), row["label"], size=8.5)
-            _cell(table.cell(r, 1), f"{row['value_eur']:,.0f}", size=8.5, align=PP_ALIGN.RIGHT)
+            _cell(table.cell(r, 1), f"{row['value_base']:,.0f}", size=8.5, align=PP_ALIGN.RIGHT)
             _cell(table.cell(r, 2), f"{row['avg_duration']:.1f}", size=8.5, align=PP_ALIGN.RIGHT)
             _cell(table.cell(r, 3), f"{row['contribution']:.2f}", size=8.5, align=PP_ALIGN.RIGHT)
 
@@ -496,7 +496,7 @@ def fill_income_tables(slide, sleeve_table_name, duration_table_name, income):
 def fill_cover(prs, parsed):
     slide = get_slide(prs, 1)
     ccy = parsed["base_currency"]
-    amount_m = parsed["total_value_eur"] / 1_000_000
+    amount_m = parsed["total_value_base"] / 1_000_000
     set_text(slide, "Text Placeholder 5",
              f"{parsed['risk_profile_input']} {ccy} {amount_m:.1f}m\n\n"
              f"Prepared for {parsed['client_name']}\n\n"
@@ -529,12 +529,12 @@ def fill_profile_dial(prs, parsed):
 def fill_portfolio_overview(prs, parsed):
     slide = get_slide(prs, 11)
     ccy = parsed["base_currency"]
-    set_text(slide, "Rectangle 3", f"{ccy} {parsed['total_value_eur']/1_000_000:.1f}M\nTotal value")
+    set_text(slide, "Rectangle 3", f"{ccy} {parsed['total_value_base']/1_000_000:.1f}M\nTotal value")
     set_text(slide, "Rectangle 4", f"{parsed['num_positions']}\nPositions")
     set_text(slide, "Rectangle 5", f"{parsed['largest_position_pct']:.1f}%\nLargest position")
     set_text(slide, "Rectangle 6", f"{parsed['liquid_share_pct']:.1f}%\nLiquid share")
     ry = parsed["income"]["running_yield_pct"]
-    set_text(slide, "Rectangle 7", f"{ry:.1f}%\nRunning yield" if ry is not None else "n/a\nRunning yield")
+    set_text(slide, "Rectangle 7", f"{ry:.1f}%\nRunning yield" if ry else "n/a\nRunning yield")
     update_donut_by_name(slide, "Chart 10", parsed["asset_allocation_pct"])
     update_donut_by_name(slide, "Chart 14", parsed["currency_exposure_pct"])
 
@@ -568,7 +568,7 @@ def fill_geographic_exposure(prs, parsed):
     slide = get_slide(prs, GEOGRAPHIC_SLIDE)
     sleeve = parsed["sleeves"].get("Equities", {})
     ccy = parsed["base_currency"]
-    val_m = (sleeve.get("total_weight_pct", 0) / 100) * parsed["total_value_eur"] / 1_000_000
+    val_m = (sleeve.get("total_weight_pct", 0) / 100) * parsed["total_value_base"] / 1_000_000
     set_text(slide, "Title 1", "Geographic exposure")
     set_subtitle(slide,
                  f"Regional breakdown of the whole portfolio and, separately, of the equity "
@@ -656,6 +656,138 @@ def drop_slide(prs, slide):
     line_items_mod.delete_slide(prs, [s.part for s in prs.slides].index(slide.part))
 
 
+# --- equity breakdown: sector / market cap / style ------------------------
+# The slide's three donuts have no legend of their own and no category labels:
+# the companion dot+textbox pairs beside each one ARE the legend, so a donut
+# can only show as many slices as the legend has rows. Panel 1's rows are
+# grown by cloning when a breakdown has more categories than the template drew.
+EQUITY_PANELS = {
+    "sector":     {"chart": "Chart 0", "title": "Text 3",
+                    "dots": ["Shape 4", "Shape 6", "Shape 8", "Shape 10", "Shape 12"],
+                    "texts": ["Text 5", "Text 7", "Text 9", "Text 11", "Text 13"]},
+    "market_cap": {"chart": "Chart 1", "title": "Text 14",
+                    "dots": ["Shape 15", "Shape 17", "Shape 19", "Shape 21", "Shape 23"],
+                    "texts": ["Text 16", "Text 18", "Text 20", "Text 22", "Text 24"]},
+    "style":      {"chart": "Chart 2", "title": "Text 25",
+                    "dots": ["Shape 26", "Shape 28", "Shape 30"],
+                    "texts": ["Text 27", "Text 29", "Text 31"]},
+}
+LEGEND_BOTTOM_LIMIT = Emu(int(19.0 * 360000))   # keep clear of the page footnote
+
+
+def cap_categories(data: dict, max_slices: int, other_label: str = "Other") -> dict:
+    """Keep the largest categories and roll the rest into one slice. A donut
+    whose legend cannot name a slice is worse than an honest 'Other'."""
+    if data is None or len(data) <= max_slices:
+        return data
+    items = sorted(data.items(), key=lambda kv: -kv[1])
+    kept = dict(items[:max_slices - 1])
+    kept[other_label] = round(sum(v for _, v in items[max_slices - 1:]), 6)
+    return kept
+
+
+def _clone_legend_row(slide, dot_name, text_name, pitch, index):
+    """Clone the last dot/label pair of a legend, `index` rows further down."""
+    new = []
+    for name in (dot_name, text_name):
+        src = find_shape(slide, name)
+        el = _copy.deepcopy(src._element)
+        slide.shapes._spTree.append(el)
+        shape = slide.shapes[-1]
+        shape.name = f"{name} clone {index}"
+        shape.top = Emu(int(src.top + pitch * index))
+        new.append(shape.name)
+    return new
+
+
+def grow_legend(slide, panel, n_needed):
+    """Return (dot names, text names) long enough for n_needed categories."""
+    dots, texts = list(panel["dots"]), list(panel["texts"])
+    if n_needed <= len(texts):
+        return dots, texts
+    first, second = find_shape(slide, texts[0]), find_shape(slide, texts[1])
+    pitch = second.top - first.top
+    # Offsets are measured from the template's own last row, fixed before the
+    # loop starts: reading texts[-1] inside it would measure from the clone
+    # just added, so each row would be pushed one pitch further than intended
+    # and the run would stop short of the rows the data needs.
+    last_top = find_shape(slide, texts[-1]).top
+    for i in range(1, n_needed - len(panel["texts"]) + 1):
+        if last_top + pitch * i > LEGEND_BOTTOM_LIMIT:
+            break
+        d, t = _clone_legend_row(slide, panel["dots"][-1], panel["texts"][-1], pitch, i)
+        dots.append(d)
+        texts.append(t)
+    return dots, texts
+
+
+def donut_slice_colors(slide, chart_name, n):
+    """The colours the donut actually ended up using, slice by slice — read
+    back rather than assumed, so the legend dots cannot drift from the ring."""
+    sh = find_shape(slide, chart_name)
+    out = []
+    if sh is None or not sh.has_chart:
+        return out
+    points = sh.chart.plots[0].series[0].points
+    for i in range(min(n, len(points))):
+        try:
+            out.append(points[i].format.fill.fore_color.rgb)
+        except (AttributeError, TypeError, ValueError):
+            out.append(None)
+    return out
+
+
+def fill_equity_panel(slide, panel, title, data, max_slices):
+    """One donut plus its legend. `data` None means the desk mapping that
+    feeds it wasn't supplied — the panel says so instead of showing a split."""
+    set_text(slide, panel["title"], title)
+    if not data:
+        update_donut_by_name(slide, panel["chart"], {"Not available": 100.0})
+        for name in panel["texts"]:
+            set_text(slide, name, "")
+        set_text(slide, panel["texts"][0], "Desk classification not supplied")
+        return
+    data = cap_categories(data, max_slices)
+    update_donut_by_name(slide, panel["chart"], data, label_style="one_decimal")
+    dots, texts = grow_legend(slide, panel, len(data))
+    colors = donut_slice_colors(slide, panel["chart"], len(data))
+    for i, name in enumerate(texts):
+        set_text(slide, name, chart_mod.pct_label_one_decimal(*list(data.items())[i])
+                 if i < len(data) else "")
+    for i, name in enumerate(dots):
+        dot = find_shape(slide, name)
+        if dot is None:
+            continue
+        if i < len(colors) and colors[i] is not None:
+            dot.fill.solid()
+            dot.fill.fore_color.rgb = colors[i]
+        elif i >= len(data):
+            dot.fill.background()
+            dot.line.fill.background()
+
+
+def fill_equity_breakdown(prs, parsed):
+    """Sector, market cap and style for the equity sleeve. Geography is not
+    here — it shares the geographic-exposure slide with the whole-portfolio
+    view. All three come from desk override CSVs (assumptions.md §7-8): none
+    of the three is a column in the custodian export."""
+    slide = get_slide(prs, EQUITY_BREAKDOWN_SLIDE)
+    eb = parsed["equity_breakdown"]
+    sleeve = parsed["sleeves"].get("Equities", {})
+    ccy = parsed["base_currency"]
+    val_m = (sleeve.get("total_weight_pct", 0) / 100) * parsed["total_value_base"] / 1_000_000
+    set_text(slide, "Text 1",
+             f"Equity sleeve: {sleeve.get('num_lines', 0)} lines, {ccy} {val_m:.1f}m, "
+             f"{sleeve.get('total_weight_pct', 0):.1f}% of the portfolio. "
+             f"Weights below are of the sleeve, not of the whole portfolio.")
+    fill_equity_panel(slide, EQUITY_PANELS["sector"], "By sector", eb.get("by_sector_pct"), 7)
+    fill_equity_panel(slide, EQUITY_PANELS["market_cap"], "By market cap", eb.get("by_market_cap_pct"), 5)
+    fill_equity_panel(slide, EQUITY_PANELS["style"], "By style", eb.get("by_style_pct"), 3)
+    # internal data-classification footnote and a stale page number
+    set_text(slide, "Text 32", "")
+    set_text(slide, "Text 33", "")
+
+
 def fill_liquidity(prs, parsed):
     slide = get_slide(prs, 20)
     update_donut_by_name(slide, "Chart 5", parsed["liquidity_profile_pct"])
@@ -679,14 +811,17 @@ def fill_concentration(prs, parsed):
     set_text(slide, "Rectangle 7", f"{conc['positions_above_5pct']}\nPositions > 5%")
 
 
+INCOME_SLIDE = 22
+
+
 def fill_income(prs, parsed):
-    slide = get_slide(prs, 22)
+    slide = get_slide(prs, INCOME_SLIDE)
     income = parsed["income"]
     ry = income["running_yield_pct"]
-    set_text(slide, "Rectangle 5", f"{ry:.1f}%\nRunning yield" if ry is not None else "n/a\nRunning yield")
+    set_text(slide, "Rectangle 5", f"{ry:.1f}%\nRunning yield" if ry else "n/a\nRunning yield")
     fd = income["fi_duration_years"]
     set_text(slide, "Rectangle 6", f"{fd:.1f}y\nFI duration" if fd is not None else "n/a\nFI duration")
-    ri = income["rate_impact_100bp_eur"]
+    ri = income["rate_impact_100bp_base"]
     ccy = parsed["base_currency"]
     set_text(slide, "Rectangle 7", f"{ccy} {ri:,.0f}\nImpact +100bp" if ri is not None else "n/a\nImpact +100bp")
     fill_income_tables(slide, "Table 4", "Table 9", income)
@@ -923,7 +1058,7 @@ def build_pe_monitoring_slide(prs, anchor_slide, pe):
 
 def build(excel_path, profile, client_name, output_path, market_update_path=None,
           valuation_date=None, bucket_overrides=None, market_cap_overrides=None,
-          sector_overrides=None, vehicle_overrides=None, keep_parsed_json=None,
+          sector_overrides=None, style_overrides=None, vehicle_overrides=None, keep_parsed_json=None,
           pe_monitoring_path=None):
     parse_cmd = [sys.executable, str(SCRIPT_DIR / "parse_portfolio.py"), excel_path,
                  "--profile", profile, "--client-name", client_name,
@@ -936,6 +1071,8 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
         parse_cmd += ["--market-cap-overrides", market_cap_overrides]
     if sector_overrides:
         parse_cmd += ["--sector-overrides", sector_overrides]
+    if style_overrides:
+        parse_cmd += ["--style-overrides", style_overrides]
     if vehicle_overrides:
         parse_cmd += ["--vehicle-overrides", vehicle_overrides]
     subprocess.run(parse_cmd, check=True)
@@ -966,6 +1103,7 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
     fill_geographic_exposure(prs, parsed)
     fill_sleeve_slides(prs, parsed)
     fill_proposed_bond_selection(prs, parsed)
+    fill_equity_breakdown(prs, parsed)
     fill_liquidity(prs, parsed)
     fill_concentration(prs, parsed)
     fill_income(prs, parsed)
@@ -974,10 +1112,20 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
     # those positions are still the template's; both operations below happen
     # after the line-items rebuild has moved everything after slide 10, and
     # find their slide by part identity instead.
-    # The equity-breakdown slide always goes: its sector and market-cap donuts
-    # are out of this deck by design, and its remaining panel (the equity
-    # sleeve's regional split) has moved onto the geographic-exposure slide.
-    doomed = [get_slide(prs, EQUITY_BREAKDOWN_SLIDE)]
+    doomed = []
+    # A sleeve slide with no holdings behind it is three empty charts and a
+    # "No holdings in this sleeve" table — worse than not being in the deck.
+    # Same rule as the proposed-bond-selection slide: the data decides.
+    for slide_no, sleeve_key in sorted(SLEEVE_SLIDES.items()):
+        if not parsed["sleeves"].get(sleeve_key, {}).get("num_lines"):
+            doomed.append(get_slide(prs, slide_no))
+            print(f"Note: no {sleeve_key} holdings — that sleeve's slide was removed.")
+    income = parsed["income"]
+    if (income.get("fi_duration_years") is None
+            and not any(r["income_base"] for r in income["income_by_sleeve"])):
+        doomed.append(get_slide(prs, INCOME_SLIDE))
+        print("Note: no holding in this portfolio carries a yield, a coupon or a duration — "
+              "the income & rate-sensitivity slide was removed.")
     if not parsed.get("proposed_bond_selection"):
         doomed.append(get_slide(prs, PROPOSED_BOND_SLIDE))
         print("Note: the portfolio Excel has no 'Fixed Income' proposal tab — the "
@@ -1011,6 +1159,8 @@ def main():
     ap.add_argument("--bucket-overrides", default=None)
     ap.add_argument("--market-cap-overrides", default=None)
     ap.add_argument("--sector-overrides", default=None)
+    ap.add_argument("--style-overrides", default=None,
+                     help="CSV isin,style — Growth / Value / Blend for the equity sleeve")
     ap.add_argument("--vehicle-overrides", default=None,
                      help="CSV isin,vehicle — the desk's own Direct line / Fund / Structured "
                           "call, where the heuristic cannot tell them apart")
@@ -1022,7 +1172,8 @@ def main():
           market_update_path=args.market_update, pe_monitoring_path=args.pe_monitoring,
           valuation_date=args.valuation_date,
           bucket_overrides=args.bucket_overrides, market_cap_overrides=args.market_cap_overrides,
-          sector_overrides=args.sector_overrides, vehicle_overrides=args.vehicle_overrides,
+          sector_overrides=args.sector_overrides, style_overrides=args.style_overrides,
+          vehicle_overrides=args.vehicle_overrides,
           keep_parsed_json=args.keep_parsed_json)
 
 
