@@ -60,6 +60,12 @@ Column names are matched case-insensitively with whitespace stripped
   wrong regardless of which currency wins. A single holding's own value is
   shown in that holding's own `Currency` column via `value_qc` — see §9.
 
+The base currency is read from the export's own `Valuation + accr.
+interest (XXX)` header (EUR and USD books both occur); every `*_eur` field
+in `parsed.json` holds amounts in that currency despite its name, and
+`base_currency` labels them on the slides. The report-period return in §14
+uses the matching `TW Perf. (XXX, %)` column.
+
 ## 3a. FX forwards (hedging overlay)
 
 - Rows under `Currency forwards` come in pairs (one leg per currency, one
@@ -214,9 +220,11 @@ when an FX forward or overdraft is left out (§2, §3a).
   (oil)" style labels) — see `parse_portfolio.py::describe_bond_subsleeve()`
   for the exact keyword list; this label is cosmetic only and does not
   feed any other calculation. With no `Sector` column (the Portfolio
-  sheet never has one), a fund-type line is labelled "Bond fund" and a
-  direct line "Corporate bond"; only an explicit `Government` sector
-  gives "Quasi-sovereign bond".
+  sheet never has one), an issuer name in `SOVEREIGN_KEYWORDS` (a country,
+  "TREAS", "GOVT"...) gives "Government bond" / "Government bond fund";
+  any other fund is "Bond fund" ("High yield bond fund" only with H/Y or
+  HIGH YIELD in the name) and any other direct line "Corporate bond".
+  Only an explicit `Government` sector gives "Quasi-sovereign bond".
 
 ## 12. Risk-profile dial (slide 8)
 

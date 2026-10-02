@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import re
 import json
 import sys
 from collections import defaultdict
@@ -180,6 +181,14 @@ def classify_vehicle(description: str, rating, coupon) -> str:
     return "Direct line"
 
 
+# Issuer names that mark a sovereign bond when the export has no Sector
+# column (the issuer is the country itself, e.g. "4.125% ARGENTINA 35").
+SOVEREIGN_KEYWORDS = ("TREAS", "GOVT", "REPUBLIC", "REP OF", "BUND", "GILT", "T-NOTE",
+                      "ARGENTINA", "BRAZIL", "MEXICO", "TURKEY", "COLOMBIA", "CHILE", "PERU",
+                      "EGYPT", "NIGERIA", "ROMANIA", "HUNGARY", "POLAND", "ITALY", "SPAIN",
+                      "GREECE", "ECUADOR", "PANAMA", "INDONESIA", "SOUTH AFRICA")
+
+
 def describe_bond_subsleeve(row: dict) -> str:
     """Cosmetic label only, assumptions.md §11."""
     desc = str(row.get("description") or "")
@@ -206,7 +215,13 @@ def describe_bond_subsleeve(row: dict) -> str:
             return label
     is_fund = any(k in du for k in FUND_KEYWORDS)
     if is_fund:
-        return "High yield bond fund"
+        if any(k in du for k in ("H/Y", "HIGH YIELD", " HY ")):
+            return "High yield bond fund"
+        if any(k in du for k in SOVEREIGN_KEYWORDS):
+            return "Government bond fund"
+        return "Bond fund"
+    if any(k in du for k in SOVEREIGN_KEYWORDS):
+        return "Government bond"
     if "SUPRANATIONAL" in sector.upper() or "DEVELOPMENT" in du:
         return "Supranational bond"
     if any(k in du for k in STRUCTURED_KEYWORDS):
@@ -326,8 +341,23 @@ def pct(x: float) -> float:
     return round(x * 100, 6)
 
 
+# Reporting (base) currency of the export, read from its own
+# "Valuation + accr. interest (XXX)" header in main() -- assumptions.md §3.
+# Fields named *_eur in parsed.json hold amounts in this currency (the
+# names predate non-EUR books; `base_currency` says which one it is).
+BASE_CCY = "EUR"
+
+
+def detect_base_currency(headers) -> str:
+    for h in headers:
+        m = re.fullmatch(r"valuation \+ accr\. interest \(([a-z]{3})\)", h)
+        if m:
+            return m.group(1).upper()
+    return "EUR"
+
+
 def val_eur(row: dict) -> float:
-    v = row.get("valuation + accr. interest (eur)")
+    v = row.get(f"valuation + accr. interest ({BASE_CCY.lower()})")
     try:
         return float(v or 0)
     except (TypeError, ValueError):
@@ -350,9 +380,9 @@ def _num(row: dict, key: str) -> float | None:
 def build_performance(included: list[dict], n: int = 5) -> dict:
     """assumptions.md §14. Ranks holdings three ways, each straight from a
     custodian column -- nothing is recomputed from prices:
-      - unrealized P/L (EUR) since purchase  -> 'Unrealized P / L Total (BC)'
+      - unrealized P/L (base ccy) since purchase -> 'Unrealized P / L Total (BC)'
       - holding-period return in quote ccy   -> 'MCR (QC, %) (holding per.)'
-      - report-period return in EUR          -> 'TW Perf. (EUR, %)'
+      - report-period return in base ccy     -> 'TW Perf. (<base>, %)'
     Cash lines carry none of these and drop out naturally."""
     rows = []
     for r in included:
@@ -364,7 +394,7 @@ def build_performance(included: list[dict], n: int = 5) -> dict:
             "value_eur": round(r["_value_eur"], 2),
             "unrealized_pl_eur": _num(r, "unrealized p / l total (bc) (holding per.)"),
             "holding_return_qc_pct": _num(r, "mcr (qc, %) (holding per.)"),
-            "period_return_eur_pct": _num(r, "tw perf. (eur, %)"),
+            "period_return_eur_pct": _num(r, f"tw perf. ({BASE_CCY.lower()}, %)"),
         })
 
     def rank(key: str, reverse: bool) -> list[dict]:
@@ -423,7 +453,9 @@ def main():
             break
     if port_ws is None:
         sys.exit("Error: no 'Portfolio' sheet (or any sheet with an ISIN header row) in the Excel file")
-    _, port_rows = load_sheet_rows(port_ws)
+    port_headers, port_rows = load_sheet_rows(port_ws)
+    global BASE_CCY
+    BASE_CCY = detect_base_currency(port_headers)
     proposed_bond_selection = parse_proposed_bonds(wb) if "Fixed Income" in wb.sheetnames else None
 
     bucket_overrides = load_bucket_overrides(args.bucket_overrides)
@@ -468,14 +500,14 @@ def main():
 
     total_value_eur = sum(r["_value_eur"] for r in included)
 
-    # Base/reporting currency: fixed at EUR, matching the custodian file's
-    # own "Valuation + accr. interest (EUR)" column and its own stated
+    # Base/reporting currency: the custodian file's own
+    # "Valuation + accr. interest (XXX)" column (EUR or USD so far) and its own stated
     # portfolio total (assumptions.md §3). This is NOT the same thing as
     # "most-held currency by weight" (that's currency_exposure_pct below,
     # a property of the holdings, not of the reporting base) -- conflating
     # the two mislabels every EUR-denominated aggregate figure with
     # whatever currency happens to dominate the book.
-    base_currency = "EUR"
+    base_currency = BASE_CCY
     ccy_val = defaultdict(float)
     for r in included:
         ccy_val[str(r.get("currency") or "Other")] += r["_value_eur"]
@@ -520,7 +552,8 @@ def main():
         geo_weight[region_of(r.get("geographical breakdown"))] += r["_weight"]
         if sector_data_available:
             isin = str(r.get("isin code") or "")
-            sector_weight[sector_overrides.get(isin, "Other")] += r["_weight"]
+            default = "Cash" if r["_asset_class"] == "Cash" else "Other"
+            sector_weight[sector_overrides.get(isin, default)] += r["_weight"]
     geographic_exposure = {k: pct(v) for k, v in sorted(geo_weight.items(), key=lambda kv: -kv[1])}
     sector_exposure = (
         {k: pct(v) for k, v in sorted(sector_weight.items(), key=lambda kv: -kv[1])}
@@ -754,7 +787,7 @@ def main():
 
     Path(args.output).write_text(json.dumps(parsed, indent=2, default=str))
     print(f"Wrote {args.output}: {len(included)} positions, "
-          f"{parsed['total_value_eur']:,.0f} EUR, dominant holding currency {dominant_holding_currency}")
+          f"{parsed['total_value_eur']:,.0f} {base_currency}, dominant holding currency {dominant_holding_currency}")
 
 
 if __name__ == "__main__":
