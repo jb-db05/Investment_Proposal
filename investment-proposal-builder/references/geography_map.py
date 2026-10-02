@@ -70,6 +70,7 @@ REGION_MAP: dict[str, str] = {
     "Saudi Arabia": "MEA EM",
     "United Arab Emirates": "MEA EM",
     "Qatar": "MEA EM",
+    "Vietnam": "MEA EM",
     # --- Global / no usable economic signal from domicile alone ---
     "Miscellaneous": "Global",
     "Stateless": "Global",
@@ -108,6 +109,7 @@ EQUITY_REGION_MAP: dict[str, str] = {
     "Turkey": "EM",
     "Poland": "EM",
     "Indonesia": "EM",
+    "Vietnam": "EM",
     "France": "Eurozone",
     "Germany": "Eurozone",
     "Netherlands": "Eurozone",

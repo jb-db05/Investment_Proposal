@@ -38,7 +38,14 @@ PORTFOLIO_SECTIONS = {
     "Private Assets",
     "Gold and other commodities",
     "Other investments",
+    "Hedge Funds",
+    "Currency forwards",
 }
+
+# Sections that are hedging overlays, not holdings: excluded from every
+# allocation/line-item figure, but captured in parsed.json["fx_forwards"]
+# and used for the hedge-adjusted currency exposure (assumptions.md §3a).
+OVERLAY_SECTIONS = {"Currency forwards"}
 
 # Maps a raw Portfolio-sheet section header to the asset-class bucket used
 # throughout parsed.json and the slide 9/10 line-items table (assumptions.md §4-5).
@@ -51,6 +58,7 @@ ASSET_CLASS_MAP = {
     "Private Assets": "Private Assets",
     "Gold and other commodities": "Commodities",
     "Other investments": "Other",
+    "Hedge Funds": "Alternatives",
 }
 
 GROWTH_CLASSES = {"Equities", "Alternatives", "Commodities", "Structured Products", "Private Assets"}
@@ -327,6 +335,58 @@ def weight(row: dict) -> float:
         return 0.0
 
 
+def _num(row: dict, key: str) -> float | None:
+    v = row.get(key)
+    return float(v) if isinstance(v, (int, float)) else None
+
+
+def build_performance(included: list[dict], n: int = 5) -> dict:
+    """assumptions.md §14. Ranks holdings three ways, each straight from a
+    custodian column -- nothing is recomputed from prices:
+      - unrealized P/L (EUR) since purchase  -> 'Unrealized P / L Total (BC)'
+      - holding-period return in quote ccy   -> 'MCR (QC, %) (holding per.)'
+      - report-period return in EUR          -> 'TW Perf. (EUR, %)'
+    Cash lines carry none of these and drop out naturally."""
+    rows = []
+    for r in included:
+        rows.append({
+            "name": r.get("description"),
+            "isin": r.get("isin code"),
+            "asset_class": r["_asset_class"],
+            "weight_pct": pct(r["_weight"]),
+            "value_eur": round(r["_value_eur"], 2),
+            "unrealized_pl_eur": _num(r, "unrealized p / l total (bc) (holding per.)"),
+            "holding_return_qc_pct": _num(r, "mcr (qc, %) (holding per.)"),
+            "period_return_eur_pct": _num(r, "tw perf. (eur, %)"),
+        })
+
+    def rank(key: str, reverse: bool) -> list[dict]:
+        have = [x for x in rows if x[key] is not None]
+        have.sort(key=lambda x: x[key], reverse=reverse)
+        return [x for x in have[:n] if (x[key] > 0 if reverse else x[key] < 0)]
+
+    pl = [x["unrealized_pl_eur"] for x in rows if x["unrealized_pl_eur"] is not None]
+    contrib = defaultdict(float)
+    for x in rows:
+        if x["period_return_eur_pct"] is not None:
+            contrib[x["asset_class"]] += x["weight_pct"] * x["period_return_eur_pct"] / 100.0
+    return {
+        "unrealized_pl_total_eur": round(sum(pl), 2),
+        "positions_in_gain": sum(1 for v in pl if v > 0),
+        "positions_in_loss": sum(1 for v in pl if v < 0),
+        "winners_by_unrealized_pl": rank("unrealized_pl_eur", True),
+        "losers_by_unrealized_pl": rank("unrealized_pl_eur", False),
+        "winners_by_holding_return": rank("holding_return_qc_pct", True),
+        "losers_by_holding_return": rank("holding_return_qc_pct", False),
+        "winners_by_period_return": rank("period_return_eur_pct", True),
+        "losers_by_period_return": rank("period_return_eur_pct", False),
+        # weight x period return, in percentage points of the portfolio
+        "period_contribution_by_asset_class_pp": {
+            k: round(v, 4) for k, v in sorted(contrib.items(), key=lambda kv: kv[1])
+        },
+    }
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("excel_path")
@@ -340,19 +400,43 @@ def main():
     args = ap.parse_args()
 
     wb = openpyxl.load_workbook(args.excel_path, data_only=True)
-    if "Portfolio" not in wb.sheetnames:
-        sys.exit("Error: expected a 'Portfolio' sheet in the Excel file")
-    _, port_rows = load_sheet_rows(wb["Portfolio"])
+    # Custodian exports name the holdings sheet 'Portfolio', but a re-saved
+    # export can come back as 'Sheet1' -- fall back to the first sheet that
+    # has an ISIN header row (the bond-proposal tab is never a candidate).
+    port_ws = wb["Portfolio"] if "Portfolio" in wb.sheetnames else None
+    if port_ws is None:
+        for ws in wb.worksheets:
+            if ws.title == "Fixed Income":
+                continue
+            try:
+                load_sheet_rows(ws)
+            except ValueError:
+                continue
+            port_ws = ws
+            break
+    if port_ws is None:
+        sys.exit("Error: no 'Portfolio' sheet (or any sheet with an ISIN header row) in the Excel file")
+    _, port_rows = load_sheet_rows(port_ws)
     proposed_bond_selection = parse_proposed_bonds(wb) if "Fixed Income" in wb.sheetnames else None
 
     bucket_overrides = load_bucket_overrides(args.bucket_overrides)
     mcap_overrides = load_market_cap_overrides(args.market_cap_overrides)
     sector_overrides = load_sector_overrides(args.sector_overrides)
 
-    included, uncalled = [], []
+    included, uncalled, fx_forward_legs = [], [], []
     for row in port_rows:
         section = row.get("_section")
         if section not in PORTFOLIO_SECTIONS:
+            continue
+        if section in OVERLAY_SECTIONS:
+            fx_forward_legs.append({
+                "description": row.get("description"),
+                "currency": row.get("currency"),
+                "amount_qc": row.get("balance"),
+                "value_eur": val_eur(row),
+                "weight_pct": pct(weight(row)),
+                "maturity": row.get("contract close date"),
+            })
             continue
         w = weight(row)
         v = val_eur(row)
@@ -401,6 +485,20 @@ def main():
     for r in included:
         ccy_weight[str(r.get("currency") or "Other")] += r["_weight"]
     currency_exposure = {k: pct(v) for k, v in sorted(ccy_weight.items(), key=lambda kv: -kv[1])}
+
+    # Hedge-adjusted currency exposure (assumptions.md §3a): add each FX
+    # forward leg's signed weight to its currency. None when the file has
+    # no forwards, so the deck keeps showing the plain holdings view.
+    if fx_forward_legs:
+        hedged = defaultdict(float, ccy_weight)
+        for leg in fx_forward_legs:
+            hedged[str(leg["currency"] or "Other")] += leg["weight_pct"] / 100.0
+        currency_exposure_hedged = {k: pct(v) for k, v in sorted(hedged.items(), key=lambda kv: -kv[1])}
+    else:
+        currency_exposure_hedged = None
+
+    # --- §14 winners & losers ---
+    performance = build_performance(included)
 
     # --- §7 geography / sector portfolio-wide ---
     # The Portfolio sheet carries no Sector column (unlike the separate
@@ -623,6 +721,9 @@ def main():
         "liquid_share_pct": pct(liq_weight.get("Listed", 0) + liq_weight.get("Daily-liquid fund", 0)),
         "asset_allocation_pct": asset_allocation,
         "currency_exposure_pct": currency_exposure,
+        "currency_exposure_after_hedges_pct": currency_exposure_hedged,
+        "fx_forwards": fx_forward_legs,
+        "performance": performance,
         "geographic_exposure_pct": geographic_exposure,
         "sector_exposure_pct": sector_exposure,
         "sleeves": sleeves,
