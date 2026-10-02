@@ -129,8 +129,10 @@ Within a sleeve, each holding is classified as:
 - **Direct line** — `Description` does not contain any fund/structured
   keyword below.
 - **Fund** — `Description` contains "FUND", "FD", "SICAV", "ETF", "ETC",
-  or the row's `Composite Rating` is blank and `Coupon (%)` is blank (a
-  common signature of collective vehicles in this export).
+  "ISHARES", "ISHS", "PHYSICAL", or the row's `Composite Rating` is the
+  literal `Not Rated` and `Coupon (%)` is blank (the export's signature of
+  collective vehicles). A *blank* rating with a blank coupon is a direct
+  share (Microsoft, Safran, Allianz...), not a fund.
 - **Structured / AMC** — `Description` contains "CERTIFICATE", "CERT",
   "AMC", "TRACKER", or the ISIN prefix is `XS`/`CH` combined with a
   `Coupon (%)` that is blank and a bullet/barrier-style name pattern
@@ -182,12 +184,16 @@ for the same reason as §4 — the export has no vehicle-type column.
 
 Each holding is classified by instrument shape, independent of asset class:
 
-- **Illiquid (lock-up)** — `Private Assets` section, or `Description`
+- **Illiquid (lock-up)** — `Private Assets` or `Hedge Funds`
+  (Alternatives) section, or `Description`
   contains "COMMIT" (already excluded per §2 if zero-valued, but a partly
   drawn commitment line still counts here).
 - **Daily-liquid fund** — classified "Fund" under the §6 vehicle rule.
 - **Listed** — everything else (direct bonds, direct equities,
   structured products, ETFs/ETCs, cash).
+
+Shares are of the included lines' total weight, so they sum to 100% even
+when an FX forward or overdraft is left out (§2, §3a).
 
 ## 11. Income & interest-rate sensitivity
 
@@ -207,7 +213,10 @@ Each holding is classified by instrument shape, independent of asset class:
   (mirrors the reference deck's "Corporate bond (auto)", "Corporate bond
   (oil)" style labels) — see `parse_portfolio.py::describe_bond_subsleeve()`
   for the exact keyword list; this label is cosmetic only and does not
-  feed any other calculation.
+  feed any other calculation. With no `Sector` column (the Portfolio
+  sheet never has one), a fund-type line is labelled "Bond fund" and a
+  direct line "Corporate bond"; only an explicit `Government` sector
+  gives "Quasi-sovereign bond".
 
 ## 12. Risk-profile dial (slide 8)
 

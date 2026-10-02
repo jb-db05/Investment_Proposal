@@ -69,7 +69,7 @@ RISK_PROFILES = ["Fixed Income", "Conservative", "Moderate", "Balanced", "Growth
 IG_RATINGS = {"AAA", "AA+", "AA", "AA-"}
 CORP_IG_RATINGS = {"A+", "A", "A-", "BBB+", "BBB", "BBB-"}
 
-FUND_KEYWORDS = ("FUND", " FD ", "SICAV", "ETF", "ETC")
+FUND_KEYWORDS = ("FUND", " FD ", "SICAV", "ETF", "ETC", "ISHARES", "ISHS ", "PHYSICAL")
 STRUCTURED_KEYWORDS = ("CERTIFICATE", " CERT", "AMC", "TRACKER", "DCI-", "RAF ", "CPN ")
 
 
@@ -173,7 +173,9 @@ def classify_vehicle(description: str, rating, coupon) -> str:
         return "Fund"
     if any(k in d for k in STRUCTURED_KEYWORDS):
         return "Structured / AMC"
-    if (rating in (None, "", "Not Rated")) and coupon in (None, ""):
+    # The custodian writes the literal "Not Rated" on funds, but leaves the
+    # rating cell empty on direct shares -- so only the literal means fund.
+    if rating == "Not Rated" and coupon in (None, ""):
         return "Fund"
     return "Direct line"
 
@@ -184,6 +186,7 @@ def describe_bond_subsleeve(row: dict) -> str:
     sector = str(row.get("sector") or "").strip()
     du = desc.upper()
     keyword_map = [
+        ("FID.", "Fiduciary deposit"),
         ("AUTO", "Corporate bond (auto)"),
         ("OIL", "Corporate bond (oil)"),
         ("PORT", "Corporate bond (port)"),
@@ -208,8 +211,12 @@ def describe_bond_subsleeve(row: dict) -> str:
         return "Supranational bond"
     if any(k in du for k in STRUCTURED_KEYWORDS):
         return "Structured note / certificate"
-    if sector.lower() in ("government", ""):
+    if sector.lower() == "government":
         return "Quasi-sovereign bond"
+    # No Sector column in the Portfolio sheet: don't call every direct bond
+    # quasi-sovereign -- funds are funds, and an issuer name is a corporate.
+    if not sector and classify_vehicle(desc, row.get("composite rating"), row.get("coupon (%)")) == "Fund":
+        return "Bond fund"
     return "Corporate bond"
 
 
@@ -551,6 +558,9 @@ def main():
             ],
             "vehicle_breakdown_pct": {k: pct(v) for k, v in sorted(vehicle_weight.items(), key=lambda kv: -kv[1])},
             "duration_coverage": f"{n_with_dur} of {len(rows_ac)}" if asset_class == "Fixed Income" else None,
+            "duration_value_coverage_pct": (
+                pct(sum(r["_weight"] for r in rows_ac if isinstance(r.get("duration"), (int, float))) / ac_total_w)
+                if asset_class == "Fixed Income" and ac_total_w else None),
         }
 
     # --- §8 equity breakdown (renormalized to the equity sleeve) ---
@@ -595,14 +605,19 @@ def main():
     liq_weight = defaultdict(float)
     for r in included:
         desc = str(r.get("description") or "").upper()
-        if r["_asset_class"] == "Private Assets" or "COMMIT" in desc:
+        # hedge funds (Alternatives) carry notice periods / gates like
+        # private assets -- never "daily-liquid" (assumptions.md §10)
+        if r["_asset_class"] in ("Private Assets", "Alternatives") or "COMMIT" in desc:
             bucket = "Illiquid (lock-up)"
         elif classify_vehicle(r.get("description"), r.get("composite rating"), r.get("coupon (%)")) == "Fund":
             bucket = "Daily-liquid fund"
         else:
             bucket = "Listed"
         liq_weight[bucket] += r["_weight"]
-    liquidity_profile = {k: pct(v) for k, v in sorted(liq_weight.items(), key=lambda kv: -kv[1])}
+    # share of the invested book: custodian weights of the included lines sum
+    # to slightly more than 100% when an FX forward or overdraft is left out
+    liq_total = sum(liq_weight.values()) or 1.0
+    liquidity_profile = {k: pct(v / liq_total) for k, v in sorted(liq_weight.items(), key=lambda kv: -kv[1])}
 
     # --- §11 income & rate sensitivity ---
     fi_rows = [r for r in included if r["_asset_class"] == "Fixed Income"]
@@ -718,7 +733,7 @@ def main():
         "total_value_eur": round(total_value_eur, 2),
         "num_positions": len(included),
         "largest_position_pct": pct(by_weight[0]["_weight"]) if by_weight else 0,
-        "liquid_share_pct": pct(liq_weight.get("Listed", 0) + liq_weight.get("Daily-liquid fund", 0)),
+        "liquid_share_pct": pct((liq_weight.get("Listed", 0) + liq_weight.get("Daily-liquid fund", 0)) / liq_total),
         "asset_allocation_pct": asset_allocation,
         "currency_exposure_pct": currency_exposure,
         "currency_exposure_after_hedges_pct": currency_exposure_hedged,

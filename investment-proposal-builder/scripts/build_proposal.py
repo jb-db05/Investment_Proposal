@@ -100,7 +100,7 @@ PROFILE_LABEL_SHAPE = {
 # Sleeve slides where the "largest holdings" table's Yield/Coupon column is
 # always empty (equities, alternatives and commodities don't carry
 # yield/coupon data) -- dropped per user instruction rather than shown blank.
-SLEEVES_WITHOUT_YIELD_COLUMN = {"Equities", "Private Assets", "Commodities"}
+SLEEVES_WITHOUT_YIELD_COLUMN = {"Equities", "Private Assets", "Alternatives", "Commodities"}
 
 
 def find_shape(slide, name):
@@ -272,6 +272,17 @@ def fmt_money_k(value: float, currency: str) -> str:
 
 def get_slide(prs, index_1based):
     return list(prs.slides)[index_1based - 1]
+
+
+def delete_slide(prs, slide):
+    """Drop a slide by identity (not index), so it is safe to call after
+    line_items_mod.build() has shifted slide numbers."""
+    sld_ids = prs.slides._sldIdLst
+    for sld_id in list(sld_ids):
+        if prs.part.related_part(sld_id.rId) is slide.part:
+            prs.part.drop_rel(sld_id.rId)
+            sld_ids.remove(sld_id)
+            return
 
 
 # ---------------------------------------------------------------- charts ---
@@ -468,6 +479,17 @@ def fill_portfolio_overview(prs, parsed):
     set_text(slide, "Rectangle 7", f"{ry:.1f}%\nRunning yield" if ry is not None else "n/a\nRunning yield")
     update_donut_by_name(slide, "Chart 10", parsed["asset_allocation_pct"])
     update_donut_by_name(slide, "Chart 14", parsed["currency_exposure_pct"])
+    # duration caveat under the KPI row -- the template's text belongs to
+    # the reference client, so always rewrite or blank it
+    fi = parsed["sleeves"].get("Fixed Income") or {}
+    cov, cov_pct = fi.get("duration_coverage"), fi.get("duration_value_coverage_pct")
+    text = ""
+    if cov and cov_pct is not None:
+        have, total = (int(x) for x in cov.split(" of "))
+        if have < total:
+            text = (f"⚠ {total - have} of {total} fixed-income line(s) report no modified duration; "
+                    f"portfolio duration reflects the {cov_pct:.0f}% of the sleeve that does.")
+    set_text(slide, "TextBox 12", text)
 
 
 def set_donut_legend(slide, textbox_names, data: dict[str, float]):
@@ -498,18 +520,52 @@ SLEEVE_SLIDES = {
     # slide_number: parsed.json sleeve key
     13: "Fixed Income",
     15: "Equities",
-    17: "Private Assets",
+    17: ("Alternatives", "Private Assets"),
     18: "Commodities",
     19: "Structured Products",
 }
 
 
+def merge_sleeves(sleeves):
+    """One slide can cover several parsed sleeves (slide 17 'Alternatives'
+    = hedge funds + private assets): combine by weight."""
+    sleeves = [s for s in sleeves if s]
+    if len(sleeves) <= 1:
+        return sleeves[0] if sleeves else None
+    total = sum(s["total_weight_pct"] for s in sleeves)
+    vehicles = {}
+    for s in sleeves:
+        for k, v in s["vehicle_breakdown_pct"].items():
+            vehicles[k] = vehicles.get(k, 0.0) + v * s["total_weight_pct"] / total
+    return {
+        "total_weight_pct": total,
+        "num_lines": sum(s["num_lines"] for s in sleeves),
+        "top_holdings": sorted((h for s in sleeves for h in s["top_holdings"]),
+                               key=lambda h: -h["weight_pct"])[:5],
+        "vehicle_breakdown_pct": dict(sorted(vehicles.items(), key=lambda kv: -kv[1])),
+        "duration_coverage": None,
+    }
+
+
+def clear_sleeve_slide(slide):
+    """No holdings: drop the reference client's table, chart and caveat."""
+    set_text(slide, "TextBox 5", "No holdings in this sleeve for this portfolio.")
+    set_text(slide, "TextBox 11", "")
+    for name in ("Table 6", "Chart 9"):
+        sh = find_shape(slide, name)
+        if sh is not None:
+            sh._element.getparent().remove(sh._element)
+
+
 def fill_sleeve_slides(prs, parsed):
-    for slide_num, sleeve_key in SLEEVE_SLIDES.items():
+    for slide_num, sleeve_keys in SLEEVE_SLIDES.items():
         slide = get_slide(prs, slide_num)
-        sleeve = parsed["sleeves"].get(sleeve_key)
+        if isinstance(sleeve_keys, str):
+            sleeve_keys = (sleeve_keys,)
+        sleeve_key = sleeve_keys[0]
+        sleeve = merge_sleeves([parsed["sleeves"].get(k) for k in sleeve_keys])
         if sleeve is None:
-            set_text(slide, "TextBox 5", "No holdings in this sleeve for this portfolio.")
+            clear_sleeve_slide(slide)
             continue
         include_yield = sleeve_key not in SLEEVES_WITHOUT_YIELD_COLUMN
         rebuild_holdings_table(slide, "Table 6", sleeve["top_holdings"], parsed["base_currency"],
@@ -532,7 +588,9 @@ def fill_proposed_bond_selection(prs, parsed):
     slide = get_slide(prs, 14)
     pb = parsed.get("proposed_bond_selection")
     if not pb:
-        return
+        # no 'Fixed Income' proposal tab: the slide would otherwise show the
+        # reference client's bond proposal -- hand it back for deletion
+        return slide
     set_text(slide, "Text 1",
              f"Proposed bond selection: {pb['num_issues']} issues, "
              f"{pb['currency']} {pb['total_amount']:,.0f}, equally weighted at "
@@ -624,6 +682,8 @@ def fill_market_slides(prs, market):
         return
     s3 = get_slide(prs, 3)
     h = market["headline"]
+    if h.get("slide_title"):
+        set_text(s3, "Title 1", h["slide_title"])
     set_subtitle(s3, h["intro_sentence"])
 
     rects = [sh for sh in s3.shapes if sh.name == "Rectangle"]
@@ -637,10 +697,17 @@ def fill_market_slides(prs, market):
     # [0]='Cross-asset scoreboard' label, [1]=Index col, [2]=Week col,
     # [3]=YTD col, [4]='Three observations' label
     if len(textboxes) >= 4:
-        rows = market["scoreboard"]["rows"]
-        set_shape_lines(textboxes[1], ["Index"] + [r["index"] for r in rows])
-        set_shape_lines(textboxes[2], ["Week"] + [r["week"] for r in rows])
-        set_shape_lines(textboxes[3], ["YTD"] + [r["ytd"] for r in rows])
+        sb = market["scoreboard"]
+        rows = sb["rows"]
+        # optional "title"/"columns" let a month with no weekly return table
+        # (e.g. a monthly house-view summary) show e.g. valuations instead,
+        # under honest headers; rows still use the index/week/ytd keys.
+        cols = sb.get("columns", ["Index", "Week", "YTD"])
+        if sb.get("title"):
+            set_shape_lines(textboxes[0], [sb["title"]])
+        set_shape_lines(textboxes[1], [cols[0]] + [r["index"] for r in rows])
+        set_shape_lines(textboxes[2], [cols[1]] + [r["week"] for r in rows])
+        set_shape_lines(textboxes[3], [cols[2]] + [r["ytd"] for r in rows])
         color_scoreboard_column(textboxes[2], [r["week"] for r in rows])
         color_scoreboard_column(textboxes[3], [r["ytd"] for r in rows])
 
@@ -648,7 +715,12 @@ def fill_market_slides(prs, market):
     set_subtitle(s4, market["four_drivers"]["intro_sentence"])
     # the 5th 'Rectangle' on slide 4 is a standalone policy note (no title
     # line), not a numbered driver card — left untouched, see slide_recipe.md
-    driver_rects = [sh for sh in s4.shapes if sh.name == "Rectangle"][:4]
+    if market["four_drivers"].get("slide_title"):
+        set_text(s4, "Title 1", market["four_drivers"]["slide_title"])
+    rects4 = [sh for sh in s4.shapes if sh.name == "Rectangle"]
+    if "policy_note" in market["four_drivers"] and len(rects4) >= 5:
+        set_shape_lines(rects4[4], [market["four_drivers"]["policy_note"]])
+    driver_rects = rects4[:4]
     for sh, drv in zip(driver_rects, market["four_drivers"]["drivers"]):
         lines = [f"{drv['number']} - {drv['title']}", drv["body"]]
         if drv.get("stat"):
@@ -696,12 +768,14 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
     fill_portfolio_overview(prs, parsed)
     fill_geo_sector(prs, parsed)
     fill_sleeve_slides(prs, parsed)
-    fill_proposed_bond_selection(prs, parsed)
+    stale_bond_slide = fill_proposed_bond_selection(prs, parsed)
     fill_equity_breakdown(prs, parsed)
     fill_liquidity(prs, parsed)
     fill_concentration(prs, parsed)
     fill_income(prs, parsed)
     line_items_mod.build(prs, parsed)  # slides 9-10(+): rebuilt as real tables, runs last
+    if stale_bond_slide is not None:
+        delete_slide(prs, stale_bond_slide)
 
     prs.save(output_path)
     print(f"Wrote {output_path}")

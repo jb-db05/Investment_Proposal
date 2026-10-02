@@ -300,7 +300,9 @@ Schema (see the worked example for real values):
   "week_of": str,
   "headline": {"summary_title": str, "intro_sentence": str,
                "stats": [{"value": str, "label": str}, ...4 of them]},
-  "scoreboard": {"rows": [{"index": str, "week": str, "ytd": str}, ...
+  "scoreboard": {"title": str (optional, default keeps "Cross-asset scoreboard"),
+                 "columns": [str, str, str] (optional, default ["Index", "Week", "YTD"]),
+                 "rows": [{"index": str, "week": str, "ytd": str}, ...
                            up to 9 — matches the template's 9 table rows]},
   "three_observations": [{"headline": str, "body": str}, ...3 of them],
   "four_drivers": {"intro_sentence": str,
@@ -322,3 +324,8 @@ the source PDF doesn't have a clean equivalent for a field (e.g. no
 scenario-probability table that week), leave the slide's original template
 text in place rather than inventing numbers, and say so in your reply to
 the user.
+
+When the source is a monthly house-view summary with no weekly return
+table, don't leave last week's returns on the slide: set the scoreboard's
+`title`/`columns` to what the source does give (e.g. forward P/E and EPS
+growth by region) and keep the `week`/`ytd` keys for the two value columns.
