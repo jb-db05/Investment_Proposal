@@ -143,6 +143,17 @@ def load_sector_overrides(path: str | None) -> dict[str, str]:
     return out
 
 
+def load_isin_overrides(path: str | None, column: str) -> dict[str, str]:
+    """Generic isin -> value CSV (assumptions.md §1, §8)."""
+    if not path:
+        return {}
+    out = {}
+    with open(path, newline="") as f:
+        for row in csv.DictReader(f):
+            out[row["isin"].strip()] = row[column].strip()
+    return out
+
+
 def classify_fi_bucket(row: dict, overrides: dict[str, str]) -> str:
     """assumptions.md §4. Note: the Portfolio sheet carries no Sector column
     (only the separate 'Fixed Income' proposal tab does), so this rule uses
@@ -351,6 +362,10 @@ def main():
     ap.add_argument("--bucket-overrides", default=None)
     ap.add_argument("--market-cap-overrides", default=None)
     ap.add_argument("--sector-overrides", default=None)
+    ap.add_argument("--asset-class-overrides", default=None,
+                    help="CSV isin,asset_class: reclassify a holding (e.g. a commodity-equity ETF as Commodities)")
+    ap.add_argument("--equity-region-overrides", default=None,
+                    help="CSV isin,region: equity region when the file's country tag is misleading")
     ap.add_argument("-o", "--output", default="parsed.json")
     args = ap.parse_args()
 
@@ -375,6 +390,16 @@ def main():
     bucket_overrides = load_bucket_overrides(args.bucket_overrides)
     mcap_overrides = load_market_cap_overrides(args.market_cap_overrides)
     sector_overrides = load_sector_overrides(args.sector_overrides)
+    asset_class_overrides = load_isin_overrides(args.asset_class_overrides, "asset_class")
+    equity_region_overrides = load_isin_overrides(args.equity_region_overrides, "region")
+    valid_classes = set(ASSET_CLASS_MAP.values()) | {"Alternatives"}
+    bad = {v for v in asset_class_overrides.values() if v not in valid_classes}
+    if bad:
+        sys.exit(f"Error: unknown asset class(es) in --asset-class-overrides: {sorted(bad)}")
+
+    def eq_region(r):
+        isin = str(r.get("isin code") or "").strip()
+        return equity_region_overrides.get(isin) or equity_region_of(r.get("geographical breakdown"))
 
     included, uncalled, fx_legs = [], [], []
     for row in port_rows:
@@ -396,7 +421,8 @@ def main():
                     "currency": row.get("currency"),
                 })
             continue
-        row["_asset_class"] = ASSET_CLASS_MAP[section]
+        row["_asset_class"] = asset_class_overrides.get(str(row.get("isin code") or "").strip(),
+                                                        ASSET_CLASS_MAP[section])
         row["_weight"] = w
         row["_value_eur"] = v
         try:
@@ -499,7 +525,7 @@ def main():
     mcap_available = bool(mcap_overrides)
     for r in equity_rows:
         w_norm = r["_weight"] / eq_total_w
-        eq_geo[equity_region_of(r.get("geographical breakdown"))] += w_norm
+        eq_geo[eq_region(r)] += w_norm
         if sector_data_available:
             isin = str(r.get("isin code") or "")
             eq_sector[sector_overrides.get(isin, "Other")] += w_norm
@@ -613,7 +639,8 @@ def main():
     line_items = []
     fi_bucket_order = ["Govies 1-10 (local)", "Govies 10+ (local)", "High Yield (local or global hdg)",
                         "Corporate IG (local)", "EM Debt", "Inflation-linked", "Money market"]
-    equity_region_order = ["US", "Eurozone", "UK", "Switzerland", "Japan", "EM", "Global / thematic"]
+    equity_region_order = ["US", "Europe", "Eurozone", "UK", "Switzerland", "Japan", "EM", "Emerging Markets",
+                           "Global / thematic"]
     for r in included:
         ac = r["_asset_class"]
         if ac == "Fixed Income":
@@ -621,7 +648,7 @@ def main():
         elif ac == "Cash":
             group = "Cash"
         elif ac == "Equities":
-            group = equity_region_of(r.get("geographical breakdown"))
+            group = eq_region(r)
         else:
             group = ac
         line_items.append({

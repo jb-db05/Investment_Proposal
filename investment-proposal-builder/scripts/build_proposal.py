@@ -36,6 +36,8 @@ import sys
 from pathlib import Path
 
 from pptx import Presentation
+from pptx.enum.dml import MSO_THEME_COLOR
+from pptx.oxml.ns import qn
 from pptx.util import Emu, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
@@ -567,11 +569,40 @@ def fill_proposed_bond_selection(prs, parsed):
     set_text(slide, "Text 41", "")
 
 
+LEGEND_ROW_STEP = Emu(274205)  # vertical spacing between the template's legend rows
+
+
+def _add_legend_row(slide, dot_name, text_name, new_text_name, theme_color):
+    dot, text = find_shape(slide, dot_name), find_shape(slide, text_name)
+    if dot is None or text is None:
+        return
+    for src, name in ((dot, f"{dot_name}b"), (text, new_text_name)):
+        el = _copy.deepcopy(src._element)
+        src._element.addnext(el)
+        new = [sh for sh in slide.shapes if sh._element is el][0]
+        new.top = src.top + LEGEND_ROW_STEP
+        new.name = name
+        # a deep copy keeps the source's shape id; ids must be unique per slide
+        max_id = max(int(e.get("id")) for e in slide.shapes._spTree.iter(qn("p:cNvPr")))
+        el.find(".//" + qn("p:cNvPr")).set("id", str(max_id + 1))
+        if src is dot:
+            new.fill.solid()
+            new.fill.fore_color.theme_color = theme_color
+            new.line.color.theme_color = theme_color
+
+
 def fill_equity_breakdown(prs, parsed):
     slide = get_slide(prs, 16)
     eb = parsed["equity_breakdown"]
     update_donut_by_name(slide, "Chart 0", eb["by_geography_pct"], label_style="one_decimal")
-    set_donut_legend(slide, ["Text 5", "Text 7", "Text 9", "Text 11", "Text 13"], eb["by_geography_pct"])
+    geo_slots = ["Text 5", "Text 7", "Text 9", "Text 11", "Text 13"]
+    # the template has 5 legend rows; a 6th region (fits inside the panel)
+    # gets a cloned dot + label one row lower, colored like the chart's 6th
+    # slice (theme accent 6, the default vary-by-point palette)
+    if len(eb["by_geography_pct"]) > len(geo_slots):
+        _add_legend_row(slide, "Shape 12", "Text 13", "Text 13b", MSO_THEME_COLOR.ACCENT_6)
+        geo_slots.append("Text 13b")
+    set_donut_legend(slide, geo_slots, eb["by_geography_pct"])
     # titles stay "By sector" / "By market cap" as-is when unavailable; the
     # chart itself already shows "Not available" as its one slice
     if eb["by_sector_pct"]:
@@ -736,7 +767,8 @@ def fill_market_slides(prs, market):
 
 def build(excel_path, profile, client_name, output_path, market_update_path=None,
           valuation_date=None, bucket_overrides=None, market_cap_overrides=None,
-          sector_overrides=None, keep_parsed_json=None):
+          sector_overrides=None, keep_parsed_json=None, asset_class_overrides=None,
+          equity_region_overrides=None):
     parse_cmd = [sys.executable, str(SCRIPT_DIR / "parse_portfolio.py"), excel_path,
                  "--profile", profile, "--client-name", client_name,
                  "-o", keep_parsed_json or str(SCRIPT_DIR.parent / "work" / "_parsed_tmp.json")]
@@ -748,6 +780,10 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
         parse_cmd += ["--market-cap-overrides", market_cap_overrides]
     if sector_overrides:
         parse_cmd += ["--sector-overrides", sector_overrides]
+    if asset_class_overrides:
+        parse_cmd += ["--asset-class-overrides", asset_class_overrides]
+    if equity_region_overrides:
+        parse_cmd += ["--equity-region-overrides", equity_region_overrides]
     subprocess.run(parse_cmd, check=True)
 
     parsed_path = keep_parsed_json or str(SCRIPT_DIR.parent / "work" / "_parsed_tmp.json")
@@ -804,6 +840,8 @@ def main():
     ap.add_argument("--bucket-overrides", default=None)
     ap.add_argument("--market-cap-overrides", default=None)
     ap.add_argument("--sector-overrides", default=None)
+    ap.add_argument("--asset-class-overrides", default=None)
+    ap.add_argument("--equity-region-overrides", default=None)
     ap.add_argument("--keep-parsed-json", default=None, help="also write parsed.json to this path")
     ap.add_argument("-o", "--output", required=True)
     args = ap.parse_args()
@@ -811,7 +849,9 @@ def main():
     build(args.excel, args.profile, args.client_name, args.output,
           market_update_path=args.market_update, valuation_date=args.valuation_date,
           bucket_overrides=args.bucket_overrides, market_cap_overrides=args.market_cap_overrides,
-          sector_overrides=args.sector_overrides, keep_parsed_json=args.keep_parsed_json)
+          sector_overrides=args.sector_overrides, keep_parsed_json=args.keep_parsed_json,
+          asset_class_overrides=args.asset_class_overrides,
+          equity_region_overrides=args.equity_region_overrides)
 
 
 if __name__ == "__main__":

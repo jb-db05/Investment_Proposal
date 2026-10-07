@@ -160,6 +160,19 @@ for the same reason as §4 — the export has no vehicle-type column.
   equity sleeve (not the whole portfolio). This is the same taxonomy used
   by the slide 10 line-items table, so the two slides agree with each
   other.
+- The file's country tag is sometimes misleading for a fund (an
+  Irish-domiciled commodity ETF tagged "Ireland", a European fund tagged
+  "Misc.Europe"). `--equity-region-overrides overrides.csv` (columns
+  `isin,region`) sets the region per ISIN. It applies to both this donut
+  and the holdings-table groups. Labels beyond the default map, such as
+  `Europe` or `Emerging Markets`, are allowed and sort in a fixed order.
+- `--asset-class-overrides overrides.csv` (columns `isin,asset_class`)
+  moves a holding to another asset class: for example, a uranium or
+  rare-earth equity ETF the desk counts as `Commodities`. This changes
+  every asset-class figure (allocation donut, sleeves, holdings table).
+  The value must be one of the existing class names.
+- The geography donut's legend has 5 rows in the template. A 6th region
+  gets one cloned row, which still fits inside the panel.
 - Sector: same `--sector-overrides` mechanism and `null`-when-absent
   behavior as §7, renormalized to the equity sleeve.
 - Market cap is not a column in the export — every equity line is
