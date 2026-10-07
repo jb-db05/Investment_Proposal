@@ -10,8 +10,8 @@ from `assets/template.pptx` — no per-client data goes on it.
 | 2 | Agenda | static | — |
 | 3 | How markets moved last week | `market_update.json: headline, scoreboard, three_observations` | `build_proposal.fill_market_slides` |
 | 4 | What drove the move: four forces | `market_update.json: four_drivers` | `build_proposal.fill_market_slides` |
-| 5 | Our economic scenario | **frozen — never updated, see note below** | — |
-| 6 | Our current investment views | **frozen — never updated, see note below** | — |
+| 5 | Our economic scenario | template text, or `market_update.json: house_view_slides.scenario` when supplied (see note below) | `build_proposal.fill_house_view_slides` |
+| 6 | Our current investment views | template text, or `market_update.json: house_view_slides.views` when supplied (see note below) | `build_proposal.fill_house_view_slides` |
 | 7 | Section divider ("Markets this week") | static | — |
 | 8 | Portfolio strategies / risk-return trade-off | `parsed.json: risk_profile`, `slide8_profile_dial.md` | `build_proposal.fill_profile_dial` |
 | 9-N | Proposed portfolio: full holdings list | `parsed.json: line_items` | `build_line_items_tables.build` (runs **last** — see note below) |
@@ -75,17 +75,33 @@ verbatim. If your desk's taxonomy genuinely needs a combined "Alternatives"
 sleeve, merge those two `ASSET_CLASS_MAP` targets in `parse_portfolio.py`
 rather than special-casing it in the slide filler.
 
-## Slides 5-6 are permanently frozen
+## Slides 5-6: frozen unless the desk supplies its own views
 
-Per explicit instruction, "Our economic scenario" and "Our current
-investment views" always ship exactly as the reference deck has them —
-`build_proposal.fill_market_slides()` never touches them, regardless of
-what `market_update.json` contains. Only slides 3-4 are dynamic. If a
-future requirement wants these unfrozen again, that's a one-line change
-(re-add the old scenario/house_view fill calls), not a redesign — the
-`market_update.json` schema below still documents the `scenario` and
-`house_view` fields in case that day comes, even though nothing currently
-reads them.
+"Our economic scenario" and "Our current investment views" ship exactly as
+the reference deck has them **unless** `market_update.json` carries a
+`house_view_slides` section. That section is opt-in, and it is filled only
+from the desk's own monthly view document (e.g. the "Syz Investment
+Conclusions" summary deck), never inferred from the weekly or monthly
+market PDF. The older `scenario` / `house_view` fields are still not read.
+`fill_house_view_slides()` replaces the two subtitles, the three column
+bodies on each slide, the slide-6 column headers, and the "SOURCE: ..."
+footnote. Slide 6 keeps its bold stance run ("Neutral: ") followed by
+the body run. Keep each column body to about 300 characters on slide 5
+and about 250 on slide 6, roughly what the template's boxes hold.
+
+```
+"house_view_slides": {
+  "source": "SOURCE: SYZ GROUP, INVESTMENT CONCLUSIONS SEPTEMBER 2026",
+  "scenario": {"intro_sentence": str,
+               "columns": [{"title": "Growth", "body": str},
+                           {"title": "Central Banks", "body": str},
+                           {"title": "Politics", "body": str}]},
+  "views": {"intro_sentence": str,
+            "columns": [{"asset_class": "Equities", "stance": str, "body": str},
+                        {"asset_class": "Fixed Income", ...},
+                        {"asset_class": "Commodities & Forex", ...}]}
+}
+```
 
 ## Table column simplification (sleeve "largest holdings" tables)
 

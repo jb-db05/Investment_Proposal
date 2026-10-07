@@ -631,10 +631,57 @@ def fill_income(prs, parsed):
 
 
 # ------------------------------------------------------------- market slides
-# Slides 5-6 (economic scenario / investment views) are permanently frozen
-# per explicit instruction — they are never touched here, always shipping
-# with the reference deck's own text. Only slides 3-4 pull from
-# market_update.json.
+# Slides 5-6 (economic scenario / investment views) ship with the reference
+# deck's own text unless market_update.json carries an explicit
+# "house_view_slides" section (opt-in, added when the desk supplies its own
+# monthly Investment Conclusions deck) — see fill_house_view_slides().
+
+SCENARIO_BOXES = ["TextBox 6", "TextBox 10", "TextBox 14"]   # Growth / Central Banks / Politics
+VIEW_BOXES = ["TextBox 6", "TextBox 10", "TextBox 14"]       # Equities / Fixed Income / Commodities & Forex
+VIEW_HEADERS = ["Rectangle 4", "Rectangle 8", "Rectangle 12"]
+
+
+def _set_stance_body(shape, stance, body):
+    """Slide 6 view boxes are one paragraph of two runs: a bold stance
+    ('Neutral:') then normal body text. Keep both runs' own formatting."""
+    if shape is None or not shape.has_text_frame:
+        return
+    para = shape.text_frame.paragraphs[0]
+    for extra in list(shape.text_frame.paragraphs)[1:]:
+        extra._p.getparent().remove(extra._p)
+    runs = list(para.runs)
+    if len(runs) < 2:
+        set_shape_lines(shape, [f"{stance}: {body}"])
+        return
+    for r in runs[2:]:
+        r._r.getparent().remove(r._r)
+    runs[0].text = f"{stance}: "
+    runs[1].text = body
+
+
+def fill_house_view_slides(prs, market):
+    hv = (market or {}).get("house_view_slides")
+    if not hv:
+        return
+    source = hv.get("source")
+    sc = hv.get("scenario")
+    if sc:
+        s5 = get_slide(prs, 5)
+        set_subtitle(s5, sc["intro_sentence"])
+        for name, col in zip(SCENARIO_BOXES, sc["columns"]):
+            set_text(s5, name, col["body"])
+        if source:
+            set_text(s5, "TextBox 15", source)
+    vw = hv.get("views")
+    if vw:
+        s6 = get_slide(prs, 6)
+        set_subtitle(s6, vw["intro_sentence"])
+        for box, header, v in zip(VIEW_BOXES, VIEW_HEADERS, vw["columns"]):
+            if v.get("asset_class"):
+                set_text(s6, header, v["asset_class"])
+            _set_stance_body(find_shape(s6, box), v["stance"], v["body"])
+        if source:
+            set_text(s6, "TextBox 15", source)
 
 def fill_market_slides(prs, market):
     if not market:
@@ -720,6 +767,7 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
     # slide's content is already in place.
     fill_cover(prs, parsed)
     fill_market_slides(prs, market)
+    fill_house_view_slides(prs, market)
     fill_profile_dial(prs, parsed)
     fill_portfolio_overview(prs, parsed)
     fill_geo_sector(prs, parsed)
