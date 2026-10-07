@@ -307,6 +307,8 @@ Schema (see the worked example for real values):
                            up to 9 — matches the template's 9 table rows]},
   "three_observations": [{"headline": str, "body": str}, ...3 of them],
   "four_drivers": {"intro_sentence": str,
+                    "policy_note": str (optional; replaces the template's
+                                        dated policy note under the 4 cards),
                     "drivers": [{"number": int, "title": str, "body": str,
                                  "stat": str|null}, ...4 of them]},
   "scenario": {"intro_sentence": str,

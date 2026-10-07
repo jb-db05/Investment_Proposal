@@ -670,8 +670,13 @@ def fill_market_slides(prs, market):
     s4 = get_slide(prs, 4)
     set_subtitle(s4, market["four_drivers"]["intro_sentence"])
     # the 5th 'Rectangle' on slide 4 is a standalone policy note (no title
-    # line), not a numbered driver card — left untouched, see slide_recipe.md
-    driver_rects = [sh for sh in s4.shapes if sh.name == "Rectangle"][:4]
+    # line), not a numbered driver card — only replaced when policy_note is given
+    all_rects = [sh for sh in s4.shapes if sh.name == "Rectangle"]
+    driver_rects = all_rects[:4]
+    note = market["four_drivers"].get("policy_note")
+    if note and len(all_rects) > 4:
+        # optional: replaces the template's own (dated) policy note
+        set_shape_lines(all_rects[4], [note])
     for sh, drv in zip(driver_rects, market["four_drivers"]["drivers"]):
         lines = [f"{drv['number']} - {drv['title']}", drv["body"]]
         if drv.get("stat"):
