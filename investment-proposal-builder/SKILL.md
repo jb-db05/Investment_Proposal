@@ -169,8 +169,10 @@ investment-proposal-builder/
 │   ├── slide_recipe.md            — slide-by-slide data source map + market_update.json schema
 │   ├── slide8_profile_dial.md     — risk-profile bands and the growth-asset % logic
 │   └── geography_map.py           — country -> region lookups (portfolio-wide and equity-only)
-└── work/                          — worked example: a real portfolio Excel, PDF, market_update.json
-                                      and parsed.json, for testing changes to the scripts
+├── work/                          — worked example: a real portfolio Excel, PDF, market_update.json
+│                                     and parsed.json, for testing changes to the scripts
+└── clients/<date>/                — (git-ignored: client data stays local) one folder per proposal: inputs,
+                                      overrides, parsed.json, the built deck and any written review
 ```
 
 ## Extending this skill

@@ -58,9 +58,11 @@ CATEGORY_COLORS = {
     "Fixed Income": RGBColor(0x4B, 0x5F, 0x80),
     "Equities": RGBColor(0x79, 0xD6, 0xFF),          # Sky Blue
     "Private Assets": RGBColor(0xAC, 0x5D, 0x85),
+    "Alternatives": RGBColor(0xAC, 0x5D, 0x85),        # hedge funds; same accent5 as the reference deck's Alternatives bar
     "Commodities": RGBColor(0x3B, 0xAF, 0x90),
     "Structured Products": RGBColor(0xE6, 0xA4, 0xAD),  # Peach Pink
     "Other": RGBColor(0xFF, 0xA4, 0x00),
+    "FX hedges": RGBColor(0x8A, 0x93, 0xA6),            # neutral grey: an overlay, not an asset class
 }
 TOTAL_COLOR = RGBColor(0x20, 0x29, 0x45)
 NAVY = RGBColor(0x20, 0x29, 0x45)
@@ -145,12 +147,18 @@ def _set_cell(cell, text, *, bold=False, fill=None, font_color=NAVY, size=10, al
     tf.word_wrap = True
     p = tf.paragraphs[0]
     p.alignment = align
-    run = p.add_run() if not p.runs else p.runs[0]
-    run.text = str(text)
-    run.font.size = Pt(size)
-    run.font.bold = bold
-    run.font.name = font_name
-    run.font.color.rgb = font_color
+    # An empty cell (e.g. a cash line with no ISIN) gets no run at all: an
+    # empty run is laid out at the 18pt default size by some renderers,
+    # making the row taller than ROW_HEIGHT and pushing the table off the
+    # slide. Its end-of-paragraph size is set instead.
+    if str(text) != "" or p.runs:
+        run = p.add_run() if not p.runs else p.runs[0]
+        run.text = str(text)
+        run.font.size = Pt(size)
+        run.font.bold = bold
+        run.font.name = font_name
+        run.font.color.rgb = font_color
+    p._p.get_or_add_endParaRPr().set("sz", str(int(size * 100)))
 
 
 def _merge_col1(table, r0, r1):
@@ -309,6 +317,11 @@ def build(prs: Presentation, parsed: dict) -> Presentation:
     # line_items per page, so a category split across pages still shows its
     # one true total everywhere its header appears.
     category_totals = dict(parsed["asset_allocation_pct"])
+    # the FX-hedge overlay is not an asset class (no donut slice), so its
+    # header total is summed from its own line items
+    for li in line_items:
+        if li["top_category"] not in parsed["asset_allocation_pct"]:
+            category_totals[li["top_category"]] = category_totals.get(li["top_category"], 0.0) + li["weight_pct"]
 
     anchor_idx, anchor_slide = find_slide(prs, is_line_items_slide)
     if anchor_idx is None:

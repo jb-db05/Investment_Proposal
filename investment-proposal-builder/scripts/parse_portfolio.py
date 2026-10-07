@@ -36,9 +36,19 @@ PORTFOLIO_SECTIONS = {
     "Equities",
     "Structured products",
     "Private Assets",
+    "Hedge Funds",
     "Gold and other commodities",
     "Other investments",
 }
+
+# Section headers whose rows are an FX-hedging overlay, not an investment.
+# Each forward appears as two legs (a negative-weight sold leg and a
+# positive-weight bought leg). They are kept out of every holdings-based
+# figure and reported separately as `fx_hedges` (assumptions.md §2); their
+# signed weights only feed the currency-exposure donut, so it shows the
+# portfolio's net (post-hedge) currency exposure, matching the export's own
+# "Breakdown General" summary table.
+FX_OVERLAY_SECTIONS = {"Currency forwards"}
 
 # Maps a raw Portfolio-sheet section header to the asset-class bucket used
 # throughout parsed.json and the slide 9/10 line-items table (assumptions.md §4-5).
@@ -49,6 +59,7 @@ ASSET_CLASS_MAP = {
     "Equities": "Equities",
     "Structured products": "Structured Products",
     "Private Assets": "Private Assets",
+    "Hedge Funds": "Alternatives",
     "Gold and other commodities": "Commodities",
     "Other investments": "Other",
 }
@@ -91,7 +102,7 @@ def load_sheet_rows(ws) -> tuple[dict[str, int], list[dict]]:
     section = None
     for r in range(header_row_idx + 1, ws.max_row + 1):
         col_a = ws.cell(r, 1).value
-        if isinstance(col_a, str) and col_a.strip() in PORTFOLIO_SECTIONS:
+        if isinstance(col_a, str) and col_a.strip() in PORTFOLIO_SECTIONS | FX_OVERLAY_SECTIONS:
             section = col_a.strip()
             continue
         row = {h: ws.cell(r, c).value for h, c in headers.items()}
@@ -200,8 +211,12 @@ def describe_bond_subsleeve(row: dict) -> str:
         return "Supranational bond"
     if any(k in du for k in STRUCTURED_KEYWORDS):
         return "Structured note / certificate"
-    if sector.lower() in ("government", ""):
+    if sector.lower() == "government":
         return "Quasi-sovereign bond"
+    if sector == "":
+        # the Portfolio sheet has no Sector column: don't guess
+        # government vs corporate from a missing field
+        return "Direct bond"
     return "Corporate bond"
 
 
@@ -340,18 +355,33 @@ def main():
     args = ap.parse_args()
 
     wb = openpyxl.load_workbook(args.excel_path, data_only=True)
-    if "Portfolio" not in wb.sheetnames:
-        sys.exit("Error: expected a 'Portfolio' sheet in the Excel file")
-    _, port_rows = load_sheet_rows(wb["Portfolio"])
+    # Prefer a sheet literally named 'Portfolio'; some exports ship a
+    # single unnamed sheet ('Sheet1') instead, so fall back to the first
+    # sheet that is not the 'Fixed Income' proposal tab and has an ISIN
+    # header row (assumptions.md §1).
+    port_rows = None
+    candidates = ["Portfolio"] if "Portfolio" in wb.sheetnames else [
+        n for n in wb.sheetnames if n != "Fixed Income"]
+    for name in candidates:
+        try:
+            _, port_rows = load_sheet_rows(wb[name])
+            break
+        except ValueError:
+            continue
+    if port_rows is None:
+        sys.exit("Error: no 'Portfolio' sheet (or other sheet with an ISIN header row) in the Excel file")
     proposed_bond_selection = parse_proposed_bonds(wb) if "Fixed Income" in wb.sheetnames else None
 
     bucket_overrides = load_bucket_overrides(args.bucket_overrides)
     mcap_overrides = load_market_cap_overrides(args.market_cap_overrides)
     sector_overrides = load_sector_overrides(args.sector_overrides)
 
-    included, uncalled = [], []
+    included, uncalled, fx_legs = [], [], []
     for row in port_rows:
         section = row.get("_section")
+        if section in FX_OVERLAY_SECTIONS:
+            fx_legs.append(row)
+            continue
         if section not in PORTFOLIO_SECTIONS:
             continue
         w = weight(row)
@@ -375,7 +405,10 @@ def main():
             row["_value_qc"] = 0.0
         included.append(row)
 
-    total_value_eur = sum(r["_value_eur"] for r in included)
+    # FX forwards' net mark-to-market is part of the client's net asset
+    # value, so it is added back here: the KPI then ties out to the export's
+    # own stated total even though the legs are not holdings.
+    total_value_eur = sum(r["_value_eur"] for r in included) + sum(val_eur(r) for r in fx_legs)
 
     # Base/reporting currency: fixed at EUR, matching the custodian file's
     # own "Valuation + accr. interest (EUR)" column and its own stated
@@ -400,6 +433,10 @@ def main():
     ccy_weight = defaultdict(float)
     for r in included:
         ccy_weight[str(r.get("currency") or "Other")] += r["_weight"]
+    # FX forward legs carry signed weights: net (post-hedge) exposure.
+    for r in fx_legs:
+        ccy_weight[str(r.get("currency") or "Other")] += weight(r)
+    ccy_weight = {k: v for k, v in ccy_weight.items() if v > 0}
     currency_exposure = {k: pct(v) for k, v in sorted(ccy_weight.items(), key=lambda kv: -kv[1])}
 
     # --- §7 geography / sector portfolio-wide ---
@@ -529,6 +566,7 @@ def main():
         if isinstance(d, (int, float)):
             duration_subsleeves[label]["dur_weighted"] += r["_value_eur"] * d
     fi_duration = round(dur_num / dur_den, 2) if dur_den else None
+    fi_lines_without_duration = sum(1 for r in fi_rows if not isinstance(r.get("duration"), (int, float)))
     rate_impact_eur = round(-fi_duration * 0.01 * fi_total_val, 2) if fi_duration else None
 
     income_by_sleeve = defaultdict(float)
@@ -543,6 +581,9 @@ def main():
     income = {
         "running_yield_pct": running_yield_pct,
         "fi_duration_years": fi_duration,
+        "fi_lines_total": len(fi_rows),
+        "fi_lines_without_duration": fi_lines_without_duration,
+        "fi_duration_value_coverage_pct": pct(dur_den / fi_total_val) if fi_total_val else None,
         "rate_impact_100bp_eur": rate_impact_eur,
         "income_by_sleeve": [
             {"sleeve": k, "income_eur": round(v, 2), "pct_of_income": pct(v / total_income)}
@@ -571,7 +612,7 @@ def main():
     # --- line items table source (assumptions.md §4, slides 9-10) ---
     line_items = []
     fi_bucket_order = ["Govies 1-10 (local)", "Govies 10+ (local)", "High Yield (local or global hdg)",
-                        "Corporate IG (local)", "EM Debt"]
+                        "Corporate IG (local)", "EM Debt", "Inflation-linked", "Money market"]
     equity_region_order = ["US", "Eurozone", "UK", "Switzerland", "Japan", "EM", "Global / thematic"]
     for r in included:
         ac = r["_asset_class"]
@@ -590,11 +631,22 @@ def main():
             "instrument": r.get("description"),
             "weight_pct": pct(r["_weight"]),
         })
+    # FX forwards: one netted line (sum of the legs' signed weights, i.e.
+    # the hedge's mark-to-market), so the holdings table's Total ties out
+    # to 100% of the statement instead of 100% + the excluded legs.
+    if fx_legs:
+        line_items.append({
+            "top_category": "FX hedges",
+            "group": "FX hedges",
+            "isin": None,
+            "instrument": "Currency forwards, net mark-to-market",
+            "weight_pct": pct(sum(weight(r) for r in fx_legs)),
+        })
     # stable sort: top_category (Cash, Fixed Income, Equities, Alternatives,
     # Structured Products, Private Assets, Commodities, Other), then FI bucket
     # order, then descending weight within group.
     top_cat_order = ["Cash", "Fixed Income", "Equities", "Alternatives", "Structured Products",
-                      "Private Assets", "Commodities", "Other"]
+                      "Private Assets", "Commodities", "Other", "FX hedges"]
 
     def sort_key(li):
         tc = top_cat_order.index(li["top_category"]) if li["top_category"] in top_cat_order else 99
@@ -620,7 +672,10 @@ def main():
         "total_value_eur": round(total_value_eur, 2),
         "num_positions": len(included),
         "largest_position_pct": pct(by_weight[0]["_weight"]) if by_weight else 0,
-        "liquid_share_pct": pct(liq_weight.get("Listed", 0) + liq_weight.get("Daily-liquid fund", 0)),
+        # share of the invested holdings, so it can't exceed 100% when
+        # excluded FX-forward legs make the holding weights sum above 100
+        "liquid_share_pct": pct((liq_weight.get("Listed", 0) + liq_weight.get("Daily-liquid fund", 0))
+                                / (sum(liq_weight.values()) or 1.0)),
         "asset_allocation_pct": asset_allocation,
         "currency_exposure_pct": currency_exposure,
         "geographic_exposure_pct": geographic_exposure,
@@ -632,6 +687,17 @@ def main():
         "income": income,
         "risk_profile": risk_profile,
         "uncalled_commitments": uncalled,
+        "fx_hedges": [
+            {
+                "description": r.get("description"),
+                "currency": r.get("currency"),
+                "notional_qc": r.get("balance"),
+                "value_eur": val_eur(r),
+                "weight_pct": pct(weight(r)),
+                "maturity": r.get("contract close date"),
+            }
+            for r in fx_legs
+        ],
         "line_items": line_items,
         "proposed_bond_selection": proposed_bond_selection,
     }

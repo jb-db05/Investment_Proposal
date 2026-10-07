@@ -18,7 +18,7 @@ from `assets/template.pptx` — no per-client data goes on it.
 | N+1 | Portfolio overview | `parsed.json`: KPIs, `asset_allocation_pct`, `currency_exposure_pct` | `build_proposal.fill_portfolio_overview` |
 | N+2 | Geographic & sector exposure | `parsed.json: geographic_exposure_pct`, `sector_exposure_pct` (may be unavailable, see assumptions.md §7) | `build_proposal.fill_geo_sector` |
 | N+3 | Fixed Income: income-type specifics | `parsed.json: sleeves["Fixed Income"]` | `build_proposal.fill_sleeve_slides` |
-| N+4 | Fixed Income Breakdown (proposed bond selection) | `parsed.json: proposed_bond_selection` (from the `Fixed Income` Excel tab — a curated proposal, NOT current holdings) | `build_proposal.fill_proposed_bond_selection` |
+| N+4 | Fixed Income Breakdown (proposed bond selection) | `parsed.json: proposed_bond_selection` (from the `Fixed Income` Excel tab — a curated proposal, NOT current holdings). **Deleted from the deck** when the Excel has no such tab, rather than shipping the reference client's selection | `build_proposal.fill_proposed_bond_selection` |
 | N+5 | Equities: income-type specifics | `parsed.json: sleeves["Equities"]` | `build_proposal.fill_sleeve_slides` |
 | N+6 | Equity breakdown | `parsed.json: equity_breakdown` | `build_proposal.fill_equity_breakdown` |
 | N+7 | Alternatives: income-type specifics | `parsed.json: sleeves["Private Assets"]` (closest conceptual match — see note below) | `build_proposal.fill_sleeve_slides` |
@@ -299,8 +299,11 @@ Schema (see the worked example for real values):
 {
   "week_of": str,
   "headline": {"summary_title": str, "intro_sentence": str,
-               "stats": [{"value": str, "label": str}, ...4 of them]},
-  "scoreboard": {"rows": [{"index": str, "week": str, "ytd": str}, ...
+               "stats": [{"value": str, "label": str}, ...4 of them],
+    "slide_title": str (optional; default keeps "How markets moved last week")},
+  "scoreboard": {"period_label": str (optional; default "Week", e.g. "Q3"
+                                     for a monthly/quarterly outlook),
+                 "rows": [{"index": str, "week": str, "ytd": str}, ...
                            up to 9 — matches the template's 9 table rows]},
   "three_observations": [{"headline": str, "body": str}, ...3 of them],
   "four_drivers": {"intro_sentence": str,

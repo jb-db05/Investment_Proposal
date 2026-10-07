@@ -100,7 +100,7 @@ PROFILE_LABEL_SHAPE = {
 # Sleeve slides where the "largest holdings" table's Yield/Coupon column is
 # always empty (equities, alternatives and commodities don't carry
 # yield/coupon data) -- dropped per user instruction rather than shown blank.
-SLEEVES_WITHOUT_YIELD_COLUMN = {"Equities", "Private Assets", "Commodities"}
+SLEEVES_WITHOUT_YIELD_COLUMN = {"Equities", "Private Assets", "Alternatives", "Commodities"}
 
 
 def find_shape(slide, name):
@@ -466,6 +466,18 @@ def fill_portfolio_overview(prs, parsed):
     set_text(slide, "Rectangle 6", f"{parsed['liquid_share_pct']:.1f}%\nLiquid share")
     ry = parsed["income"]["running_yield_pct"]
     set_text(slide, "Rectangle 7", f"{ry:.1f}%\nRunning yield" if ry is not None else "n/a\nRunning yield")
+    # TextBox 12 is the duration-coverage caveat; the template still carries
+    # the reference client's own sentence, so it is always rewritten (or
+    # blanked when every fixed-income line reports a duration)
+    inc = parsed["income"]
+    missing, total = inc.get("fi_lines_without_duration"), inc.get("fi_lines_total")
+    cov = inc.get("fi_duration_value_coverage_pct")
+    if missing and total and cov is not None:
+        set_text(slide, "TextBox 12",
+                  f"⚠ {missing} of {total} fixed-income line(s) report no modified duration; "
+                  f"portfolio duration reflects the {cov:.0f}% of the sleeve that does.")
+    else:
+        set_text(slide, "TextBox 12", "")
     update_donut_by_name(slide, "Chart 10", parsed["asset_allocation_pct"])
     update_donut_by_name(slide, "Chart 14", parsed["currency_exposure_pct"])
 
@@ -508,6 +520,11 @@ def fill_sleeve_slides(prs, parsed):
     for slide_num, sleeve_key in SLEEVE_SLIDES.items():
         slide = get_slide(prs, slide_num)
         sleeve = parsed["sleeves"].get(sleeve_key)
+        if sleeve is None and sleeve_key == "Private Assets":
+            # slide 17 is the deck's "Alternatives" slot: a portfolio with no
+            # private assets but with hedge funds fills it from those instead
+            sleeve_key = "Alternatives"
+            sleeve = parsed["sleeves"].get(sleeve_key)
         if sleeve is None:
             set_text(slide, "TextBox 5", "No holdings in this sleeve for this portfolio.")
             continue
@@ -625,6 +642,9 @@ def fill_market_slides(prs, market):
     s3 = get_slide(prs, 3)
     h = market["headline"]
     set_subtitle(s3, h["intro_sentence"])
+    if h.get("slide_title"):
+        # e.g. "How markets moved last quarter" for a monthly/quarterly outlook
+        set_text(s3, "Title 1", h["slide_title"])
 
     rects = [sh for sh in s3.shapes if sh.name == "Rectangle"]
     stat_rects, obs_rects = rects[:4], rects[4:7]
@@ -639,7 +659,10 @@ def fill_market_slides(prs, market):
     if len(textboxes) >= 4:
         rows = market["scoreboard"]["rows"]
         set_shape_lines(textboxes[1], ["Index"] + [r["index"] for r in rows])
-        set_shape_lines(textboxes[2], ["Week"] + [r["week"] for r in rows])
+        # "period_label" lets a monthly/quarterly outlook relabel the column
+        # (e.g. "Q3"); weekly updates omit it and keep "Week"
+        period = market["scoreboard"].get("period_label", "Week")
+        set_shape_lines(textboxes[2], [period] + [r["week"] for r in rows])
         set_shape_lines(textboxes[3], ["YTD"] + [r["ytd"] for r in rows])
         color_scoreboard_column(textboxes[2], [r["week"] for r in rows])
         color_scoreboard_column(textboxes[3], [r["ytd"] for r in rows])
@@ -701,7 +724,17 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
     fill_liquidity(prs, parsed)
     fill_concentration(prs, parsed)
     fill_income(prs, parsed)
+    # the FI-breakdown slide's position before any slide is added or removed
+    fi_breakdown_slide_id = get_slide(prs, 14).slide_id
     line_items_mod.build(prs, parsed)  # slides 9-10(+): rebuilt as real tables, runs last
+    if not parsed.get("proposed_bond_selection"):
+        # No 'Fixed Income' proposal tab in this Excel: drop the "Fixed Income
+        # Breakdown" slide rather than ship the reference client's bond
+        # selection. Must come after line_items_mod.build(): python-pptx
+        # names a new slide part by slide count, so deleting first makes
+        # add_slide() reuse an existing part name and overwrite that slide.
+        idx = [s.slide_id for s in prs.slides].index(fi_breakdown_slide_id)
+        line_items_mod.delete_slide(prs, idx)
 
     prs.save(output_path)
     print(f"Wrote {output_path}")

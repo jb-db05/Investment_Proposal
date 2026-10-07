@@ -22,6 +22,14 @@ in the client's Excel export, or to a documented rule applied to that column.
   is treated as equally weighted, matching the reference deck's own framing
   ("N issues, equally weighted at X each").
 
+Some exports ship a single unnamed sheet (e.g. `Sheet1`) instead of a
+`Portfolio` tab. When no sheet is named `Portfolio`, the first sheet other
+than `Fixed Income` that has an ISIN header row is used. Two further
+section headers are recognised: `Hedge Funds` (asset class
+`Alternatives`, a growth class, filling the deck's "Alternatives" slide
+when there are no `Private Assets`) and `Currency forwards` (an FX-hedge
+overlay, see §2).
+
 Column names are matched case-insensitively with whitespace stripped
 (the export has trailing spaces on some headers, e.g. `"Rating  "`).
 
@@ -34,6 +42,17 @@ Column names are matched case-insensitively with whitespace stripped
   the line-items table, but their count and total committed amount are
   reported separately as `uncalled_commitments` in `parsed.json` so nothing
   is silently dropped — they just aren't a % of the invested book.
+- **Currency forwards** are an overlay, not holdings. Each forward
+  appears as two legs (a negative-weight sold leg, a positive-weight bought
+  leg). The legs are excluded from the position count, every sleeve and
+  every asset-class figure, and listed in `parsed.json: fx_hedges`. They
+  enter only: (a) the currency-exposure donut, with their signed weights,
+  so it shows **net post-hedge** exposure, matching the export's own
+  "Breakdown General" table; (b) `total_value_eur`, as the net
+  mark-to-market, so the KPI ties out to the export's stated total; and (c)
+  one netted "FX hedges" line in the holdings table, so its Total row
+  reads 100%. Liquid share is computed over the invested holdings only, so
+  it can't exceed 100% when the excluded legs net to a negative weight.
 - All weights are read directly from the file's own `Weight (%)` column
   (already computed by the custodian against the portfolio total) rather
   than recomputed from valuations, so the numbers tie out to the client's
