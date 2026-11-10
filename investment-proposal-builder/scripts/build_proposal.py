@@ -43,6 +43,7 @@ from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 import build_line_items_tables as line_items_mod  # noqa: E402
+import build_rebalance_slides as rebalance_mod  # noqa: E402
 import update_chart as chart_mod  # noqa: E402
 
 TEMPLATE_PATH = SCRIPT_DIR.parent / "assets" / "template.pptx"
@@ -468,6 +469,15 @@ def fill_portfolio_overview(prs, parsed):
     set_text(slide, "Rectangle 7", f"{ry:.1f}%\nRunning yield" if ry is not None else "n/a\nRunning yield")
     update_donut_by_name(slide, "Chart 10", parsed["asset_allocation_pct"])
     update_donut_by_name(slide, "Chart 14", parsed["currency_exposure_pct"])
+    # duration-coverage footnote: the template ships the reference client's
+    # own "2 of 23 ..." sentence, so it must always be rewritten or blanked
+    fi = parsed["sleeves"].get("Fixed Income")
+    note = ""
+    if fi and fi.get("duration_lines_with") is not None and fi["duration_lines_with"] < fi["num_lines"]:
+        missing = fi["num_lines"] - fi["duration_lines_with"]
+        note = (f"⚠ {missing} of {fi['num_lines']} fixed-income line(s) report no modified duration; "
+                f"portfolio duration reflects the {fi['duration_value_coverage_pct']:.0f}% of the sleeve that does.")
+    set_text(slide, "TextBox 12", note)
 
 
 def set_donut_legend(slide, textbox_names, data: dict[str, float]):
@@ -494,6 +504,11 @@ def fill_geo_sector(prs, parsed):
         update_bar_by_name(slide, "Chart 8", {"Not available": 100.0})
 
 
+# Slides found to have no data for this client (empty sleeve, no bond
+# proposal). Removed at the very end of build(), after every fill that
+# addresses slides by template position has run.
+SLIDES_TO_DROP: list = []
+
 SLEEVE_SLIDES = {
     # slide_number: parsed.json sleeve key
     13: "Fixed Income",
@@ -509,7 +524,10 @@ def fill_sleeve_slides(prs, parsed):
         slide = get_slide(prs, slide_num)
         sleeve = parsed["sleeves"].get(sleeve_key)
         if sleeve is None:
-            set_text(slide, "TextBox 5", "No holdings in this sleeve for this portfolio.")
+            # The template's own table/donut on this slide hold the
+            # reference client's holdings; showing them under a "no
+            # holdings" caption is misleading, so the slide is dropped.
+            SLIDES_TO_DROP.append(slide)
             continue
         include_yield = sleeve_key not in SLEEVES_WITHOUT_YIELD_COLUMN
         rebuild_holdings_table(slide, "Table 6", sleeve["top_holdings"], parsed["base_currency"],
@@ -532,6 +550,7 @@ def fill_proposed_bond_selection(prs, parsed):
     slide = get_slide(prs, 14)
     pb = parsed.get("proposed_bond_selection")
     if not pb:
+        SLIDES_TO_DROP.append(slide)  # no 'Fixed Income' proposal tab: slide would show reference data
         return
     set_text(slide, "Text 1",
              f"Proposed bond selection: {pb['num_issues']} issues, "
@@ -609,7 +628,10 @@ def fill_income(prs, parsed):
     set_text(slide, "Rectangle 6", f"{fd:.1f}y\nFI duration" if fd is not None else "n/a\nFI duration")
     ri = income["rate_impact_100bp_eur"]
     ccy = parsed["base_currency"]
-    set_text(slide, "Rectangle 7", f"{ccy} {ri:,.0f}\nImpact +100bp" if ri is not None else "n/a\nImpact +100bp")
+    # currency goes in the caption: "USD -3,977" does not fit the box at the
+    # template's 24pt and wraps mid-number
+    ri_txt = (f"{ri / 1000:,.1f}k" if abs(ri) >= 1000 else f"{ri:,.0f}") if ri is not None else "n/a"
+    set_text(slide, "Rectangle 7", f"{ri_txt}\n{ccy} impact +100bp")
     fill_income_tables(slide, "Table 4", "Table 9", income)
 
 
@@ -648,7 +670,16 @@ def fill_market_slides(prs, market):
     set_subtitle(s4, market["four_drivers"]["intro_sentence"])
     # the 5th 'Rectangle' on slide 4 is a standalone policy note (no title
     # line), not a numbered driver card — left untouched, see slide_recipe.md
-    driver_rects = [sh for sh in s4.shapes if sh.name == "Rectangle"][:4]
+    all_rects = [sh for sh in s4.shapes if sh.name == "Rectangle"]
+    driver_rects = all_rects[:4]
+    if len(all_rects) >= 5:
+        # policy note under the cards: the template's text is the reference
+        # week's, so it is replaced if market_update.json has one, else the
+        # (bordered) box is removed rather than left empty or stale
+        if market.get("policy_note"):
+            set_shape_lines(all_rects[4], [market["policy_note"]])
+        else:
+            all_rects[4]._element.getparent().remove(all_rects[4]._element)
     for sh, drv in zip(driver_rects, market["four_drivers"]["drivers"]):
         lines = [f"{drv['number']} - {drv['title']}", drv["body"]]
         if drv.get("stat"):
@@ -661,7 +692,7 @@ def fill_market_slides(prs, market):
 
 def build(excel_path, profile, client_name, output_path, market_update_path=None,
           valuation_date=None, bucket_overrides=None, market_cap_overrides=None,
-          sector_overrides=None, keep_parsed_json=None):
+          sector_overrides=None, keep_parsed_json=None, rebalance_path=None):
     parse_cmd = [sys.executable, str(SCRIPT_DIR / "parse_portfolio.py"), excel_path,
                  "--profile", profile, "--client-name", client_name,
                  "-o", keep_parsed_json or str(SCRIPT_DIR.parent / "work" / "_parsed_tmp.json")]
@@ -701,7 +732,15 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
     fill_liquidity(prs, parsed)
     fill_concentration(prs, parsed)
     fill_income(prs, parsed)
-    line_items_mod.build(prs, parsed)  # slides 9-10(+): rebuilt as real tables, runs last
+    line_items_mod.build(prs, parsed)  # slides 9-10(+): rebuilt as real tables
+    if rebalance_path:
+        # Optional "recommended changes" slides (build_rebalance.py output),
+        # inserted after slide 8; runs after everything else for the same
+        # slide-shifting reason as the holdings list.
+        rebalance_mod.build(prs, json.loads(Path(rebalance_path).read_text()))
+    for dead in SLIDES_TO_DROP:
+        idx = next(i for i, sl in enumerate(prs.slides) if sl == dead)
+        line_items_mod.delete_slide(prs, idx)
 
     prs.save(output_path)
     print(f"Wrote {output_path}")
@@ -719,13 +758,16 @@ def main():
     ap.add_argument("--market-cap-overrides", default=None)
     ap.add_argument("--sector-overrides", default=None)
     ap.add_argument("--keep-parsed-json", default=None, help="also write parsed.json to this path")
+    ap.add_argument("--rebalance", default=None,
+                    help="rebalance.json from build_rebalance.py: adds the recommended-changes slides")
     ap.add_argument("-o", "--output", required=True)
     args = ap.parse_args()
 
     build(args.excel, args.profile, args.client_name, args.output,
           market_update_path=args.market_update, valuation_date=args.valuation_date,
           bucket_overrides=args.bucket_overrides, market_cap_overrides=args.market_cap_overrides,
-          sector_overrides=args.sector_overrides, keep_parsed_json=args.keep_parsed_json)
+          sector_overrides=args.sector_overrides, keep_parsed_json=args.keep_parsed_json,
+          rebalance_path=args.rebalance)
 
 
 if __name__ == "__main__":

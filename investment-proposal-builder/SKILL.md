@@ -74,6 +74,29 @@ scenario-probability table that week, say), leave that field's slide
 un-filled (the template's original text stays) and tell the user instead
 of inventing numbers.
 
+### 3b. (Optional) Rebalance proposal: current holdings -> proposed portfolio
+
+When the Excel is the client's *current* book and the job is to propose
+changes (consolidate lines, cut a concentration, add sectors/regions),
+write a `rebalance_spec.json` (judgment input, like `market_update.json`:
+per-ISIN tags for sector / region / AI camp / vehicle, `sell` and `resize`
+actions with a reason and a theme `group`, and `new_positions`), then:
+
+```bash
+python scripts/build_rebalance.py current.xlsx rebalance_spec.json \
+    --out-excel proposed.xlsx --out-json rebalance.json \
+    --out-sector-csv sector_overrides.csv --out-mcap-csv market_cap_overrides.csv
+```
+
+It keeps the portfolio total fixed, sends unspent proceeds to base-currency
+cash, prices new lines with the FX implied by the file itself, and writes
+the proposed portfolio in the custodian layout (plus `Trades` and
+`Before vs After` sheets). Build the deck from `proposed.xlsx`, passing
+`--rebalance rebalance.json` (and the two override CSVs) to step 4: five
+"recommended changes" slides are inserted after the risk-profile dial.
+`proposals/2026-11-10_Port_10_Nov_26/` is a complete worked example
+(`build.sh` rebuilds it end to end).
+
 ### 4. Build the deck
 
 ```bash
@@ -163,7 +186,9 @@ investment-proposal-builder/
 │   ├── parse_portfolio.py         — Excel -> parsed.json (all calculations, no chart/slide code)
 │   ├── update_chart.py            — python-pptx chart.replace_data() helpers
 │   ├── build_line_items_tables.py — rebuilds the holdings-list slides as real tables
-│   └── build_proposal.py          — orchestrator: runs all of the above, fills every other slide
+│   ├── build_proposal.py          — orchestrator: runs all of the above, fills every other slide
+│   ├── build_rebalance.py         — current Excel + rebalance spec -> proposed Excel + rebalance.json
+│   └── build_rebalance_slides.py  — "recommended changes" slides from rebalance.json (--rebalance)
 ├── references/
 │   ├── assumptions.md             — every calculation/classification rule, by section number
 │   ├── slide_recipe.md            — slide-by-slide data source map + market_update.json schema

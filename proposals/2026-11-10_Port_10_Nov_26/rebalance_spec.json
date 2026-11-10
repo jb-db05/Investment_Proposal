@@ -1,0 +1,509 @@
+{
+  "_comment": "Advisor judgment input for build_rebalance.py (like market_update.json): how each current equity line is classified, what to do with it, and which new positions to add. Weights are % of the total portfolio. Anything sold and not reinvested stays in USD cash.",
+  "as_of": "10 November 2026",
+  "house_view_source": "Weekly Investment Meeting, 9 November 2026",
+  "single_line_min_weight_pct": 2.0,
+  "objectives": [
+    "Cut single-stock lines from 24 to 8: keep only large, liquid, high-conviction names of at least ~2% each.",
+    "Exit every position below ~2% that is not a deliberate satellite, and fold its exposure into a fund or ETF.",
+    "Bring the AI-exposed share of the equity sleeve down from about a third to about a fifth, in line with the house view that AI is being repriced (Nasdaq -4.9% and semis -12.3% on 5 Nov).",
+    "Add the regions and sectors the portfolio lacks: healthcare and biotech, Europe, Switzerland, India and the broader US market (equal weight).",
+    "Consolidate overlapping exposures: six China lines into one ETF, two Japan vehicles into one fund, three space names into one.",
+    "Keep a cash buffer of about 6.5%, consistent with the house overweight on cash, to redeploy into the same targets in stages."
+  ],
+  "tags": {
+    "IE00BP3QZB59": {
+      "sector": "Broad market fund",
+      "region": "Global",
+      "ai": "AI-neutral",
+      "vehicle": "Fund / ETF"
+    },
+    "NL0013654783": {
+      "sector": "Consumer Discretionary",
+      "region": "China",
+      "ai": "AI-neutral",
+      "vehicle": "Single stock"
+    },
+    "IE00BYPLS672": {
+      "sector": "Information Technology",
+      "region": "US",
+      "ai": "AI-exposed",
+      "vehicle": "Fund / ETF"
+    },
+    "KYG017191142": {
+      "sector": "Consumer Discretionary",
+      "region": "China",
+      "ai": "AI-exposed",
+      "vehicle": "Single stock"
+    },
+    "DE000A161408": {
+      "sector": "Consumer Discretionary",
+      "region": "Europe",
+      "ai": "AI-neutral",
+      "vehicle": "Single stock"
+    },
+    "LU0536295982": {
+      "sector": "Broad market fund",
+      "region": "Japan",
+      "ai": "AI-neutral",
+      "vehicle": "Fund / ETF"
+    },
+    "JP3027630007": {
+      "sector": "Broad market fund",
+      "region": "Japan",
+      "ai": "AI-neutral",
+      "vehicle": "Fund / ETF"
+    },
+    "US30303M1027": {
+      "sector": "Communication Services",
+      "region": "US",
+      "ai": "AI-exposed",
+      "vehicle": "Single stock",
+      "market_cap": "Large cap"
+    },
+    "US81369Y5069": {
+      "sector": "Energy",
+      "region": "US",
+      "ai": "AI-insulated",
+      "vehicle": "Fund / ETF"
+    },
+    "US46434V5140": {
+      "sector": "Broad market fund",
+      "region": "China",
+      "ai": "AI-neutral",
+      "vehicle": "Fund / ETF"
+    },
+    "US4523271090": {
+      "sector": "Health Care",
+      "region": "US",
+      "ai": "AI-insulated",
+      "vehicle": "Single stock"
+    },
+    "US9220428588": {
+      "sector": "Broad market fund",
+      "region": "EM ex-China",
+      "ai": "AI-neutral",
+      "vehicle": "Fund / ETF"
+    },
+    "US3847471014": {
+      "sector": "Health Care",
+      "region": "US",
+      "ai": "AI-insulated",
+      "vehicle": "Single stock"
+    },
+    "AT0000A3EPA4": {
+      "sector": "Information Technology",
+      "region": "Europe",
+      "ai": "AI-exposed",
+      "vehicle": "Single stock"
+    },
+    "US9842451000": {
+      "sector": "Energy",
+      "region": "EM ex-China",
+      "ai": "AI-insulated",
+      "vehicle": "Single stock"
+    },
+    "US02079K3059": {
+      "sector": "Communication Services",
+      "region": "US",
+      "ai": "AI-exposed",
+      "vehicle": "Single stock",
+      "market_cap": "Large cap"
+    },
+    "US0231351067": {
+      "sector": "Consumer Discretionary",
+      "region": "US",
+      "ai": "AI-exposed",
+      "vehicle": "Single stock",
+      "market_cap": "Large cap"
+    },
+    "LU2985306195": {
+      "sector": "Broad market fund",
+      "region": "Europe",
+      "ai": "AI-neutral",
+      "vehicle": "Fund / ETF"
+    },
+    "US62914V1061": {
+      "sector": "Consumer Discretionary",
+      "region": "China",
+      "ai": "AI-neutral",
+      "vehicle": "Single stock"
+    },
+    "US80401C1009": {
+      "sector": "Industrials",
+      "region": "US",
+      "ai": "AI-neutral",
+      "vehicle": "Single stock"
+    },
+    "US88160R1014": {
+      "sector": "Consumer Discretionary",
+      "region": "US",
+      "ai": "AI-exposed",
+      "vehicle": "Single stock"
+    },
+    "US67066G1040": {
+      "sector": "Information Technology",
+      "region": "US",
+      "ai": "AI-exposed",
+      "vehicle": "Single stock"
+    },
+    "US05606L1008": {
+      "sector": "Consumer Discretionary",
+      "region": "China",
+      "ai": "AI-neutral",
+      "vehicle": "Single stock"
+    },
+    "LI0148578169": {
+      "sector": "Broad market fund",
+      "region": "EM ex-China",
+      "ai": "AI-neutral",
+      "vehicle": "Fund / ETF"
+    },
+    "US5949181045": {
+      "sector": "Information Technology",
+      "region": "US",
+      "ai": "AI-exposed",
+      "vehicle": "Single stock",
+      "market_cap": "Large cap"
+    },
+    "DK0060079531": {
+      "sector": "Industrials",
+      "region": "Europe",
+      "ai": "AI-neutral",
+      "vehicle": "Single stock"
+    },
+    "US37954Y8710": {
+      "sector": "Energy",
+      "region": "Global",
+      "ai": "AI-exposed",
+      "vehicle": "Fund / ETF"
+    },
+    "FR0013506730": {
+      "sector": "Energy",
+      "region": "Europe",
+      "ai": "AI-insulated",
+      "vehicle": "Single stock",
+      "market_cap": "Mid cap"
+    },
+    "US11135F1012": {
+      "sector": "Information Technology",
+      "region": "US",
+      "ai": "AI-exposed",
+      "vehicle": "Single stock",
+      "market_cap": "Large cap"
+    },
+    "US92189H8051": {
+      "sector": "Materials",
+      "region": "Global",
+      "ai": "AI-neutral",
+      "vehicle": "Fund / ETF"
+    },
+    "US84615Q1031": {
+      "sector": "Industrials",
+      "region": "US",
+      "ai": "AI-neutral",
+      "vehicle": "Single stock",
+      "market_cap": "Large cap"
+    },
+    "US72703X1063": {
+      "sector": "Industrials",
+      "region": "US",
+      "ai": "AI-neutral",
+      "vehicle": "Single stock"
+    },
+    "US7601251041": {
+      "sector": "Industrials",
+      "region": "Europe",
+      "ai": "AI-insulated",
+      "vehicle": "Single stock",
+      "market_cap": "Large cap"
+    },
+    "US1725731079": {
+      "sector": "Financials",
+      "region": "US",
+      "ai": "AI-neutral",
+      "vehicle": "Single stock"
+    },
+    "CA11271J1075": {
+      "sector": "Financials",
+      "region": "US",
+      "ai": "AI-neutral",
+      "vehicle": "Single stock"
+    },
+    "CH0410022534": {
+      "sector": "Broad market fund",
+      "region": "US",
+      "ai": "AI-neutral",
+      "vehicle": "Certificate"
+    },
+    "XS3315944077": {
+      "sector": "Broad market fund",
+      "region": "China",
+      "ai": "AI-neutral",
+      "vehicle": "Certificate"
+    },
+    "LU1965317263": {
+      "sector": "Broad market fund",
+      "region": "Global",
+      "ai": "AI-neutral",
+      "vehicle": "Fund / ETF"
+    },
+    "US46438F1012": {
+      "sector": "Digital assets",
+      "region": "Global",
+      "ai": "AI-neutral",
+      "vehicle": "Fund / ETF"
+    },
+    "LU1191063970": {
+      "sector": "Multi-asset fund",
+      "region": "Global",
+      "ai": "AI-neutral",
+      "vehicle": "Fund / ETF"
+    }
+  },
+  "actions": [
+    {
+      "isin": "DE000A161408",
+      "action": "sell",
+      "reason": "0.2% residual after a -91% loss; too small to matter, worth harvesting the loss.",
+      "group": "Small single lines folded into funds"
+    },
+    {
+      "isin": "US3847471014",
+      "action": "sell",
+      "reason": "0.1% residual spun off from Illumina; folded into the biotech ETF.",
+      "group": "Small single lines folded into funds"
+    },
+    {
+      "isin": "US4523271090",
+      "action": "sell",
+      "reason": "1.0% single biotech-tools name; exposure moves into the diversified biotech ETF.",
+      "group": "Small single lines folded into funds"
+    },
+    {
+      "isin": "US62914V1061",
+      "action": "sell",
+      "reason": "China EV single line (-33%); China exposure consolidated into one ETF.",
+      "group": "China: six lines into one ETF"
+    },
+    {
+      "isin": "US05606L1008",
+      "action": "sell",
+      "reason": "China EV single line (-24%); BYD is a constituent of the MSCI China ETF.",
+      "group": "China: six lines into one ETF"
+    },
+    {
+      "isin": "KYG017191142",
+      "action": "sell",
+      "reason": "China internet/AI-cloud single line; Alibaba is a top holding of the MSCI China ETF.",
+      "group": "China: six lines into one ETF"
+    },
+    {
+      "isin": "NL0013654783",
+      "action": "sell",
+      "reason": "Indirect China-tech holding (Tencent stake); overlaps the China ETF.",
+      "group": "China: six lines into one ETF"
+    },
+    {
+      "isin": "XS3315944077",
+      "action": "sell",
+      "reason": "China thematic certificate (-20%, issuer credit risk, perpetual 2099 maturity); replaced by the liquid China ETF.",
+      "group": "China: six lines into one ETF"
+    },
+    {
+      "isin": "US80401C1009",
+      "action": "sell",
+      "reason": "Speculative small-cap space name (-35%); space exposure kept through SpaceX only.",
+      "group": "Speculative and narrow thematic satellites"
+    },
+    {
+      "isin": "US72703X1063",
+      "action": "sell",
+      "reason": "Speculative small-cap space name (-45%); space exposure kept through SpaceX only.",
+      "group": "Speculative and narrow thematic satellites"
+    },
+    {
+      "isin": "US88160R1014",
+      "action": "sell",
+      "reason": "1.7% line, high-beta AI/EV valuation; reduces AI concentration.",
+      "group": "AI and technology: cut the concentration"
+    },
+    {
+      "isin": "US67066G1040",
+      "action": "sell",
+      "reason": "1.6% line; semis fell 12.3% on 5 Nov and Broadcom is kept as the single semis holding.",
+      "group": "AI and technology: cut the concentration"
+    },
+    {
+      "isin": "AT0000A3EPA4",
+      "action": "sell",
+      "reason": "1.7% small-cap semis/optics; AI-hardware cyclicality without the scale of the core names.",
+      "group": "AI and technology: cut the concentration"
+    },
+    {
+      "isin": "IE00BYPLS672",
+      "action": "sell",
+      "reason": "Thematic tech ETF (+48% since purchase); take profit and cut the tech overweight.",
+      "group": "AI and technology: cut the concentration"
+    },
+    {
+      "isin": "JP3027630007",
+      "action": "sell",
+      "reason": "Second Japan vehicle; Japan exposure consolidated in the iMGP Japan Opportunities fund.",
+      "group": "Small single lines folded into funds"
+    },
+    {
+      "isin": "DK0060079531",
+      "action": "sell",
+      "reason": "1.6% European industrial; folded into the Europe ETF.",
+      "group": "Small single lines folded into funds"
+    },
+    {
+      "isin": "CA11271J1075",
+      "action": "sell",
+      "reason": "1.4% single financial; financials come through the equal-weight US and Europe ETFs.",
+      "group": "Small single lines folded into funds"
+    },
+    {
+      "isin": "US1725731079",
+      "action": "sell",
+      "reason": "1.2% crypto-linked fintech; overlaps the Bitcoin ETF already held.",
+      "group": "Speculative and narrow thematic satellites"
+    },
+    {
+      "isin": "US9842451000",
+      "action": "sell",
+      "reason": "Argentine energy single line; the client already holds about 2.6% in Argentine sovereign bonds.",
+      "group": "Small single lines folded into funds"
+    },
+    {
+      "isin": "US37954Y8710",
+      "action": "sell",
+      "reason": "1.2% narrow thematic ETF (-30%), trades with AI-power sentiment.",
+      "group": "Speculative and narrow thematic satellites"
+    },
+    {
+      "isin": "US92189H8051",
+      "action": "sell",
+      "reason": "1.2% narrow thematic ETF (-39%); commodity exposure kept through the energy ETF.",
+      "group": "Speculative and narrow thematic satellites"
+    },
+    {
+      "isin": "US0231351067",
+      "action": "resize",
+      "target_weight_pct": 4.0,
+      "reason": "Largest position at 6.0%; trim to 4.0% and take part of the +15% gain.",
+      "group": "AI and technology: cut the concentration"
+    },
+    {
+      "isin": "IE00BP3QZB59",
+      "action": "resize",
+      "target_weight_pct": 4.5,
+      "reason": "Global value fund: low AI and tech weight, diversified core."
+    },
+    {
+      "isin": "US9220428588",
+      "action": "resize",
+      "target_weight_pct": 4.0,
+      "reason": "Broad EM core, replacing single EM lines."
+    },
+    {
+      "isin": "US46434V5140",
+      "action": "resize",
+      "target_weight_pct": 3.0,
+      "reason": "Single China vehicle replacing six China lines; China is neutral in the house view."
+    },
+    {
+      "isin": "LU2985306195",
+      "action": "resize",
+      "target_weight_pct": 3.0,
+      "reason": "Active Europe fund; Europe has low AI exposure and Q3 EPS +28%."
+    },
+    {
+      "isin": "US81369Y5069",
+      "action": "resize",
+      "target_weight_pct": 2.0,
+      "reason": "Commodity-linked equity hedge for the 40% 'inflation heatwave' scenario; house overweight on commodities."
+    }
+  ],
+  "new_positions": [
+    {
+      "isin": "IE00BYXG2H39",
+      "description": "ISHARES NASDAQ US BIOTECH UCITS ETF USD ACC",
+      "currency": "USD",
+      "geography": "United States of America",
+      "target_weight_pct": 3.5,
+      "sector": "Health Care",
+      "region": "US",
+      "ai": "AI-insulated",
+      "vehicle": "Fund / ETF",
+      "reason": "Biotech: AI-insulated growth, about 200 names instead of 2 single lines. Long-duration, so rate hikes are a headwind; sized at 3.5%."
+    },
+    {
+      "isin": "IE00BM67HK77",
+      "description": "XTRACKERS MSCI WORLD HEALTH CARE UCITS ETF 1C",
+      "currency": "USD",
+      "geography": "Various countries",
+      "target_weight_pct": 3.0,
+      "sector": "Health Care",
+      "region": "Global",
+      "ai": "AI-insulated",
+      "vehicle": "Fund / ETF",
+      "reason": "Global pharma and medtech: held up during the 2026 AI sell-offs and is the defensive half of the healthcare allocation."
+    },
+    {
+      "isin": "IE00BLNMYC90",
+      "description": "XTRACKERS S&P 500 EQUAL WEIGHT UCITS ETF 1C",
+      "currency": "USD",
+      "geography": "United States of America",
+      "target_weight_pct": 5.0,
+      "sector": "Broad market fund",
+      "region": "US",
+      "ai": "AI-neutral",
+      "vehicle": "Fund / ETF",
+      "reason": "Broad US exposure without mega-cap concentration: S&P 500 ex-Mag-7 EPS grew 27% in Q3 against 14% for the Mag-7."
+    },
+    {
+      "isin": "IE00B4K48X80",
+      "description": "ISHARES CORE MSCI EUROPE UCITS ETF EUR ACC",
+      "currency": "EUR",
+      "geography": "European Union",
+      "target_weight_pct": 4.0,
+      "sector": "Broad market fund",
+      "region": "Europe",
+      "ai": "AI-neutral",
+      "vehicle": "Fund / ETF",
+      "reason": "Europe core: low AI exposure, 75% of sectors in uptrend, Q3 EPS +28%. Consider a USD-hedged share class (house view: currencies underweight vs USD)."
+    },
+    {
+      "isin": "CH0237935652",
+      "description": "ISHARES CORE SPI ETF (CH)",
+      "currency": "CHF",
+      "geography": "Switzerland",
+      "target_weight_pct": 2.5,
+      "sector": "Broad market fund",
+      "region": "Switzerland",
+      "ai": "AI-insulated",
+      "vehicle": "Fund / ETF",
+      "reason": "Swiss market (SMI +15% YTD): pharma, staples and insurers diversify away from AI. No Swiss equity held today."
+    },
+    {
+      "isin": "IE00BZCQB185",
+      "description": "ISHARES MSCI INDIA UCITS ETF USD ACC",
+      "currency": "USD",
+      "geography": "India",
+      "target_weight_pct": 3.0,
+      "sector": "Broad market fund",
+      "region": "EM ex-China",
+      "ai": "AI-insulated",
+      "vehicle": "Fund / ETF",
+      "reason": "The 'anti-AI trade': the Nifty rose 8.5% in the week the Topix fell 6.5%, and India moved almost inversely to semis during the sell-off."
+    }
+  ],
+  "sale_groups": [
+    "China: six lines into one ETF",
+    "AI and technology: cut the concentration",
+    "Speculative and narrow thematic satellites",
+    "Small single lines folded into funds"
+  ]
+}

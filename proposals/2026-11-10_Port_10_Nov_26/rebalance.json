@@ -1,0 +1,667 @@
+{
+  "as_of": "10 November 2026",
+  "house_view_source": "Weekly Investment Meeting, 9 November 2026",
+  "base_currency": "USD",
+  "total_value": 1112556.59,
+  "objectives": [
+    "Cut single-stock lines from 24 to 8: keep only large, liquid, high-conviction names of at least ~2% each.",
+    "Exit every position below ~2% that is not a deliberate satellite, and fold its exposure into a fund or ETF.",
+    "Bring the AI-exposed share of the equity sleeve down from about a third to about a fifth, in line with the house view that AI is being repriced (Nasdaq -4.9% and semis -12.3% on 5 Nov).",
+    "Add the regions and sectors the portfolio lacks: healthcare and biotech, Europe, Switzerland, India and the broader US market (equal weight).",
+    "Consolidate overlapping exposures: six China lines into one ETF, two Japan vehicles into one fund, three space names into one.",
+    "Keep a cash buffer of about 6.5%, consistent with the house overweight on cash, to redeploy into the same targets in stages."
+  ],
+  "sale_groups": [
+    "China: six lines into one ETF",
+    "AI and technology: cut the concentration",
+    "Speculative and narrow thematic satellites",
+    "Small single lines folded into funds"
+  ],
+  "fx_implied": {
+    "CHF": 1.216456,
+    "JPY": 0.006324,
+    "USD": 1.0,
+    "HKD": 0.127521,
+    "GBP": 1.340304,
+    "EUR": 1.119505,
+    "DKK": 0.149765,
+    "CAD": 0.707649
+  },
+  "cash_before_pct": 1.3028,
+  "cash_after_pct": 6.5583,
+  "equities_before": {
+    "equity_weight_pct": 79.7773,
+    "num_lines": 37,
+    "num_single_stocks": 24,
+    "num_funds": 11,
+    "num_certificates": 2,
+    "num_lines_below_threshold": 20,
+    "threshold_pct": 2.0,
+    "single_stock_weight_pct": 49.7847,
+    "ai_exposed_pct_of_portfolio": 28.5465,
+    "ai_exposed_pct_of_equities": 35.7827,
+    "top5_pct_of_equities": 28.8494,
+    "by_sector_pct": {
+      "Broad market fund": 24.5814,
+      "Consumer Discretionary": 15.7429,
+      "Information Technology": 11.4279,
+      "Industrials": 9.3384,
+      "Energy": 7.3211,
+      "Communication Services": 6.5084,
+      "Financials": 2.5658,
+      "Materials": 1.2071,
+      "Health Care": 1.0843
+    },
+    "by_region_pct": {
+      "US": 37.5261,
+      "China": 11.7333,
+      "Europe": 11.4576,
+      "Japan": 7.2976,
+      "EM ex-China": 6.91,
+      "Global": 4.8528
+    },
+    "by_ai_pct": {
+      "AI-neutral": 40.8418,
+      "AI-exposed": 28.5465,
+      "AI-insulated": 10.389
+    },
+    "by_vehicle_pct": {
+      "Single stock": 49.7847,
+      "Fund / ETF": 22.9515,
+      "Certificate": 7.0412
+    }
+  },
+  "equities_after": {
+    "equity_weight_pct": 74.5218,
+    "num_lines": 22,
+    "num_single_stocks": 8,
+    "num_funds": 13,
+    "num_certificates": 1,
+    "num_lines_below_threshold": 1,
+    "threshold_pct": 2.0,
+    "single_stock_weight_pct": 24.8069,
+    "ai_exposed_pct_of_portfolio": 16.5651,
+    "ai_exposed_pct_of_equities": 22.2286,
+    "top5_pct_of_equities": 31.7664,
+    "by_sector_pct": {
+      "Broad market fund": 41.2149,
+      "Communication Services": 6.5084,
+      "Health Care": 6.5,
+      "Information Technology": 6.0567,
+      "Industrials": 5.1337,
+      "Energy": 5.1081,
+      "Consumer Discretionary": 4.0
+    },
+    "by_region_pct": {
+      "US": 33.5154,
+      "Europe": 13.3264,
+      "EM ex-China": 9.042,
+      "Global": 7.5,
+      "Japan": 5.6381,
+      "China": 3.0,
+      "Switzerland": 2.5
+    },
+    "by_ai_pct": {
+      "AI-neutral": 37.6303,
+      "AI-insulated": 20.3264,
+      "AI-exposed": 16.5651
+    },
+    "by_vehicle_pct": {
+      "Fund / ETF": 45.1801,
+      "Single stock": 24.8069,
+      "Certificate": 4.5348
+    }
+  },
+  "sells": [
+    {
+      "isin": "XS3315944077",
+      "name": "SG CHINA NEXT WINNERS  01.06.2099",
+      "section": "Equities",
+      "value": 27884.5,
+      "weight_pct": 2.5063,
+      "unrealized_pl": -7115.5,
+      "tag": {
+        "sector": "Broad market fund",
+        "region": "China",
+        "ai": "AI-neutral",
+        "vehicle": "Certificate"
+      },
+      "reason": "China thematic certificate (-20%, issuer credit risk, perpetual 2099 maturity); replaced by the liquid China ETF.",
+      "group": "China: six lines into one ETF"
+    },
+    {
+      "isin": "US05606L1008",
+      "name": "BYD COMPANY H (ADR)",
+      "section": "Equities",
+      "value": 25098.4,
+      "weight_pct": 2.2559,
+      "unrealized_pl": -8217.52,
+      "tag": {
+        "sector": "Consumer Discretionary",
+        "region": "China",
+        "ai": "AI-neutral",
+        "vehicle": "Single stock"
+      },
+      "reason": "China EV single line (-24%); BYD is a constituent of the MSCI China ETF.",
+      "group": "China: six lines into one ETF"
+    },
+    {
+      "isin": "US9842451000",
+      "name": "YPF (SADR) D",
+      "section": "Equities",
+      "value": 22854.0,
+      "weight_pct": 2.0542,
+      "unrealized_pl": -4329.18,
+      "tag": {
+        "sector": "Energy",
+        "region": "EM ex-China",
+        "ai": "AI-insulated",
+        "vehicle": "Single stock"
+      },
+      "reason": "Argentine energy single line; the client already holds about 2.6% in Argentine sovereign bonds.",
+      "group": "Small single lines folded into funds"
+    },
+    {
+      "isin": "IE00BYPLS672",
+      "name": "L&G CYBER SECURITY ETF",
+      "section": "Equities",
+      "value": 22755.0,
+      "weight_pct": 2.0453,
+      "unrealized_pl": 10219.96,
+      "tag": {
+        "sector": "Information Technology",
+        "region": "US",
+        "ai": "AI-exposed",
+        "vehicle": "Fund / ETF"
+      },
+      "reason": "Thematic tech ETF (+48% since purchase); take profit and cut the tech overweight.",
+      "group": "AI and technology: cut the concentration"
+    },
+    {
+      "isin": "NL0013654783",
+      "name": "PROSUS NV",
+      "section": "Equities",
+      "value": 22737.41,
+      "weight_pct": 2.0437,
+      "unrealized_pl": -5652.5216940369,
+      "tag": {
+        "sector": "Consumer Discretionary",
+        "region": "China",
+        "ai": "AI-neutral",
+        "vehicle": "Single stock"
+      },
+      "reason": "Indirect China-tech holding (Tencent stake); overlaps the China ETF.",
+      "group": "China: six lines into one ETF"
+    },
+    {
+      "isin": "US62914V1061",
+      "name": "NIO SADR A",
+      "section": "Equities",
+      "value": 20460.0,
+      "weight_pct": 1.839,
+      "unrealized_pl": -13964.17,
+      "tag": {
+        "sector": "Consumer Discretionary",
+        "region": "China",
+        "ai": "AI-neutral",
+        "vehicle": "Single stock"
+      },
+      "reason": "China EV single line (-33%); China exposure consolidated into one ETF.",
+      "group": "China: six lines into one ETF"
+    },
+    {
+      "isin": "AT0000A3EPA4",
+      "name": "AMS-OSRAM AG",
+      "section": "Equities",
+      "value": 19134.86,
+      "weight_pct": 1.7199,
+      "unrealized_pl": -5390.9836634796,
+      "tag": {
+        "sector": "Information Technology",
+        "region": "Europe",
+        "ai": "AI-exposed",
+        "vehicle": "Single stock"
+      },
+      "reason": "1.7% small-cap semis/optics; AI-hardware cyclicality without the scale of the core names.",
+      "group": "AI and technology: cut the concentration"
+    },
+    {
+      "isin": "US88160R1014",
+      "name": "TESLA",
+      "section": "Equities",
+      "value": 18902.5,
+      "weight_pct": 1.699,
+      "unrealized_pl": -631.97,
+      "tag": {
+        "sector": "Consumer Discretionary",
+        "region": "US",
+        "ai": "AI-exposed",
+        "vehicle": "Single stock"
+      },
+      "reason": "1.7% line, high-beta AI/EV valuation; reduces AI concentration.",
+      "group": "AI and technology: cut the concentration"
+    },
+    {
+      "isin": "KYG017191142",
+      "name": "ALIBABA GRP",
+      "section": "Equities",
+      "value": 18674.19,
+      "weight_pct": 1.6785,
+      "unrealized_pl": -4058.849308323,
+      "tag": {
+        "sector": "Consumer Discretionary",
+        "region": "China",
+        "ai": "AI-exposed",
+        "vehicle": "Single stock"
+      },
+      "reason": "China internet/AI-cloud single line; Alibaba is a top holding of the MSCI China ETF.",
+      "group": "China: six lines into one ETF"
+    },
+    {
+      "isin": "JP3027630007",
+      "name": "NEXT FUND TOPIX ETF",
+      "section": "Equities",
+      "value": 18462.71,
+      "weight_pct": 1.6595,
+      "unrealized_pl": 5599.8057375374,
+      "tag": {
+        "sector": "Broad market fund",
+        "region": "Japan",
+        "ai": "AI-neutral",
+        "vehicle": "Fund / ETF"
+      },
+      "reason": "Second Japan vehicle; Japan exposure consolidated in the iMGP Japan Opportunities fund.",
+      "group": "Small single lines folded into funds"
+    },
+    {
+      "isin": "DK0060079531",
+      "name": "DSV",
+      "section": "Equities",
+      "value": 17986.89,
+      "weight_pct": 1.6167,
+      "unrealized_pl": -2391.9752774737,
+      "tag": {
+        "sector": "Industrials",
+        "region": "Europe",
+        "ai": "AI-neutral",
+        "vehicle": "Single stock"
+      },
+      "reason": "1.6% European industrial; folded into the Europe ETF.",
+      "group": "Small single lines folded into funds"
+    },
+    {
+      "isin": "US67066G1040",
+      "name": "NVIDIA CORP",
+      "section": "Equities",
+      "value": 17867.0,
+      "weight_pct": 1.6059,
+      "unrealized_pl": -511.58,
+      "tag": {
+        "sector": "Information Technology",
+        "region": "US",
+        "ai": "AI-exposed",
+        "vehicle": "Single stock"
+      },
+      "reason": "1.6% line; semis fell 12.3% on 5 Nov and Broadcom is kept as the single semis holding.",
+      "group": "AI and technology: cut the concentration"
+    },
+    {
+      "isin": "US80401C1009",
+      "name": "SATELLOGIC INC A",
+      "section": "Equities",
+      "value": 15860.0,
+      "weight_pct": 1.4255,
+      "unrealized_pl": -8792.74,
+      "tag": {
+        "sector": "Industrials",
+        "region": "US",
+        "ai": "AI-neutral",
+        "vehicle": "Single stock"
+      },
+      "reason": "Speculative small-cap space name (-35%); space exposure kept through SpaceX only.",
+      "group": "Speculative and narrow thematic satellites"
+    },
+    {
+      "isin": "CA11271J1075",
+      "name": "BROOKFIELD CORP",
+      "section": "Equities",
+      "value": 15034.0,
+      "weight_pct": 1.3513,
+      "unrealized_pl": 1909.7946346982,
+      "tag": {
+        "sector": "Financials",
+        "region": "US",
+        "ai": "AI-neutral",
+        "vehicle": "Single stock"
+      },
+      "reason": "1.4% single financial; financials come through the equal-weight US and Europe ETFs.",
+      "group": "Small single lines folded into funds"
+    },
+    {
+      "isin": "US37954Y8710",
+      "name": "GLOBAL X URANIUM ETF",
+      "section": "Equities",
+      "value": 13736.0,
+      "weight_pct": 1.2346,
+      "unrealized_pl": -5967.77,
+      "tag": {
+        "sector": "Energy",
+        "region": "Global",
+        "ai": "AI-exposed",
+        "vehicle": "Fund / ETF"
+      },
+      "reason": "1.2% narrow thematic ETF (-30%), trades with AI-power sentiment.",
+      "group": "Speculative and narrow thematic satellites"
+    },
+    {
+      "isin": "US1725731079",
+      "name": "CIRCLE INT GRP A",
+      "section": "Equities",
+      "value": 13512.0,
+      "weight_pct": 1.2145,
+      "unrealized_pl": -2703.15,
+      "tag": {
+        "sector": "Financials",
+        "region": "US",
+        "ai": "AI-neutral",
+        "vehicle": "Single stock"
+      },
+      "reason": "1.2% crypto-linked fintech; overlaps the Bitcoin ETF already held.",
+      "group": "Speculative and narrow thematic satellites"
+    },
+    {
+      "isin": "US92189H8051",
+      "name": "VNCK RR EARTH STRT MT ETF",
+      "section": "Equities",
+      "value": 13430.0,
+      "weight_pct": 1.2071,
+      "unrealized_pl": -8444.8,
+      "tag": {
+        "sector": "Materials",
+        "region": "Global",
+        "ai": "AI-neutral",
+        "vehicle": "Fund / ETF"
+      },
+      "reason": "1.2% narrow thematic ETF (-39%); commodity exposure kept through the energy ETF.",
+      "group": "Speculative and narrow thematic satellites"
+    },
+    {
+      "isin": "US72703X1063",
+      "name": "PLANET LABS PBC A",
+      "section": "Equities",
+      "value": 12933.0,
+      "weight_pct": 1.1625,
+      "unrealized_pl": -10547.85,
+      "tag": {
+        "sector": "Industrials",
+        "region": "US",
+        "ai": "AI-neutral",
+        "vehicle": "Single stock"
+      },
+      "reason": "Speculative small-cap space name (-45%); space exposure kept through SpaceX only.",
+      "group": "Speculative and narrow thematic satellites"
+    },
+    {
+      "isin": "US4523271090",
+      "name": "ILLUMINA (ORD)",
+      "section": "Equities",
+      "value": 11039.0,
+      "weight_pct": 0.9922,
+      "unrealized_pl": -7753.88,
+      "tag": {
+        "sector": "Health Care",
+        "region": "US",
+        "ai": "AI-insulated",
+        "vehicle": "Single stock"
+      },
+      "reason": "1.0% single biotech-tools name; exposure moves into the diversified biotech ETF.",
+      "group": "Small single lines folded into funds"
+    },
+    {
+      "isin": "DE000A161408",
+      "name": "HELLOFRESH",
+      "section": "Equities",
+      "value": 2543.23,
+      "weight_pct": 0.2286,
+      "unrealized_pl": -26998.9852908547,
+      "tag": {
+        "sector": "Consumer Discretionary",
+        "region": "Europe",
+        "ai": "AI-neutral",
+        "vehicle": "Single stock"
+      },
+      "reason": "0.2% residual after a -91% loss; too small to matter, worth harvesting the loss.",
+      "group": "Small single lines folded into funds"
+    },
+    {
+      "isin": "US3847471014",
+      "name": "GRAIL",
+      "section": "Equities",
+      "value": 1024.64,
+      "weight_pct": 0.0921,
+      "unrealized_pl": 502.47,
+      "tag": {
+        "sector": "Health Care",
+        "region": "US",
+        "ai": "AI-insulated",
+        "vehicle": "Single stock"
+      },
+      "reason": "0.1% residual spun off from Illumina; folded into the biotech ETF.",
+      "group": "Small single lines folded into funds"
+    }
+  ],
+  "trims": [
+    {
+      "isin": "US0231351067",
+      "name": "AMAZON COM",
+      "section": "Equities",
+      "value_before": 66732.5,
+      "value_after": 44502.26,
+      "change": -22230.24,
+      "weight_before_pct": 5.9981,
+      "weight_after_pct": 4.0,
+      "unrealized_pl_realized": 3941.58,
+      "tag": {
+        "sector": "Consumer Discretionary",
+        "region": "US",
+        "ai": "AI-exposed",
+        "vehicle": "Single stock",
+        "market_cap": "Large cap"
+      },
+      "reason": "Largest position at 6.0%; trim to 4.0% and take part of the +15% gain.",
+      "group": "AI and technology: cut the concentration"
+    }
+  ],
+  "topups": [
+    {
+      "isin": "IE00BP3QZB59",
+      "name": "ISHARES MSCI WLD VAL USD",
+      "section": "Equities",
+      "value_before": 26824.0,
+      "value_after": 50065.05,
+      "change": 23241.05,
+      "weight_before_pct": 2.411,
+      "weight_after_pct": 4.5,
+      "unrealized_pl_realized": null,
+      "tag": {
+        "sector": "Broad market fund",
+        "region": "Global",
+        "ai": "AI-neutral",
+        "vehicle": "Fund / ETF"
+      },
+      "reason": "Global value fund: low AI and tech weight, diversified core.",
+      "group": null
+    },
+    {
+      "isin": "US46434V5140",
+      "name": "ISHS MSCI CHINA ETF",
+      "section": "Equities",
+      "value_before": 15685.0,
+      "value_after": 33376.7,
+      "change": 17691.7,
+      "weight_before_pct": 1.4098,
+      "weight_after_pct": 3.0,
+      "unrealized_pl_realized": null,
+      "tag": {
+        "sector": "Broad market fund",
+        "region": "China",
+        "ai": "AI-neutral",
+        "vehicle": "Fund / ETF"
+      },
+      "reason": "Single China vehicle replacing six China lines; China is neutral in the house view.",
+      "group": null
+    },
+    {
+      "isin": "LU2985306195",
+      "name": "IMGP EURO SELECT R EUR",
+      "section": "Equities",
+      "value_before": 17423.34,
+      "value_after": 33376.7,
+      "change": 15953.36,
+      "weight_before_pct": 1.5661,
+      "weight_after_pct": 3.0,
+      "unrealized_pl_realized": null,
+      "tag": {
+        "sector": "Broad market fund",
+        "region": "Europe",
+        "ai": "AI-neutral",
+        "vehicle": "Fund / ETF"
+      },
+      "reason": "Active Europe fund; Europe has low AI exposure and Q3 EPS +28%.",
+      "group": null
+    },
+    {
+      "isin": "US9220428588",
+      "name": "VANGUARD FTSE EM MKT ETF",
+      "section": "Equities",
+      "value_before": 31305.33,
+      "value_after": 44502.26,
+      "change": 13196.93,
+      "weight_before_pct": 2.8138,
+      "weight_after_pct": 4.0,
+      "unrealized_pl_realized": null,
+      "tag": {
+        "sector": "Broad market fund",
+        "region": "EM ex-China",
+        "ai": "AI-neutral",
+        "vehicle": "Fund / ETF"
+      },
+      "reason": "Broad EM core, replacing single EM lines.",
+      "group": null
+    },
+    {
+      "isin": "US81369Y5069",
+      "name": "STAT ST ENRGY SLSEC ETF",
+      "section": "Equities",
+      "value_before": 10282.04,
+      "value_after": 22251.13,
+      "change": 11969.09,
+      "weight_before_pct": 0.9242,
+      "weight_after_pct": 2.0,
+      "unrealized_pl_realized": null,
+      "tag": {
+        "sector": "Energy",
+        "region": "US",
+        "ai": "AI-insulated",
+        "vehicle": "Fund / ETF"
+      },
+      "reason": "Commodity-linked equity hedge for the 40% 'inflation heatwave' scenario; house overweight on commodities.",
+      "group": null
+    }
+  ],
+  "new_positions": [
+    {
+      "isin": "IE00BYXG2H39",
+      "name": "ISHARES NASDAQ US BIOTECH UCITS ETF USD ACC",
+      "currency": "USD",
+      "value": 38939.48,
+      "weight_pct": 3.5,
+      "tag": {
+        "sector": "Health Care",
+        "region": "US",
+        "ai": "AI-insulated",
+        "vehicle": "Fund / ETF"
+      },
+      "reason": "Biotech: AI-insulated growth, about 200 names instead of 2 single lines. Long-duration, so rate hikes are a headwind; sized at 3.5%.",
+      "new": true
+    },
+    {
+      "isin": "IE00BM67HK77",
+      "name": "XTRACKERS MSCI WORLD HEALTH CARE UCITS ETF 1C",
+      "currency": "USD",
+      "value": 33376.7,
+      "weight_pct": 3.0,
+      "tag": {
+        "sector": "Health Care",
+        "region": "Global",
+        "ai": "AI-insulated",
+        "vehicle": "Fund / ETF"
+      },
+      "reason": "Global pharma and medtech: held up during the 2026 AI sell-offs and is the defensive half of the healthcare allocation.",
+      "new": true
+    },
+    {
+      "isin": "IE00BLNMYC90",
+      "name": "XTRACKERS S&P 500 EQUAL WEIGHT UCITS ETF 1C",
+      "currency": "USD",
+      "value": 55627.83,
+      "weight_pct": 5.0,
+      "tag": {
+        "sector": "Broad market fund",
+        "region": "US",
+        "ai": "AI-neutral",
+        "vehicle": "Fund / ETF"
+      },
+      "reason": "Broad US exposure without mega-cap concentration: S&P 500 ex-Mag-7 EPS grew 27% in Q3 against 14% for the Mag-7.",
+      "new": true
+    },
+    {
+      "isin": "IE00B4K48X80",
+      "name": "ISHARES CORE MSCI EUROPE UCITS ETF EUR ACC",
+      "currency": "EUR",
+      "value": 44502.26,
+      "weight_pct": 4.0,
+      "tag": {
+        "sector": "Broad market fund",
+        "region": "Europe",
+        "ai": "AI-neutral",
+        "vehicle": "Fund / ETF"
+      },
+      "reason": "Europe core: low AI exposure, 75% of sectors in uptrend, Q3 EPS +28%. Consider a USD-hedged share class (house view: currencies underweight vs USD).",
+      "new": true
+    },
+    {
+      "isin": "CH0237935652",
+      "name": "ISHARES CORE SPI ETF (CH)",
+      "currency": "CHF",
+      "value": 27813.91,
+      "weight_pct": 2.5,
+      "tag": {
+        "sector": "Broad market fund",
+        "region": "Switzerland",
+        "ai": "AI-insulated",
+        "vehicle": "Fund / ETF"
+      },
+      "reason": "Swiss market (SMI +15% YTD): pharma, staples and insurers diversify away from AI. No Swiss equity held today.",
+      "new": true
+    },
+    {
+      "isin": "IE00BZCQB185",
+      "name": "ISHARES MSCI INDIA UCITS ETF USD ACC",
+      "currency": "USD",
+      "value": 33376.7,
+      "weight_pct": 3.0,
+      "tag": {
+        "sector": "Broad market fund",
+        "region": "EM ex-China",
+        "ai": "AI-insulated",
+        "vehicle": "Fund / ETF"
+      },
+      "reason": "The 'anti-AI trade': the Nifty rose 8.5% in the week the Topix fell 6.5%, and India moved almost inversely to semis during the sell-off.",
+      "new": true
+    }
+  ],
+  "gross_sales": 374159.57,
+  "gross_purchases": 315689.01,
+  "unrealized_pl_on_sales": -101299.81
+}

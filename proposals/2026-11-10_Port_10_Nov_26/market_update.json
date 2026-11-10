@@ -1,0 +1,118 @@
+{
+  "week_of": "9 November 2026",
+  "headline": {
+    "summary_title": "Midterm relief, then an AI repricing",
+    "intro_sentence": "The S&P 500 lost 2.7% in a week that opened with a post-election relief rally; the loss was a repricing of AI, not a verdict on the economy. Our tactical allocation is unchanged: neutral equities, underweight fixed income, overweight cash, gold and commodities.",
+    "stats": [
+      {
+        "value": "-2.7%",
+        "label": "S&P 500, week"
+      },
+      {
+        "value": "-4.9%",
+        "label": "Nasdaq 100, week"
+      },
+      {
+        "value": "+32.0%",
+        "label": "VIX, week"
+      },
+      {
+        "value": "+8.5%",
+        "label": "Nifty 50, week"
+      }
+    ]
+  },
+  "scoreboard": {
+    "rows": [
+      {
+        "index": "MSCI World",
+        "week": "-2.5%",
+        "ytd": "+8.5%"
+      },
+      {
+        "index": "S&P 500",
+        "week": "-2.7%",
+        "ytd": "+8.8%"
+      },
+      {
+        "index": "Nasdaq 100",
+        "week": "-4.9%",
+        "ytd": "+7.4%"
+      },
+      {
+        "index": "Eurostoxx 50",
+        "week": "+0.6%",
+        "ytd": "+9.4%"
+      },
+      {
+        "index": "SMI",
+        "week": "-0.1%",
+        "ytd": "+15.0%"
+      },
+      {
+        "index": "Topix",
+        "week": "-6.5%",
+        "ytd": "+11.1%"
+      },
+      {
+        "index": "Nifty 50",
+        "week": "+8.5%",
+        "ytd": "-3.0%"
+      },
+      {
+        "index": "MSCI World IT",
+        "week": "-7.4%",
+        "ytd": "+11.5%"
+      },
+      {
+        "index": "Gold",
+        "week": "+3.2%",
+        "ytd": "-5.8%"
+      }
+    ]
+  },
+  "three_observations": [
+    {
+      "headline": "The damage was concentrated",
+      "body": "Technology and energy fell hard while consumer discretionary rose 2.6% and European indices were broadly flat."
+    },
+    {
+      "headline": "Asia split in two",
+      "body": "Topix lost 6.5% while the Nifty 50 rose 8.5% and the Hang Seng 5.1%: India traded as the anti-AI market."
+    },
+    {
+      "headline": "The hedge worked",
+      "body": "Government and corporate bonds rose on the week as the VIX jumped 32.0%."
+    }
+  ],
+  "four_drivers": {
+    "intro_sentence": "A Democratic sweep, state-level scrutiny of data centres, a two-sided oil risk premium and bonds acting as the hedge did most of the work.",
+    "drivers": [
+      {
+        "number": 1,
+        "title": "A blue wave in Washington",
+        "body": "Democrats won the Senate 54-44 and the House 253-162 and flipped five governorships, including Texas and Georgia.",
+        "stat": "House 253-162"
+      },
+      {
+        "number": 2,
+        "title": "Data-centre politics hit AI",
+        "body": "The relief rally reversed as investors priced state-level scrutiny of power, water and permitting for data centres.",
+        "stat": "Semis -12.3% on 5 Nov"
+      },
+      {
+        "number": 3,
+        "title": "Iran priced for peace",
+        "body": "Brent settled at $94.6 on 4 November, then rebounded towards $100 as tanker attacks resumed; the risk premium is now two-sided.",
+        "stat": "Brent $98.3"
+      },
+      {
+        "number": 4,
+        "title": "Bonds as the hedge",
+        "body": "Treasury yields fell across the curve as markets read the sweep as lowering the odds of fiscal expansion and safe-haven demand followed the tech sell-off.",
+        "stat": "US Gov +0.3%, week"
+      }
+    ]
+  },
+  "policy_note": "On the policy side: a December Fed hike is back to about 75% priced and the BoE hiked to 4%; we expect the Fed, ECB and BoJ to hike in December, with US CPI (10 Nov) and Nvidia results (25 Nov) the next tests."
+}

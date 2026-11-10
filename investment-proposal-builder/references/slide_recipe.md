@@ -41,6 +41,42 @@ those positions are only correct before the holdings-list slide count
 changes. This bit us once during development — see the comment above the
 call order in `build_proposal.build()`.
 
+## Optional "recommended changes" slides (`--rebalance`)
+
+When `build_proposal.py` gets `--rebalance rebalance.json` (output of
+`build_rebalance.py`), `build_rebalance_slides.build()` inserts, right after
+slide 8 and before the holdings list:
+
+1. **Why we propose changes to the equity sleeve**: five before → after KPI
+   boxes (equity lines, single stocks, lines below the threshold, AI-exposed
+   share of equities, China weight) and the spec's `objectives` as bullets.
+2. **Current vs proposed equity sleeve**: native clustered-bar charts by
+   region, sector and AI camp, % of the total portfolio (current = slate,
+   proposed = tiger orange).
+3. **Proposed sales** (paginated; a theme `group` never splits): value,
+   unrealised P/L from the custodian file, and rationale per line.
+4. **Proposed purchases**: new positions, top-ups and the cash buffer.
+
+They run after the holdings-list pagination for the same slide-shifting
+reason (see above). All their numbers come from `rebalance.json`, which is
+computed from the Excel plus the spec; no figures are typed into slides.
+
+## Slides dropped when there is no data
+
+The template's sleeve slides and the proposed-bond-selection slide ship
+with the reference client's own tables and donuts. When a sleeve has no
+holdings (`parsed.json: sleeves[...]` missing) or there is no `Fixed Income`
+proposal tab, that slide is **removed** (`SLIDES_TO_DROP` in
+`build_proposal.py`, deleted at the very end of `build()`). An earlier
+version kept the slide with a "No holdings" caption above the reference
+client's holdings, which was misleading.
+
+Two other template texts that used to survive a build are now always
+rewritten: the Portfolio Overview duration footnote (`TextBox 12`, computed
+from `duration_lines_with` / `duration_value_coverage_pct`) and slide 4's
+policy note under the driver cards (`policy_note` in `market_update.json`;
+the box is removed if the field is absent).
+
 ## Scope boundary
 
 The appendix (Syz Group at a Glance, advisory service tiers, investment
@@ -281,7 +317,11 @@ If you re-derive `assets/template.pptx` from a fresh copy of the reference
 deck, redo all of these fixes — none of them survive re-deriving the
 template from scratch.
 
-## Market update extraction (slides 3-6)
+## Market update extraction
+
+`policy_note` (optional, string): one sentence for the box under slide 4's
+driver cards, e.g. "On the policy side: ...". Omit it and the box is removed.
+ (slides 3-6)
 
 `market_update.json` is **not** produced by a parsing script — extracting
 an arbitrary week's PDF into "the four forces that moved markets" or "three

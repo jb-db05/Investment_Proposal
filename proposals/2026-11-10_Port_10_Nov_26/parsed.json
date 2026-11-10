@@ -1,0 +1,793 @@
+{
+  "client_name": "Client",
+  "risk_profile_input": "Growth",
+  "valuation_date": "10 November 2026",
+  "base_currency": "USD",
+  "dominant_holding_currency": "USD",
+  "total_value_eur": 1112556.59,
+  "num_positions": 39,
+  "largest_position_pct": 5.974894,
+  "liquid_share_pct": 100.0,
+  "asset_allocation_pct": {
+    "Equities": 74.521831,
+    "Fixed Income": 12.118937,
+    "Other": 6.800936,
+    "Cash": 6.558295
+  },
+  "currency_exposure_pct": {
+    "USD": 79.232674,
+    "EUR": 10.121118,
+    "JPY": 5.689991,
+    "CHF": 4.829973,
+    "GBP": 0.126222,
+    "HKD": 2.3e-05
+  },
+  "geographic_exposure_pct": {
+    "US": 46.051437,
+    "Global": 24.215961,
+    "Europe DM": 13.357831,
+    "MEA EM": 10.68478,
+    "Japan": 5.689991
+  },
+  "sector_exposure_pct": {
+    "Broad market fund": 43.015985,
+    "Fixed income": 12.118937,
+    "Cash": 6.558295,
+    "Communication Services": 6.508388,
+    "Health Care": 6.5,
+    "Information Technology": 6.056744,
+    "Industrials": 5.133716,
+    "Energy": 5.10809,
+    "Consumer Discretionary": 4.0,
+    "Digital assets": 3.0621,
+    "Multi-asset fund": 1.937745
+  },
+  "sleeves": {
+    "Cash": {
+      "total_weight_pct": 6.558295,
+      "num_lines": 6,
+      "top_holdings": [
+        {
+          "name": "CURRENT ACCOUNT IN USD",
+          "isin": null,
+          "value_eur": 66474.07331437616,
+          "value_qc": 66474.07331437616,
+          "currency": "USD",
+          "weight_pct": 5.974894,
+          "duration": 0,
+          "yield_pct": 0,
+          "price": 1
+        },
+        {
+          "name": "CURRENT ACCOUNT IN CHF",
+          "isin": null,
+          "value_eur": 4363.75690338905,
+          "value_qc": 3587.27,
+          "currency": "CHF",
+          "weight_pct": 0.392228,
+          "duration": 0,
+          "yield_pct": 0,
+          "price": 0.82206
+        },
+        {
+          "name": "CURRENT ACCOUNT IN GBP",
+          "isin": null,
+          "value_eur": 1404.28972264798,
+          "value_qc": 1047.74,
+          "currency": "GBP",
+          "weight_pct": 0.126222,
+          "duration": 0,
+          "yield_pct": 0,
+          "price": 1.3403036275
+        },
+        {
+          "name": "CURRENT ACCOUNT IN JPY",
+          "isin": null,
+          "value_eur": 577.424798676496,
+          "value_qc": 91300.0,
+          "currency": "JPY",
+          "weight_pct": 0.051901,
+          "duration": 0,
+          "yield_pct": 0,
+          "price": 158.1158277394
+        },
+        {
+          "name": "INCOME TO BE RECEIVED IN EUR",
+          "isin": null,
+          "value_eur": 144.942268204267,
+          "value_qc": 129.47,
+          "currency": "EUR",
+          "weight_pct": 0.013028,
+          "duration": 0,
+          "yield_pct": 0,
+          "price": 1.119504659
+        }
+      ],
+      "vehicle_breakdown_pct": {
+        "Direct line": 100.0
+      },
+      "duration_coverage": null,
+      "duration_lines_with": 6,
+      "duration_value_coverage_pct": 100.0
+    },
+    "Equities": {
+      "total_weight_pct": 74.521831,
+      "num_lines": 22,
+      "top_holdings": [
+        {
+          "name": "IMGP JAPAN OPP FD R JPY",
+          "isin": "LU0536295982",
+          "value_eur": 62726.9460736443,
+          "value_qc": 9918123.0,
+          "currency": "JPY",
+          "weight_pct": 5.63809,
+          "duration": null,
+          "yield_pct": null,
+          "price": 583419
+        },
+        {
+          "name": "XTRACKERS S&P 500 EQUAL WEIGHT UCITS ETF 1C",
+          "isin": "IE00BLNMYC90",
+          "value_eur": 55627.82940881546,
+          "value_qc": 55627.82940881546,
+          "currency": "USD",
+          "weight_pct": 5.0,
+          "duration": null,
+          "yield_pct": null,
+          "price": null
+        },
+        {
+          "name": "UBS-CERT-IDX SYZ CORE 32",
+          "isin": "CH0410022534",
+          "value_eur": 50452.55,
+          "value_qc": 50452.55,
+          "currency": "USD",
+          "weight_pct": 4.53483,
+          "duration": null,
+          "yield_pct": null,
+          "price": 246.11
+        },
+        {
+          "name": "ISHARES MSCI WLD VAL USD",
+          "isin": "IE00BP3QZB59",
+          "value_eur": 50065.04646793391,
+          "value_qc": 50065.04646793391,
+          "currency": "USD",
+          "weight_pct": 4.5,
+          "duration": null,
+          "yield_pct": null,
+          "price": 76.64
+        },
+        {
+          "name": "VANGUARD FTSE EM MKT ETF",
+          "isin": "US9220428588",
+          "value_eur": 44502.26352705237,
+          "value_qc": 44502.26352705237,
+          "currency": "USD",
+          "weight_pct": 4.0,
+          "duration": null,
+          "yield_pct": null,
+          "price": 56.61
+        }
+      ],
+      "vehicle_breakdown_pct": {
+        "Fund": 60.626614,
+        "Direct line": 33.288149,
+        "Structured / AMC": 6.085237
+      },
+      "duration_coverage": null,
+      "duration_lines_with": 0,
+      "duration_value_coverage_pct": 0.0
+    },
+    "Fixed Income": {
+      "total_weight_pct": 12.118937,
+      "num_lines": 8,
+      "top_holdings": [
+        {
+          "name": "SYZ EM BONDS CERTIFICATE",
+          "isin": "CH0414256021",
+          "value_eur": 42553.0,
+          "value_qc": 42553.0,
+          "currency": "USD",
+          "weight_pct": 3.824794,
+          "duration": null,
+          "yield_pct": null,
+          "price": 1215.8
+        },
+        {
+          "name": "IMGP US CORE PLUS FD R $",
+          "isin": "LU0970691159",
+          "value_eur": 29613.18,
+          "value_qc": 29613.18,
+          "currency": "USD",
+          "weight_pct": 2.661723,
+          "duration": null,
+          "yield_pct": null,
+          "price": 202.83
+        },
+        {
+          "name": "JPM EM MAR CORP C USD CAP",
+          "isin": "LU0512127977",
+          "value_eur": 23945.9,
+          "value_qc": 23945.9,
+          "currency": "USD",
+          "weight_pct": 2.152331,
+          "duration": null,
+          "yield_pct": null,
+          "price": 197.9
+        },
+        {
+          "name": "0.75%ARGENTINA 30 STEP UP  09.07.2030",
+          "isin": "US040114HS26",
+          "value_eur": 16501.1285504,
+          "value_qc": 16501.1285504,
+          "currency": "USD",
+          "weight_pct": 1.483172,
+          "duration": 1.716658716,
+          "yield_pct": 16.741567839,
+          "price": 50.12992
+        },
+        {
+          "name": "4.125% ARGENTINA 35 ST UP  09.07.2035",
+          "isin": "US040114HT09",
+          "value_eur": 10296.00558,
+          "value_qc": 10296.00558,
+          "currency": "USD",
+          "weight_pct": 0.925437,
+          "duration": 5.096079725,
+          "yield_pct": 14.421279154,
+          "price": 64.259
+        }
+      ],
+      "vehicle_breakdown_pct": {
+        "Fund": 46.632464,
+        "Structured / AMC": 31.560475,
+        "Direct line": 21.807061
+      },
+      "duration_coverage": "3 of 8",
+      "duration_lines_with": 3,
+      "duration_value_coverage_pct": 20.699083
+    },
+    "Other": {
+      "total_weight_pct": 6.800936,
+      "num_lines": 3,
+      "top_holdings": [
+        {
+          "name": "ISHARES BITCOIN ETF",
+          "isin": "US46438F1012",
+          "value_eur": 34067.6,
+          "value_qc": 34067.6,
+          "currency": "USD",
+          "weight_pct": 3.0621,
+          "duration": null,
+          "yield_pct": null,
+          "price": 42.32
+        },
+        {
+          "name": "BLACKR MYMAP PLUS GROW D2",
+          "isin": "LU1191063970",
+          "value_eur": 21558.5066783446,
+          "value_qc": 17722.386,
+          "currency": "CHF",
+          "weight_pct": 1.937745,
+          "duration": null,
+          "yield_pct": null,
+          "price": 185.4
+        },
+        {
+          "name": "IMGP GL DIV INC FD R $ D",
+          "isin": "LU1965317263",
+          "value_eur": 20038.16,
+          "value_qc": 20038.16,
+          "currency": "USD",
+          "weight_pct": 1.801091,
+          "duration": null,
+          "yield_pct": null,
+          "price": 527.32
+        }
+      ],
+      "vehicle_breakdown_pct": {
+        "Fund": 100.0
+      },
+      "duration_coverage": null,
+      "duration_lines_with": 0,
+      "duration_value_coverage_pct": 0.0
+    }
+  },
+  "equity_breakdown": {
+    "by_geography_pct": {
+      "US": 44.973955,
+      "Global / thematic": 19.457386,
+      "EM": 10.791432,
+      "Eurozone": 9.538265,
+      "Japan": 7.56569,
+      "UK": 4.318551,
+      "Switzerland": 3.354722
+    },
+    "by_sector_pct": {
+      "Broad market fund": 55.305798,
+      "Communication Services": 8.733532,
+      "Health Care": 8.722276,
+      "Information Technology": 8.127476,
+      "Industrials": 6.888876,
+      "Energy": 6.854488,
+      "Consumer Discretionary": 5.367555
+    },
+    "by_market_cap_pct": {
+      "Funds (multi-cap)": 66.711851,
+      "Large cap": 29.117438,
+      "Mid cap": 4.170711
+    }
+  },
+  "concentration": {
+    "top_holdings": [
+      {
+        "rank": 1,
+        "name": "CURRENT ACCOUNT IN USD",
+        "value_eur": 66474.07331437616,
+        "weight_pct": 5.974894,
+        "cumulative_pct": 5.974894
+      },
+      {
+        "rank": 2,
+        "name": "IMGP JAPAN OPP FD R JPY",
+        "value_eur": 62726.9460736443,
+        "weight_pct": 5.63809,
+        "cumulative_pct": 11.612984
+      },
+      {
+        "rank": 3,
+        "name": "XTRACKERS S&P 500 EQUAL WEIGHT UCITS ETF 1C",
+        "value_eur": 55627.82940881546,
+        "weight_pct": 5.0,
+        "cumulative_pct": 16.612984
+      },
+      {
+        "rank": 4,
+        "name": "UBS-CERT-IDX SYZ CORE 32",
+        "value_eur": 50452.55,
+        "weight_pct": 4.53483,
+        "cumulative_pct": 21.147814
+      },
+      {
+        "rank": 5,
+        "name": "ISHARES MSCI WLD VAL USD",
+        "value_eur": 50065.04646793391,
+        "weight_pct": 4.5,
+        "cumulative_pct": 25.647814
+      },
+      {
+        "rank": 6,
+        "name": "VANGUARD FTSE EM MKT ETF",
+        "value_eur": 44502.26352705237,
+        "weight_pct": 4.0,
+        "cumulative_pct": 29.647814
+      },
+      {
+        "rank": 7,
+        "name": "AMAZON COM",
+        "value_eur": 44502.26352705237,
+        "weight_pct": 4.0,
+        "cumulative_pct": 33.647814
+      },
+      {
+        "rank": 8,
+        "name": "ISHARES CORE MSCI EUROPE UCITS ETF EUR ACC",
+        "value_eur": 44502.26352705237,
+        "weight_pct": 4.0,
+        "cumulative_pct": 37.647814
+      },
+      {
+        "rank": 9,
+        "name": "SYZ EM BONDS CERTIFICATE",
+        "value_eur": 42553.0,
+        "weight_pct": 3.824794,
+        "cumulative_pct": 41.472608
+      },
+      {
+        "rank": 10,
+        "name": "ALPHABET A",
+        "value_eur": 40341.0,
+        "weight_pct": 3.625973,
+        "cumulative_pct": 45.098581
+      },
+      {
+        "rank": 11,
+        "name": "ISHARES NASDAQ US BIOTECH UCITS ETF USD ACC",
+        "value_eur": 38939.48058617082,
+        "weight_pct": 3.5,
+        "cumulative_pct": 48.598581
+      },
+      {
+        "rank": 12,
+        "name": "RENTOKIL INITIAL PLC",
+        "value_eur": 35805.0,
+        "weight_pct": 3.218263,
+        "cumulative_pct": 51.816844
+      },
+      {
+        "rank": 13,
+        "name": "MICROSOFT",
+        "value_eur": 35436.7,
+        "weight_pct": 3.185159,
+        "cumulative_pct": 55.002004
+      },
+      {
+        "rank": 14,
+        "name": "VALLOUREC",
+        "value_eur": 34579.2599080359,
+        "weight_pct": 3.10809,
+        "cumulative_pct": 58.110094
+      },
+      {
+        "rank": 15,
+        "name": "ISHARES BITCOIN ETF",
+        "value_eur": 34067.6,
+        "weight_pct": 3.0621,
+        "cumulative_pct": 61.172194
+      },
+      {
+        "rank": 16,
+        "name": "ISHS MSCI CHINA ETF",
+        "value_eur": 33376.69764528927,
+        "weight_pct": 3.0,
+        "cumulative_pct": 64.172194
+      },
+      {
+        "rank": 17,
+        "name": "IMGP EURO SELECT R EUR",
+        "value_eur": 33376.69764528927,
+        "weight_pct": 3.0,
+        "cumulative_pct": 67.172194
+      },
+      {
+        "rank": 18,
+        "name": "XTRACKERS MSCI WORLD HEALTH CARE UCITS ETF 1C",
+        "value_eur": 33376.69764528927,
+        "weight_pct": 3.0,
+        "cumulative_pct": 70.172194
+      },
+      {
+        "rank": 19,
+        "name": "ISHARES MSCI INDIA UCITS ETF USD ACC",
+        "value_eur": 33376.69764528927,
+        "weight_pct": 3.0,
+        "cumulative_pct": 73.172194
+      },
+      {
+        "rank": 20,
+        "name": "META PLATFORMS A",
+        "value_eur": 32068.5,
+        "weight_pct": 2.882415,
+        "cumulative_pct": 76.054609
+      }
+    ],
+    "top_5_pct": 25.647814,
+    "top_10_pct": 45.098581,
+    "top_20_pct": 76.054609,
+    "positions_above_5pct": 2
+  },
+  "liquidity_profile_pct": {
+    "Daily-liquid fund": 57.632359,
+    "Listed": 42.367641
+  },
+  "income": {
+    "running_yield_pct": 0.3978,
+    "fi_duration_years": 2.95,
+    "rate_impact_100bp_eur": -3977.49,
+    "income_by_sleeve": [
+      {
+        "sleeve": "Fixed Income",
+        "income_eur": 4425.5,
+        "pct_of_income": 100.0
+      },
+      {
+        "sleeve": "Cash",
+        "income_eur": 0.0,
+        "pct_of_income": 0.0
+      }
+    ],
+    "fi_duration_subsleeves": [
+      {
+        "label": "Quasi-sovereign bond",
+        "value_eur": 53348.37,
+        "avg_duration": 1.54,
+        "contribution": 0.61
+      },
+      {
+        "label": "Structured note / certificate",
+        "value_eur": 42553.0,
+        "avg_duration": 0.0,
+        "contribution": 0.0
+      },
+      {
+        "label": "High yield bond fund",
+        "value_eur": 38928.67,
+        "avg_duration": 0.0,
+        "contribution": 0.0
+      }
+    ]
+  },
+  "risk_profile": {
+    "selected_profile": "Growth",
+    "growth_assets_pct": 74.521831,
+    "defensive_assets_pct": 18.677232
+  },
+  "uncalled_commitments": [],
+  "line_items": [
+    {
+      "top_category": "Cash",
+      "group": "Cash",
+      "isin": null,
+      "instrument": "CURRENT ACCOUNT IN USD",
+      "weight_pct": 5.974894
+    },
+    {
+      "top_category": "Cash",
+      "group": "Cash",
+      "isin": null,
+      "instrument": "CURRENT ACCOUNT IN CHF",
+      "weight_pct": 0.392228
+    },
+    {
+      "top_category": "Cash",
+      "group": "Cash",
+      "isin": null,
+      "instrument": "CURRENT ACCOUNT IN GBP",
+      "weight_pct": 0.126222
+    },
+    {
+      "top_category": "Cash",
+      "group": "Cash",
+      "isin": null,
+      "instrument": "CURRENT ACCOUNT IN JPY",
+      "weight_pct": 0.051901
+    },
+    {
+      "top_category": "Cash",
+      "group": "Cash",
+      "isin": null,
+      "instrument": "INCOME TO BE RECEIVED IN EUR",
+      "weight_pct": 0.013028
+    },
+    {
+      "top_category": "Cash",
+      "group": "Cash",
+      "isin": null,
+      "instrument": "CURRENT ACCOUNT IN HKD",
+      "weight_pct": 2.3e-05
+    },
+    {
+      "top_category": "Fixed Income",
+      "group": "High Yield (local or global hdg)",
+      "isin": "CH0414256021",
+      "instrument": "SYZ EM BONDS CERTIFICATE",
+      "weight_pct": 3.824794
+    },
+    {
+      "top_category": "Fixed Income",
+      "group": "High Yield (local or global hdg)",
+      "isin": "LU0970691159",
+      "instrument": "IMGP US CORE PLUS FD R $",
+      "weight_pct": 2.661723
+    },
+    {
+      "top_category": "Fixed Income",
+      "group": "High Yield (local or global hdg)",
+      "isin": "LU0512127977",
+      "instrument": "JPM EM MAR CORP C USD CAP",
+      "weight_pct": 2.152331
+    },
+    {
+      "top_category": "Fixed Income",
+      "group": "High Yield (local or global hdg)",
+      "isin": "IE00BSKRJZ44",
+      "instrument": "ISHARES USD TREAS 20+ ETF",
+      "weight_pct": 0.837305
+    },
+    {
+      "top_category": "Fixed Income",
+      "group": "EM Debt",
+      "isin": "US040114HS26",
+      "instrument": "0.75%ARGENTINA 30 STEP UP  09.07.2030",
+      "weight_pct": 1.483172
+    },
+    {
+      "top_category": "Fixed Income",
+      "group": "EM Debt",
+      "isin": "US040114HT09",
+      "instrument": "4.125% ARGENTINA 35 ST UP  09.07.2035",
+      "weight_pct": 0.925437
+    },
+    {
+      "top_category": "Fixed Income",
+      "group": "EM Debt",
+      "isin": "US040114GM64",
+      "instrument": "0% ARGENTINA GDP DEC35  15.12.2035",
+      "weight_pct": 0.134275
+    },
+    {
+      "top_category": "Fixed Income",
+      "group": "EM Debt",
+      "isin": "US040114HX11",
+      "instrument": "1% ARGENTINA JUL29  09.07.2029",
+      "weight_pct": 0.0999
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "IE00BLNMYC90",
+      "instrument": "XTRACKERS S&P 500 EQUAL WEIGHT UCITS ETF 1C",
+      "weight_pct": 5.0
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "CH0410022534",
+      "instrument": "UBS-CERT-IDX SYZ CORE 32",
+      "weight_pct": 4.53483
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US0231351067",
+      "instrument": "AMAZON COM",
+      "weight_pct": 4.0
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US02079K3059",
+      "instrument": "ALPHABET A",
+      "weight_pct": 3.625973
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "IE00BYXG2H39",
+      "instrument": "ISHARES NASDAQ US BIOTECH UCITS ETF USD ACC",
+      "weight_pct": 3.5
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US5949181045",
+      "instrument": "MICROSOFT",
+      "weight_pct": 3.185159
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US30303M1027",
+      "instrument": "META PLATFORMS A",
+      "weight_pct": 2.882415
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US11135F1012",
+      "instrument": "BROADCOM INC",
+      "weight_pct": 2.871584
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US81369Y5069",
+      "instrument": "STAT ST ENRGY SLSEC ETF",
+      "weight_pct": 2.0
+    },
+    {
+      "top_category": "Equities",
+      "group": "US",
+      "isin": "US84615Q1031",
+      "instrument": "SPACE EXPLO TECH CORP A",
+      "weight_pct": 1.915453
+    },
+    {
+      "top_category": "Equities",
+      "group": "Eurozone",
+      "isin": "IE00B4K48X80",
+      "instrument": "ISHARES CORE MSCI EUROPE UCITS ETF EUR ACC",
+      "weight_pct": 4.0
+    },
+    {
+      "top_category": "Equities",
+      "group": "Eurozone",
+      "isin": "FR0013506730",
+      "instrument": "VALLOUREC",
+      "weight_pct": 3.10809
+    },
+    {
+      "top_category": "Equities",
+      "group": "UK",
+      "isin": "US7601251041",
+      "instrument": "RENTOKIL INITIAL PLC",
+      "weight_pct": 3.218263
+    },
+    {
+      "top_category": "Equities",
+      "group": "Switzerland",
+      "isin": "CH0237935652",
+      "instrument": "ISHARES CORE SPI ETF (CH)",
+      "weight_pct": 2.5
+    },
+    {
+      "top_category": "Equities",
+      "group": "Japan",
+      "isin": "LU0536295982",
+      "instrument": "IMGP JAPAN OPP FD R JPY",
+      "weight_pct": 5.63809
+    },
+    {
+      "top_category": "Equities",
+      "group": "EM",
+      "isin": "US46434V5140",
+      "instrument": "ISHS MSCI CHINA ETF",
+      "weight_pct": 3.0
+    },
+    {
+      "top_category": "Equities",
+      "group": "EM",
+      "isin": "IE00BZCQB185",
+      "instrument": "ISHARES MSCI INDIA UCITS ETF USD ACC",
+      "weight_pct": 3.0
+    },
+    {
+      "top_category": "Equities",
+      "group": "EM",
+      "isin": "LI0148578169",
+      "instrument": "AQUIS LUMEN VIETNAM R USD",
+      "weight_pct": 2.041973
+    },
+    {
+      "top_category": "Equities",
+      "group": "Global / thematic",
+      "isin": "IE00BP3QZB59",
+      "instrument": "ISHARES MSCI WLD VAL USD",
+      "weight_pct": 4.5
+    },
+    {
+      "top_category": "Equities",
+      "group": "Global / thematic",
+      "isin": "US9220428588",
+      "instrument": "VANGUARD FTSE EM MKT ETF",
+      "weight_pct": 4.0
+    },
+    {
+      "top_category": "Equities",
+      "group": "Global / thematic",
+      "isin": "LU2985306195",
+      "instrument": "IMGP EURO SELECT R EUR",
+      "weight_pct": 3.0
+    },
+    {
+      "top_category": "Equities",
+      "group": "Global / thematic",
+      "isin": "IE00BM67HK77",
+      "instrument": "XTRACKERS MSCI WORLD HEALTH CARE UCITS ETF 1C",
+      "weight_pct": 3.0
+    },
+    {
+      "top_category": "Other",
+      "group": "Other",
+      "isin": "US46438F1012",
+      "instrument": "ISHARES BITCOIN ETF",
+      "weight_pct": 3.0621
+    },
+    {
+      "top_category": "Other",
+      "group": "Other",
+      "isin": "LU1191063970",
+      "instrument": "BLACKR MYMAP PLUS GROW D2",
+      "weight_pct": 1.937745
+    },
+    {
+      "top_category": "Other",
+      "group": "Other",
+      "isin": "LU1965317263",
+      "instrument": "IMGP GL DIV INC FD R $ D",
+      "weight_pct": 1.801091
+    }
+  ],
+  "proposed_bond_selection": null
+}

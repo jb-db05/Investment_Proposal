@@ -41,17 +41,19 @@ Column names are matched case-insensitively with whitespace stripped
 
 ## 3. Currency of record
 
-- Portfolio total value and all EUR-denominated figures use the
-  `Valuation + accr. interest (EUR)` column.
-- `base_currency` (used to label every aggregate monetary figure — total
-  value, KPIs, sleeve values, rate-impact) is **fixed at EUR**, matching
-  this column and the file's own stated total (e.g. "Total: 21'300'578
-  EUR"). This is deliberately NOT the same as `dominant_holding_currency`
-  (the currency with the largest weighted valuation, used only for
-  informational purposes) — conflating the two would label EUR-denominated
-  aggregates with whatever currency happens to dominate the book, which is
-  wrong regardless of which currency wins. A single holding's own value is
-  shown in that holding's own `Currency` column via `value_qc` — see §9.
+- The portfolio sheet is `Portfolio` if present, else the first sheet with
+  an ISIN header row (some exports ship a single `Sheet1`).
+- `base_currency` is read from the file's own base-currency valuation
+  header, `Valuation + accr. interest (<CCY>)` (EUR, USD, ...), the column
+  the custodian's own stated total is computed in (e.g. "Total : 1'112'557
+  USD"). Every aggregate figure (total value, KPIs, sleeve values,
+  rate-impact) uses that column and is labelled with that currency. The
+  `_eur` suffix on internal field names (`total_value_eur`, `value_eur`) is
+  historical: those fields are always in `base_currency`.
+- This is deliberately NOT the same as `dominant_holding_currency` (the
+  currency with the largest weighted valuation, informational only).
+- A single holding's own value is shown in that holding's own `Currency`
+  column via `value_qc` (see §9).
 
 ## 4. Fixed income sub-buckets (Cash / Fixed Income line-items table)
 
@@ -105,12 +107,14 @@ section's `Weight (%)`. Sections with 0% total are omitted from the chart
 
 Within a sleeve, each holding is classified as:
 
-- **Direct line** — `Description` does not contain any fund/structured
-  keyword below.
+- **Direct line** — anything not matched by the two rules below.
 - **Fund** — `Description` contains "FUND", "FD", "SICAV", "ETF", "ETC",
-  or the row's `Composite Rating` is blank and `Coupon (%)` is blank (a
-  common signature of collective vehicles in this export).
-- **Structured / AMC** — `Description` contains "CERTIFICATE", "CERT",
+  or the row's `Composite Rating` is the literal `Not Rated` and
+  `Coupon (%)` is blank. In every export seen so far collective vehicles
+  carry "Not Rated" while direct shares and physical metal carry a
+  *blank* rating; an earlier version treated blank as "fund", which
+  classified every single stock as a fund.
+- **Structured / AMC** — `Description` contains "CERTIFICATE", "CERT" (incl. "-CERT"),
   "AMC", "TRACKER", or the ISIN prefix is `XS`/`CH` combined with a
   `Coupon (%)` that is blank and a bullet/barrier-style name pattern
   (e.g. "DCI-", "RAF ", "CPN ").

@@ -62,7 +62,7 @@ IG_RATINGS = {"AAA", "AA+", "AA", "AA-"}
 CORP_IG_RATINGS = {"A+", "A", "A-", "BBB+", "BBB", "BBB-"}
 
 FUND_KEYWORDS = ("FUND", " FD ", "SICAV", "ETF", "ETC")
-STRUCTURED_KEYWORDS = ("CERTIFICATE", " CERT", "AMC", "TRACKER", "DCI-", "RAF ", "CPN ")
+STRUCTURED_KEYWORDS = ("CERTIFICATE", " CERT", "-CERT", "AMC", "TRACKER", "DCI-", "RAF ", "CPN ")
 
 
 def norm_header(h) -> str:
@@ -165,7 +165,11 @@ def classify_vehicle(description: str, rating, coupon) -> str:
         return "Fund"
     if any(k in d for k in STRUCTURED_KEYWORDS):
         return "Structured / AMC"
-    if (rating in (None, "", "Not Rated")) and coupon in (None, ""):
+    # Custodian convention (holds in every export seen so far): collective
+    # vehicles carry the literal rating "Not Rated", while direct shares
+    # and physical metal carry a BLANK rating. Treating blank as "fund"
+    # (the earlier rule) misclassified every single stock as a fund.
+    if str(rating or "").strip() == "Not Rated" and coupon in (None, ""):
         return "Fund"
     return "Direct line"
 
@@ -311,8 +315,43 @@ def pct(x: float) -> float:
     return round(x * 100, 6)
 
 
+# Header of the base-currency valuation column, e.g. "valuation + accr.
+# interest (eur)" or "... (usd)". Detected per file in main() (assumptions.md
+# §3) -- the "_eur" suffix on internal names is historical; every such field
+# is in the file's own base currency.
+VALUATION_HEADER = "valuation + accr. interest (eur)"
+
+
+def detect_base_currency(headers: dict[str, int]) -> tuple[str, str]:
+    """Return (normalized header, ISO currency) of the base-currency
+    valuation column -- the one that is not the "(in qc)" quote-currency
+    column."""
+    import re as _re
+    for h in headers:
+        m = _re.fullmatch(r"valuation \+ accr\. interest \(([a-z]{3})\)", h)
+        if m:
+            return h, m.group(1).upper()
+    raise ValueError("No 'Valuation + accr. interest (<CCY>)' base-currency column found")
+
+
+def find_portfolio_sheet(wb):
+    """The 'Portfolio' sheet if present, else the first sheet that has an
+    ISIN header row (some exports ship a single unnamed 'Sheet1')."""
+    if "Portfolio" in wb.sheetnames:
+        return wb["Portfolio"]
+    for ws in wb.worksheets:
+        if ws.title == "Fixed Income":
+            continue
+        try:
+            load_sheet_rows(ws)
+            return ws
+        except ValueError:
+            continue
+    return None
+
+
 def val_eur(row: dict) -> float:
-    v = row.get("valuation + accr. interest (eur)")
+    v = row.get(VALUATION_HEADER)
     try:
         return float(v or 0)
     except (TypeError, ValueError):
@@ -340,9 +379,12 @@ def main():
     args = ap.parse_args()
 
     wb = openpyxl.load_workbook(args.excel_path, data_only=True)
-    if "Portfolio" not in wb.sheetnames:
-        sys.exit("Error: expected a 'Portfolio' sheet in the Excel file")
-    _, port_rows = load_sheet_rows(wb["Portfolio"])
+    port_ws = find_portfolio_sheet(wb)
+    if port_ws is None:
+        sys.exit("Error: expected a 'Portfolio' sheet (or a sheet with an ISIN header row) in the Excel file")
+    port_headers, port_rows = load_sheet_rows(port_ws)
+    global VALUATION_HEADER
+    VALUATION_HEADER, base_currency = detect_base_currency(port_headers)
     proposed_bond_selection = parse_proposed_bonds(wb) if "Fixed Income" in wb.sheetnames else None
 
     bucket_overrides = load_bucket_overrides(args.bucket_overrides)
@@ -377,14 +419,13 @@ def main():
 
     total_value_eur = sum(r["_value_eur"] for r in included)
 
-    # Base/reporting currency: fixed at EUR, matching the custodian file's
-    # own "Valuation + accr. interest (EUR)" column and its own stated
-    # portfolio total (assumptions.md §3). This is NOT the same thing as
+    # Base/reporting currency: read from the custodian file's own
+    # "Valuation + accr. interest (<CCY>)" column header, matching its own
+    # stated portfolio total (assumptions.md §3). This is NOT the same thing as
     # "most-held currency by weight" (that's currency_exposure_pct below,
     # a property of the holdings, not of the reporting base) -- conflating
     # the two mislabels every EUR-denominated aggregate figure with
     # whatever currency happens to dominate the book.
-    base_currency = "EUR"
     ccy_val = defaultdict(float)
     for r in included:
         ccy_val[str(r.get("currency") or "Other")] += r["_value_eur"]
@@ -415,7 +456,8 @@ def main():
         geo_weight[region_of(r.get("geographical breakdown"))] += r["_weight"]
         if sector_data_available:
             isin = str(r.get("isin code") or "")
-            sector_weight[sector_overrides.get(isin, "Other")] += r["_weight"]
+            default = "Cash" if r["_asset_class"] == "Cash" else "Other"
+            sector_weight[sector_overrides.get(isin, default)] += r["_weight"]
     geographic_exposure = {k: pct(v) for k, v in sorted(geo_weight.items(), key=lambda kv: -kv[1])}
     sector_exposure = (
         {k: pct(v) for k, v in sorted(sector_weight.items(), key=lambda kv: -kv[1])}
@@ -453,6 +495,10 @@ def main():
             ],
             "vehicle_breakdown_pct": {k: pct(v) for k, v in sorted(vehicle_weight.items(), key=lambda kv: -kv[1])},
             "duration_coverage": f"{n_with_dur} of {len(rows_ac)}" if asset_class == "Fixed Income" else None,
+            "duration_lines_with": n_with_dur,
+            "duration_value_coverage_pct": (
+                pct(sum(r["_weight"] for r in rows_ac if isinstance(r.get("duration"), (int, float))) / ac_total_w)
+                if ac_total_w else None),
         }
 
     # --- §8 equity breakdown (renormalized to the equity sleeve) ---
@@ -638,7 +684,7 @@ def main():
 
     Path(args.output).write_text(json.dumps(parsed, indent=2, default=str))
     print(f"Wrote {args.output}: {len(included)} positions, "
-          f"{parsed['total_value_eur']:,.0f} EUR, dominant holding currency {dominant_holding_currency}")
+          f"{parsed['total_value_eur']:,.0f} {base_currency}, dominant holding currency {dominant_holding_currency}")
 
 
 if __name__ == "__main__":

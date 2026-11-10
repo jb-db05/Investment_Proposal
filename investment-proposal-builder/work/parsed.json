@@ -96,9 +96,11 @@
         }
       ],
       "vehicle_breakdown_pct": {
-        "Fund": 100.0
+        "Direct line": 100.0
       },
-      "duration_coverage": null
+      "duration_coverage": null,
+      "duration_lines_with": 9,
+      "duration_value_coverage_pct": 100.0
     },
     "Commodities": {
       "total_weight_pct": 25.043606,
@@ -161,9 +163,12 @@
         }
       ],
       "vehicle_breakdown_pct": {
-        "Fund": 100.0
+        "Direct line": 85.110151,
+        "Fund": 14.889849
       },
-      "duration_coverage": null
+      "duration_coverage": null,
+      "duration_lines_with": 0,
+      "duration_value_coverage_pct": 0.0
     },
     "Equities": {
       "total_weight_pct": 33.704701,
@@ -226,10 +231,12 @@
         }
       ],
       "vehicle_breakdown_pct": {
-        "Fund": 93.947145,
-        "Direct line": 6.052855
+        "Direct line": 51.282991,
+        "Fund": 48.717009
       },
-      "duration_coverage": null
+      "duration_coverage": null,
+      "duration_lines_with": 0,
+      "duration_value_coverage_pct": 0.0
     },
     "Fixed Income": {
       "total_weight_pct": 15.084641,
@@ -296,7 +303,9 @@
         "Fund": 22.766681,
         "Structured / AMC": 19.38115
       },
-      "duration_coverage": "11 of 15"
+      "duration_coverage": "11 of 15",
+      "duration_lines_with": 11,
+      "duration_value_coverage_pct": 57.852169
     },
     "Other": {
       "total_weight_pct": 0.596802,
@@ -317,7 +326,9 @@
       "vehicle_breakdown_pct": {
         "Fund": 100.0
       },
-      "duration_coverage": null
+      "duration_coverage": null,
+      "duration_lines_with": 0,
+      "duration_value_coverage_pct": 0.0
     },
     "Private Assets": {
       "total_weight_pct": 16.27031,
@@ -382,7 +393,9 @@
       "vehicle_breakdown_pct": {
         "Fund": 100.0
       },
-      "duration_coverage": null
+      "duration_coverage": null,
+      "duration_lines_with": 0,
+      "duration_value_coverage_pct": 0.0
     },
     "Structured Products": {
       "total_weight_pct": 5.502035,
@@ -448,7 +461,9 @@
         "Structured / AMC": 63.446911,
         "Direct line": 36.553089
       },
-      "duration_coverage": null
+      "duration_coverage": null,
+      "duration_lines_with": 1,
+      "duration_value_coverage_pct": 21.214705
     }
   },
   "equity_breakdown": {
@@ -611,8 +626,8 @@
     "positions_above_5pct": 3
   },
   "liquidity_profile_pct": {
-    "Daily-liquid fund": 64.53719,
-    "Listed": 19.1925,
+    "Listed": 59.549739,
+    "Daily-liquid fund": 24.179951,
     "Illiquid (lock-up)": 16.27031
   },
   "income": {
