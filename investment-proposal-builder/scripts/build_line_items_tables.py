@@ -34,6 +34,7 @@ from pptx import Presentation
 from pptx.util import Emu, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.opc.packuri import PackURI
 from pptx.oxml.ns import qn
 
 # --- visual constants, matched to the template's own title-block geometry ---
@@ -99,11 +100,34 @@ def group_line_items(line_items: list[dict]) -> list[Group]:
     return groups
 
 
+def split_oversized(groups: list[Group], rows_per_slide: int) -> list[Group]:
+    """Break up any group too large to fit a page even on its own.
+
+    "A group never splits across two slides" holds for every group that *can*
+    fit one; without this escape hatch an oversized group is placed anyway and
+    its table runs off the bottom of the slide. A US-heavy equity book does it
+    easily: one region, thirty lines. The continuation chunks say so in their
+    own label, so a reader never sees the same heading twice with no
+    explanation."""
+    capacity = rows_per_slide - 1  # the group's own category header row
+    out: list[Group] = []
+    for g in groups:
+        if len(g.rows) <= capacity:
+            out.append(g)
+            continue
+        for n in range(0, len(g.rows), capacity):
+            chunk = g.rows[n:n + capacity]
+            out.append(Group(g.top_category, g.group if n == 0 else f"{g.group} (cont.)", chunk))
+    return out
+
+
 def paginate(groups: list[Group], rows_per_slide: int) -> list[list[Group]]:
     """Greedy bin-packing where a Group (fine sub-bucket) is the atomic,
-    never-split unit. A category-header row is only counted once per
-    top_category per page (repeated on a continuation page if that
-    category's groups spill over)."""
+    never-split unit — except for one too big to fit a page at all, which
+    split_oversized() has already broken up. A category-header row is only
+    counted once per top_category per page (repeated on a continuation page
+    if that category's groups spill over)."""
+    groups = split_oversized(groups, rows_per_slide)
     pages: list[list[Group]] = []
     current: list[Group] = []
     current_rows = 0
@@ -224,11 +248,25 @@ def is_line_items_slide(slide) -> bool:
     return names == {"Title 1", "Text Placeholder 2"}
 
 
+def _claim_free_slide_partname(prs, slide_part):
+    """python-pptx names a new slide part after the current slide count, so
+    once any slide has been deleted the next one added reuses a partname that
+    is still in use — two `ppt/slides/slideN.xml` entries in the saved package,
+    and PowerPoint reads back whichever it hit first. Rename the fresh part to
+    the first number nothing else has claimed."""
+    used = {str(part.partname) for part in prs.part.package.iter_parts()}
+    n = len(prs.slides) + 1
+    while f"/ppt/slides/slide{n}.xml" in used:
+        n += 1
+    slide_part.partname = PackURI(f"/ppt/slides/slide{n}.xml")
+
+
 def duplicate_slide_after(prs, index):
     """Insert a new slide using the same layout as prs.slides[index],
     positioned immediately after it. Returns the new slide."""
     src = prs.slides[index]
     new_slide = prs.slides.add_slide(src.slide_layout)  # appended at the end
+    _claim_free_slide_partname(prs, new_slide.part)
     xml_slides = prs.slides._sldIdLst
     slides = list(xml_slides)
     new_el = slides[-1]
@@ -297,7 +335,11 @@ def set_placeholder_text(slide, name, text):
 def build(prs: Presentation, parsed: dict) -> Presentation:
     slide_h = prs.slide_height
     usable = slide_h - TABLE_TOP - TABLE_BOTTOM_MARGIN
-    rows_per_slide = max(8, int(usable // ROW_HEIGHT))
+    # Two rows the pagination never counted: the table's own column header,
+    # on every page, and the grand-total row on the last one. Without the
+    # allowance a full last page runs past TABLE_BOTTOM_MARGIN and into the
+    # footer.
+    rows_per_slide = max(8, int(usable // ROW_HEIGHT) - 2)
 
     line_items = parsed["line_items"]
     groups = group_line_items(line_items)
@@ -330,7 +372,7 @@ def build(prs: Presentation, parsed: dict) -> Presentation:
         delete_slide(prs, slot_indices.pop())
 
     ccy = parsed["base_currency"]
-    total_m = parsed["total_value_eur"] / 1_000_000
+    total_m = parsed["total_value_base"] / 1_000_000
     date = parsed["valuation_date"]
 
     for page_num, (idx, page_groups) in enumerate(zip(slot_indices, pages), start=1):

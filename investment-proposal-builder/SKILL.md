@@ -7,19 +7,31 @@ description: "Build a fully populated Syz-branded Investment Proposal PowerPoint
 
 Turns three client-specific inputs into a client-ready PowerPoint deck:
 
+The deck is built in the export's **own reporting currency** — EUR or USD,
+read from the `Valuation + accr. interest (<CCY>)` column header, never
+assumed (`references/assumptions.md` §3).
+
 1. **Portfolio Excel** — a custodian export of the client's current holdings
-   (a `Portfolio` sheet with section-header rows per asset class) plus,
+   (a `Portfolio` sheet with section-header rows per asset class — any other
+   single-sheet name works too, see `references/assumptions.md` §1) plus,
    optionally, a `Fixed Income` sheet holding a curated bond *proposal*.
-2. **Market-update PDF** — a weekly market commentary (Syz Research style).
+   Without that sheet the deck simply has no "Fixed Income Breakdown" slide.
+2. **Market-update PDF** — a Syz Research commentary: a weekly market recap,
+   or a monthly investment-conclusions summary (see step 3).
 3. **Risk profile** — one of `Fixed Income`, `Conservative`, `Moderate`,
    `Balanced`, `Growth`, `Equity`.
+
+Optionally, a fourth: **private-market fund monitoring** (`--pe-monitoring`),
+manager-reported metrics for the client's private-equity funds. It adds one
+slide after the Alternatives sleeve. This never comes from the custodian
+Excel — see `references/slide_recipe.md`, "The private-equity review slide".
 
 Output: a ~36-39 slide `.pptx` (slide count varies with how many holdings
 the client has — see "Pagination" below), with every number, chart and
 table traced back to the Excel file, and every piece of market commentary
 traced back to the PDF. **Nothing is invented.** Where a number genuinely
-isn't available in the source file (e.g. equity sector classification —
-see `references/assumptions.md` §7), the deck says so instead of guessing.
+isn't available in the source file, the deck says so instead of guessing
+rather than inventing a plausible-looking split.
 
 ## Before you start
 
@@ -49,12 +61,23 @@ python scripts/parse_portfolio.py "<portfolio.xlsx>" \
 Read the printed summary line (position count, total value, dominant
 holding currency) and sanity-check it against the Excel — e.g. does the
 position count match the file's own "Segment Total (N)" label if it has
-one. If your desk has an authoritative fixed-income bucket mapping,
+one. **Check the equity sleeve's vehicle split before you build.** The export
+cannot distinguish a single-name share from an equity fund — both have a
+blank rating and a blank coupon — so every unlabelled equity defaults to
+"Fund". If the client holds direct equities, list them in a
+`--vehicle-overrides` CSV (`isin,vehicle`); it is the only non-fabricated
+way to get that chart right, and it feeds the liquidity profile too. See
+`references/assumptions.md` §6.
+
+If your desk has an authoritative fixed-income bucket mapping,
 equity-sector mapping, or market-cap classification, pass
 `--bucket-overrides`, `--sector-overrides`, `--market-cap-overrides` (CSV
 files — see `references/assumptions.md` §4, §7-8 for the exact column
-names). Without them, sector and market-cap breakdowns are correctly
-reported as unavailable rather than fabricated.
+names), plus `--style-overrides` for Growth / Value / Blend. Those three
+fill the equity-breakdown slide's sector, market-cap and style donuts; a
+panel with no CSV behind it says "Desk classification not supplied" rather
+than showing a split. `--bucket-overrides` drives the fixed-income grouping
+on the holdings list, and `--vehicle-overrides` the direct-line / fund split.
 
 ### 3. Extract the market update (you do this — it's not a script)
 
@@ -69,10 +92,18 @@ full deck onto these four slides. `work/market_update.json` in this repo
 is a complete worked example from a real PDF; use it as a template for
 field names and tone, not as a source of numbers for a different week.
 
-If the PDF's structure doesn't cleanly map to a field (no explicit
-scenario-probability table that week, say), leave that field's slide
-un-filled (the template's original text stays) and tell the user instead
-of inventing numbers.
+If the PDF's structure doesn't cleanly map to a field, say so to the user
+instead of inventing numbers — and check whether the field is one of the
+optional ones. A monthly investment-conclusions summary, for instance, has
+no cross-asset performance table at all: give slides 3 and 4 their own
+`slide_title`, repurpose the scoreboard block's `label`/`headers` for a
+table the source *does* have (with `colorize: false` for non-numeric
+values), or omit `scoreboard.rows` to empty the block entirely. Note that
+for slides 3-4 "un-filled" means *emptied*, not "left alone": the template
+ships with the reference week's own real numbers in those boxes, and the
+build empties them rather than putting another week's market data in front
+of your client. `references/slide_recipe.md` §"When the source isn't a
+weekly market recap" has the details.
 
 ### 4. Build the deck
 
@@ -83,6 +114,7 @@ python scripts/build_proposal.py \
     --client-name "<Client Name>" \
     --market-update market_update.json \
     --valuation-date "<same date as step 2>" \
+    [--pe-monitoring private_equity_monitoring.json] \
     -o "Investment Proposal - <Client Name>.pptx"
 ```
 
@@ -117,7 +149,9 @@ python -c "
 from pptx import Presentation
 prs = Presentation('Investment Proposal - <Client Name>.pptx')
 text = '\n'.join(sh.text_frame.text for s in prs.slides for sh in s.shapes if sh.has_text_frame)
-bad = ['[Client Name', '7.0m', 'USD 7.0M', '86.6%']
+bad = ['[Client Name', '7.0m', 'USD 7.0M', '86.6%',
+       'MSCI World', 'Chair Warsh',          # the reference week's market data
+       'EUR 600,000']                        # the reference bond proposal
 print([b for b in bad if b in text])
 "
 ```
@@ -182,6 +216,10 @@ investment-proposal-builder/
 - **A different fixed-income or equity taxonomy**: edit the classifier
   functions in `parse_portfolio.py` (`classify_fi_bucket`,
   `geography_map.py`), and update `assumptions.md` §4/§7-8 to match.
+- **A market PDF that isn't a weekly recap**: nothing in the scripts needs
+  changing — the optional `market_update.json` fields (`slide_title`,
+  `scoreboard.label`/`headers`/`colorize`, `policy_note`) cover it. See
+  `references/slide_recipe.md`.
 - **A custodian export with different column names**: `parse_portfolio.py`
   matches headers case-insensitively with whitespace stripped
   (`norm_header()`) — add the new header's normalized form wherever the

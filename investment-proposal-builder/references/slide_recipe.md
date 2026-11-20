@@ -16,12 +16,13 @@ from `assets/template.pptx` — no per-client data goes on it.
 | 8 | Portfolio strategies / risk-return trade-off | `parsed.json: risk_profile`, `slide8_profile_dial.md` | `build_proposal.fill_profile_dial` |
 | 9-N | Proposed portfolio: full holdings list | `parsed.json: line_items` | `build_line_items_tables.build` (runs **last** — see note below) |
 | N+1 | Portfolio overview | `parsed.json`: KPIs, `asset_allocation_pct`, `currency_exposure_pct` | `build_proposal.fill_portfolio_overview` |
-| N+2 | Geographic & sector exposure | `parsed.json: geographic_exposure_pct`, `sector_exposure_pct` (may be unavailable, see assumptions.md §7) | `build_proposal.fill_geo_sector` |
+| N+2 | Geographic exposure — whole portfolio and equity sleeve, side by side | `parsed.json: geographic_exposure_pct`, `equity_breakdown.by_geography_pct` | `build_proposal.fill_geographic_exposure` |
+| N+6 | Equity breakdown — sector / market cap / style | `parsed.json: equity_breakdown` (desk override CSVs) | `build_proposal.fill_equity_breakdown` |
 | N+3 | Fixed Income: income-type specifics | `parsed.json: sleeves["Fixed Income"]` | `build_proposal.fill_sleeve_slides` |
-| N+4 | Fixed Income Breakdown (proposed bond selection) | `parsed.json: proposed_bond_selection` (from the `Fixed Income` Excel tab — a curated proposal, NOT current holdings) | `build_proposal.fill_proposed_bond_selection` |
+| N+4 | Fixed Income Breakdown (proposed bond selection) | `parsed.json: proposed_bond_selection` (from the `Fixed Income` Excel tab — a curated proposal, NOT current holdings); **slide is removed when the Excel has no such tab** | `build_proposal.fill_proposed_bond_selection` / `drop_proposed_bond_selection` |
 | N+5 | Equities: income-type specifics | `parsed.json: sleeves["Equities"]` | `build_proposal.fill_sleeve_slides` |
-| N+6 | Equity breakdown | `parsed.json: equity_breakdown` | `build_proposal.fill_equity_breakdown` |
 | N+7 | Alternatives: income-type specifics | `parsed.json: sleeves["Private Assets"]` (closest conceptual match — see note below) | `build_proposal.fill_sleeve_slides` |
+| N+7a | Private equity: fund-by-fund review (**optional**, only when `--pe-monitoring` is given) | `private_equity_monitoring.json` — manager-reported fund metrics, a separate input | `build_proposal.build_pe_monitoring_slide` (inserted last) |
 | N+8 | Commodities | `parsed.json: sleeves["Commodities"]` | `build_proposal.fill_sleeve_slides` |
 | N+9 | Structured products | `parsed.json: sleeves["Structured Products"]` | `build_proposal.fill_sleeve_slides` |
 | N+10 | Liquidity profile | `parsed.json: liquidity_profile_pct` | `build_proposal.fill_liquidity` |
@@ -41,6 +42,41 @@ those positions are only correct before the holdings-list slide count
 changes. This bit us once during development — see the comment above the
 call order in `build_proposal.build()`.
 
+## The four equity views, and where each one lives
+
+- **Geography** shares the "Geographic exposure" slide: the whole portfolio
+  on the left, the equity sleeve on the right.
+- **Sector, market cap and style** are the three donuts on the
+  "Equity breakdown" slide.
+
+All four come from desk override CSVs, because none of them is a column in
+the custodian export (assumptions.md §7-8). A panel with no CSV behind it
+reads "Desk classification not supplied" rather than inventing a split.
+
+**Legend capacity is the binding constraint on that slide.** Its donuts have
+no legend and no category labels of their own — the dot-and-textbox pairs
+beside each one *are* the legend, so a donut can show only as many slices as
+the legend has rows. The template drew 5 / 5 / 3. `grow_legend()` clones the
+last dot+label pair down to a 19.0cm floor when a breakdown needs more rows
+(sector usually does), and `cap_categories()` rolls whatever still does not
+fit into one honest "Other". Legend dots are painted from the colours read
+back off the donut itself, so the two cannot drift apart.
+
+## Slides that come out when the data isn't there
+
+`build()` collects these after the line-items rebuild and drops them by part
+identity. All follow one rule: a slide with nothing behind it is worse than
+no slide.
+
+| Slide | Dropped when |
+|---|---|
+| Fixed Income / Alternatives / Commodities / Structured products sleeves | that sleeve holds no positions |
+| Fixed Income Breakdown | the Excel has no `Fixed Income` proposal tab |
+| Income & interest-rate sensitivity | nothing in the book carries a yield, a coupon or a duration |
+
+An all-equity portfolio therefore ships a visibly shorter deck, and that is
+the point — the alternative is four slides of empty charts.
+
 ## Scope boundary
 
 The appendix (Syz Group at a Glance, advisory service tiers, investment
@@ -59,6 +95,53 @@ recommendations, not generic collateral appropriate for every client. If a
 future need brings fund one-pagers back, that's a new input (which funds
 to recommend, keyed by risk profile or client), not something to
 reconstruct from the three existing inputs.
+
+## The private-equity review slide (optional)
+
+`--pe-monitoring <json>` adds one slide immediately after the Alternatives
+sleeve: a table of the client's private-market funds — vintage, term,
+currency, as-of quarter, TVPI/MOIC, DPI, capital called, and expected calls
+and distributions over the next four quarters — with a commentary card per
+fund underneath.
+
+**Its content is a separate input, and deliberately so.** None of it is in
+the custodian export: TVPI, DPI, called capital and forward-looking
+expectations live in each manager's own quarterly report. The build does not
+derive, cross-check or reconcile any of it against `parsed.json` — a fund
+can appear here that the Excel does not hold, or be missing from here while
+the Excel holds it, and nothing will complain. Whoever writes the JSON owns
+that reconciliation.
+
+Schema:
+
+```
+{
+  "slide_title": str (optional),
+  "intro_sentence": str,
+  "funds": [{"name": str, "vintage": str, "term": str, "currency": str,
+             "as_of": str, "multiple": str, "dpi": str,
+             "capital_called": str, "expected_calls": str,
+             "expected_distributions": str,
+             "comments": [str, ...]}, ...]
+}
+```
+
+Every field is a **string, printed verbatim** — "0.98x Net TVPI" and "1.9x
+Gross MOIC" say different things, and forcing them into one numeric format
+would flatten a distinction the managers themselves are making. Nothing is
+parsed or recomputed.
+
+Sizing: four funds fit the table comfortably and four cards fill the band
+between it and the page footnote, each holding a title line plus **six lines
+of roughly 82 characters**. More funds than four, or longer commentary, will
+overflow — the slide does not paginate itself the way the holdings list does
+(`build_line_items_tables.py`). If a client's private-market book outgrows
+one page, that pagination is the change to make, not a smaller font.
+
+The slide is built **last**, after the line-items rebuild and the
+proposed-bond-selection removal have both moved every slide position after
+10, so it finds its anchor by part identity rather than by position — same
+reason as `drop_proposed_bond_selection()`.
 
 ## "Alternatives" naming
 
@@ -166,14 +249,18 @@ not just convention — breaking them was a real bug caught during review:
   autofit — so it never moves regardless of line count. Apply this same
   pattern to any new subtitle-setting code; editing the placeholder's
   runs in place will reintroduce the bug.
+- **Two stale page numbers.** The source deck left a hardcoded page number
+  in the bottom-right corner of exactly two slides ("12" on the proposed
+  bond selection, "13" on the equity breakdown) and nowhere else — already
+  wrong in the reference deck itself, since those are slides 16 and 18.
+  One of the two slides is no longer in the deck at all; the other blanks
+  its number in `fill_proposed_bond_selection()` (`Text 42`).
 - **Internal data-sourcing footnotes are blanked, not translated.** Two
   footnotes reveal backend methodology the client doesn't need to see:
   the proposed-bond-selection slide's "Source: 'Fixed Income' tab..."
-  (`Text 41`) and the equity-breakdown slide's "classified at issuer
-  level... these fields are not in the client file" (`Text 32`). Both are
-  set to `""` in `fill_proposed_bond_selection()` /
-  `fill_equity_breakdown()` rather than removed as shapes, so the layout
-  doesn't shift.
+  (`Text 41`) is set to `""` in `fill_proposed_bond_selection()` rather
+  than removed as a shape, so the layout doesn't shift. (The equity-
+  breakdown slide carried a second one; that slide is no longer built.)
 
 ## Template-level fixes (applied once, not per-build)
 
@@ -293,19 +380,29 @@ built from a real PDF (`work/20260817_Weekly_Investment_Meeting_Summary.pdf`)
 for reference and for testing `build_proposal.py` without re-reading a PDF
 every time.
 
-Schema (see the worked example for real values):
+Schema (see the worked example for real values; every field marked
+*optional* falls back to the template's own weekly-recap wording):
 
 ```
 {
   "week_of": str,
-  "headline": {"summary_title": str, "intro_sentence": str,
+  "headline": {"slide_title": str (optional — slide 3's title),
+               "summary_title": str, "intro_sentence": str,
                "stats": [{"value": str, "label": str}, ...4 of them]},
-  "scoreboard": {"rows": [{"index": str, "week": str, "ytd": str}, ...
+  "scoreboard": {"label": str (optional — the block's heading),
+                 "headers": [str, str, str] (optional — default
+                              ["Index", "Week", "YTD"]),
+                 "colorize": bool (optional — default true: green/orange by
+                              the value's own +/- sign),
+                 "rows": [{"index": str, "week": str, "ytd": str}, ...
                            up to 9 — matches the template's 9 table rows]},
   "three_observations": [{"headline": str, "body": str}, ...3 of them],
-  "four_drivers": {"intro_sentence": str,
+  "four_drivers": {"slide_title": str (optional — slide 4's title),
+                    "intro_sentence": str,
                     "drivers": [{"number": int, "title": str, "body": str,
-                                 "stat": str|null}, ...4 of them]},
+                                 "stat": str|null}, ...4 of them],
+                    "policy_note": str (the standalone sentence across the
+                                 bottom of slide 4)},
   "scenario": {"intro_sentence": str,
                "probabilities": [{"name": str, "pct": number}, ...]},
   "house_view": {"intro_sentence": str,
@@ -313,6 +410,35 @@ Schema (see the worked example for real values):
                            ...3 of them, matching the template's 3 columns]}
 }
 ```
+
+### When the source isn't a weekly market recap
+
+Slides 3-4 are built for a weekly cross-asset recap, but a monthly
+investment-conclusions summary (no index performance table anywhere in it)
+is a perfectly ordinary input. Three things make that case work without
+inventing anything:
+
+- **`slide_title`** on `headline` / `four_drivers` retitles slides 3 and 4,
+  so a monthly house-view summary doesn't ship under "How markets moved
+  last week".
+- **`scoreboard.headers` / `.label` / `.colorize`** repurpose the same
+  three-column block for whatever three-column table the source *does*
+  have — a tactical-allocation preference matrix (house view / stance /
+  change), say. Sign-based coloring is meaningless for words, hence
+  `colorize: false`, which also resets the column to navy so a stance word
+  can't inherit "this number was negative" from the template. Columns are
+  re-widened to their own longest value
+  (`build_proposal.fit_scoreboard_columns`), growing only past the
+  template's widths and never past the block's right edge, so the weekly
+  case keeps the reference deck's exact layout.
+- **Omitting `scoreboard.rows` entirely** empties the block. "Leave the
+  slide un-filled" has to mean *emptied* on slides 3-4: the template ships
+  with the reference week's own real numbers in those boxes, so leaving
+  them alone would put another week's market data in front of the client.
+  The same goes for `four_drivers.policy_note` — the sentence across the
+  bottom of slide 4 is market commentary like everything else on it, and is
+  emptied when the source has no policy line to put there. Both cases print
+  a note when they happen.
 
 Picking exactly 4 headline stats / 9 scoreboard rows / 3 observations / 4
 drivers / 3 house-view columns is a judgment call every week — pick the

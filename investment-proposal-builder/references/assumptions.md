@@ -16,14 +16,51 @@ in the client's Excel export, or to a documented rule applied to that column.
   `Other investments`) mark the top-level asset class of every row beneath
   them, until the next header row. This is the **only** place asset-class
   membership comes from — the script never re-derives it from instrument
-  names.
+  names — with one documented exception, below.
 - **`Fixed Income`** — a separate, already-curated bond selection to be
   *proposed* to the client (not part of their current holdings). Every row
   is treated as equally weighted, matching the reference deck's own framing
-  ("N issues, equally weighted at X each").
+  ("N issues, equally weighted at X each"). **Optional**: an export without
+  this tab is a portfolio review with no bond proposal attached, and the
+  "Fixed Income Breakdown" slide is dropped from the deck rather than left
+  showing the template's own example selection
+  (`build_proposal.drop_proposed_bond_selection`).
+
+Only the holdings tab is required, and only its *shape* is: if the workbook
+has no tab literally named `Portfolio` (a custodian export re-saved out of
+Excel routinely arrives as `Sheet1`), the one other sheet carrying the
+export's header row — a row of >=5 filled cells including an `ISIN code`
+column — is used instead, and the script says which one it picked. Two such
+sheets is an error, not a guess.
 
 Column names are matched case-insensitively with whitespace stripped
 (the export has trailing spaces on some headers, e.g. `"Rating  "`).
+
+### 1a. Precious-metal accounts are commodities, not cash
+
+The one exception to "the section header decides". The custodian files a
+metal account (`CURRENT ACCOUNT IN XAG`, `... IN XPT`) under `Cash`,
+because it is an account. Economically it is not cash: the balance is
+ounces of silver or platinum, its value moves with the metal price, and it
+carries no deposit-rate return. Counting it as cash overstates the client's
+defensive assets and understates their commodity exposure — the two numbers
+the risk profile is actually read from.
+
+So a row is reclassified to `Commodities` when **both** hold
+(`is_precious_metal_account()`):
+
+- its `Currency` is an ISO 4217 precious-metal code — `XAU` gold, `XAG`
+  silver, `XPT` platinum, `XPD` palladium; and
+- its `Description` contains "ACCOUNT".
+
+The currency code is what carries the meaning; the description test keeps
+the rule to account balances, so a metal-denominated *security* still goes
+wherever its own section header puts it. Nothing else about the row changes
+— its weight, valuation and geography come from the same columns as before.
+
+Being a commodity by asset class does not make a metal account *physical*:
+it is the currency form of the metal, so §10 groups it with cash rather
+than with the sleeve's bars and coins.
 
 ## 2. Row filtering
 
@@ -41,14 +78,16 @@ Column names are matched case-insensitively with whitespace stripped
 
 ## 3. Currency of record
 
-- Portfolio total value and all EUR-denominated figures use the
-  `Valuation + accr. interest (EUR)` column.
-- `base_currency` (used to label every aggregate monetary figure — total
-  value, KPIs, sleeve values, rate-impact) is **fixed at EUR**, matching
-  this column and the file's own stated total (e.g. "Total: 21'300'578
-  EUR"). This is deliberately NOT the same as `dominant_holding_currency`
+- Portfolio total value and every aggregate monetary figure use the
+  export's own base-currency valuation column.
+- `base_currency` is **read from that column's header**, not assumed: a
+  header of `Valuation + accr. interest (EUR)` makes the portfolio a euro
+  portfolio, `(USD)` a dollar one (`detect_base_currency()`). The same desk
+  sends both, and hardcoding EUR silently valued a dollar account at zero —
+  every row's lookup missed. A file with no such column is an error, not a
+  default. This is deliberately NOT the same as `dominant_holding_currency`
   (the currency with the largest weighted valuation, used only for
-  informational purposes) — conflating the two would label EUR-denominated
+  informational purposes) — conflating the two would label base-currency
   aggregates with whatever currency happens to dominate the book, which is
   wrong regardless of which currency wins. A single holding's own value is
   shown in that holding's own `Currency` column via `value_qc` — see §9.
@@ -97,9 +136,10 @@ to `parse_portfolio.py` and any ISIN present there skips the rule above.
 
 ## 5. Asset-class donut (Portfolio Overview, slide "Allocation by asset class")
 
-One slice per `Portfolio` sheet section header, weight = sum of that
-section's `Weight (%)`. Sections with 0% total are omitted from the chart
-(not shown as a 0% slice).
+One slice per `Portfolio` sheet section header (after the §1a
+precious-metal reclassification), weight = sum of that section's
+`Weight (%)`. Sections with 0% total are omitted from the chart (not shown
+as a 0% slice).
 
 ## 6. Investment-vehicle donut (per-sleeve "across investment vehicles")
 
@@ -118,6 +158,30 @@ Within a sleeve, each holding is classified as:
 This is applied in the order above (first match wins) and is a heuristic
 for the same reason as §4 — the export has no vehicle-type column.
 
+**A desk mapping beats the heuristic.** `--vehicle-overrides overrides.csv`
+(columns `isin,vehicle`; any further columns, e.g. a `name` for the reader,
+are ignored) sets a holding's vehicle outright. This is not a nicety: in the
+equity sleeve the heuristic **cannot** work. A single-name share and an
+equity fund both carry a blank rating and a blank coupon, so the signature
+below classifies both as "Fund", and the fund keywords do not save it —
+plenty of real funds carry none in their name (`UBS(CH) EQ-SWISS INC CHFP`,
+`BRGF WORLD MINING(REG)A2`, `GOLDMAN EU HIGH DIV P CAP`). Naming the direct
+lines in a CSV is the only way to split them that does not invent a rule the
+data cannot support. The same file is the place to reclassify a certificate
+the custodian filed under `Equities`.
+
+**The blank-rating/blank-coupon signature is a signature of _securities_**
+— collective vehicles that carry neither a rating nor a coupon. Three kinds
+of holding carry neither for an entirely different reason, and are
+classified **Direct line** without consulting it:
+
+- a bank account (the `Cash` section);
+- a §1a precious-metal account — the metal itself, held in account form;
+- anything left in the `Commodities` sleeve after the keyword rules above,
+  which is physical metal: bars and coins (`GOLD KG`, `OR KRUGERRAND`).
+  Funds and ETCs in that sleeve carry "FUND"/"ETF"/"ETC" in their
+  description and are caught as **Fund** before this rule is reached.
+
 ## 7. Geographic & sector exposure (portfolio-wide bar charts)
 
 - Geography: each holding's `Geographical breakdown` value is mapped to one
@@ -128,10 +192,11 @@ for the same reason as §4 — the export has no vehicle-type column.
   discloses the same gap in its own footnote: "these fields are not in the
   client file"). `sector_exposure_pct` is therefore `null` in `parsed.json`
   unless the caller supplies `--sector-overrides overrides.csv` (columns
-  `isin,sector`, a desk-maintained issuer→GICS-style mapping). When `null`,
-  `build_proposal.py` renders the sector panel with a "sector data not
-  available for this custodian file" note instead of a chart — it never
-  fabricates a single fake "Diversified 100%" slice.
+  `isin,sector`, a desk-maintained issuer→GICS-style mapping).
+
+  It feeds the equity-breakdown slide's sector donut (slide_recipe.md).
+  Without the file that panel says "Desk classification not supplied"
+  rather than showing a split.
 
 ## 8. Equity breakdown (geography / sector / market cap)
 
@@ -141,14 +206,22 @@ for the same reason as §4 — the export has no vehicle-type column.
   equity sleeve (not the whole portfolio). This is the same taxonomy used
   by the slide 10 line-items table, so the two slides agree with each
   other.
+  Geography sits in the right-hand panel of the geographic-exposure slide,
+  beside the whole-portfolio split; sector, market cap and style share the
+  equity-breakdown slide.
 - Sector: same `--sector-overrides` mechanism and `null`-when-absent
   behavior as §7, renormalized to the equity sleeve.
 - Market cap is not a column in the export — every equity line is
   classified `Large cap` unless the desk supplies
-  `--market-cap-overrides overrides.csv` (columns `isin,market_cap`);
-  without overrides the market-cap donut is `null` in `parsed.json` and the
-  build script leaves the market-cap panel on the slide with a "data not
-  available" placeholder rather than fabricating a split.
+  `--market-cap-overrides overrides.csv` (columns `isin,market_cap`).
+- Style (Growth / Value / Blend) is not a column either: it comes from
+  `--style-overrides overrides.csv` (columns `isin,style`), defaulting to
+  `Blend` for any equity line the file does not name.
+
+None of the three can be derived from the export. Each is `null` in
+`parsed.json` without its CSV, and its panel says so on the slide instead of
+showing a split — the same rule as everywhere else here: report the gap,
+never fill it.
 
 ## 9. Concentration & top holdings
 
@@ -159,14 +232,31 @@ for the same reason as §4 — the export has no vehicle-type column.
 
 ## 10. Liquidity profile
 
-Each holding is classified by instrument shape, independent of asset class:
+Each holding is classified by **how it is actually realised** — not by its
+asset class, and not by its §6 vehicle alone. Four buckets, first match
+wins (`classify_liquidity()`):
 
 - **Illiquid (lock-up)** — `Private Assets` section, or `Description`
   contains "COMMIT" (already excluded per §2 if zero-valued, but a partly
   drawn commitment line still counts here).
-- **Daily-liquid fund** — classified "Fund" under the §6 vehicle rule.
-- **Listed** — everything else (direct bonds, direct equities,
-  structured products, ETFs/ETCs, cash).
+- **Cash & metal accounts** — the `Cash` section, plus §1a precious-metal
+  accounts. An account balance settles like money whether it is denominated
+  in a currency or in ounces: a metal account is the *currency* form of the
+  metal, not a bar in a vault, so it belongs here rather than under
+  Physical. It is still a commodity in the §5 asset-class donut — the two
+  views answer different questions.
+- **Physical assets** — holdings in the `Commodities` sleeve
+  classified "Direct line" under §6: physical bars and coins. Sellable at a
+  screen price, but neither a listed security nor a fund with a daily NAV,
+  and settlement is a delivery — so neither of those two buckets fits.
+- **Liquid assets** — everything else: direct equities and bonds,
+  ETFs and ETCs, daily-NAV funds, structured products. Listed securities and
+  funds were two buckets until an explicit instruction merged them — both
+  are realised the same way, on a normal settlement cycle, and the split
+  described the instrument's wrapper more than its liquidity.
+
+`liquid_share_pct` is everything that is not **Illiquid (lock-up)** — the
+three other buckets are all realisable at short notice, by different routes.
 
 ## 11. Income & interest-rate sensitivity
 

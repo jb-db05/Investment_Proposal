@@ -39,6 +39,7 @@ from pptx import Presentation
 from pptx.util import Emu, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.oxml.ns import qn
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
@@ -204,6 +205,65 @@ def color_scoreboard_column(shape, values):
             run.font.color.rgb = MINT
 
 
+# Rough average glyph advance for the deck's body font, as a fraction of the
+# font size. Only used to decide whether a scoreboard value fits its column —
+# an approximation, deliberately generous, never a layout measurement.
+AVG_CHAR_EM = 0.52
+COLUMN_PADDING_PT = 14   # a little slack, since the advance above is an estimate
+
+
+def _needed_width(values, size_pt):
+    return Pt(max(len(str(v)) for v in values) * size_pt * AVG_CHAR_EM + COLUMN_PADDING_PT)
+
+
+def fit_scoreboard_columns(label_box, boxes, columns, size_pt=11):
+    """Re-width slide 3's three scoreboard columns to their own longest value.
+
+    The template sizes them for an index name and two '+13.70%' figures, so a
+    source whose values are words ('Underweight') overflows the two narrow
+    columns. Columns are re-laid left to right from the first column's left
+    edge, keeping the template's own gaps and staying inside the width of the
+    block's label ('Cross-asset scoreboard'), which is what defines the
+    block's right edge. No-op when the template's widths already fit — the
+    weekly-scoreboard case, which keeps the reference deck's exact layout."""
+    needed = [int(_needed_width(col, size_pt)) for col in columns]
+    # A column only ever grows past the template's own width; one that already
+    # has room keeps it, so the weekly-scoreboard layout is untouched.
+    targets = [max(n, b.width) for n, b in zip(needed, boxes)]
+    if targets == [b.width for b in boxes]:
+        return
+    gaps = [boxes[1].left - (boxes[0].left + boxes[0].width),
+            boxes[2].left - (boxes[1].left + boxes[1].width)]
+    available = (label_box.left + label_box.width) - boxes[0].left - sum(gaps)
+    # Growing one column past the block's right edge is paid for by columns
+    # that are wider than their own content needs — the label column, usually,
+    # which the template sizes for long index names.
+    over = sum(targets) - available
+    for i in sorted(range(len(targets)), key=lambda i: needed[i] - targets[i]):
+        if over <= 0:
+            break
+        take = min(targets[i] - needed[i], over)
+        targets[i] -= take
+        over -= take
+    if over > 0:  # every column is at its minimum: shrink them all in proportion
+        targets = [int(t * available / sum(targets)) for t in targets]
+    left = boxes[0].left
+    for box, width, gap in zip(boxes, targets, gaps + [0]):
+        box.left, box.width = Emu(int(left)), Emu(int(width))
+        left += int(width) + gap
+
+
+def recolor_column(shape, color):
+    """Force every value paragraph (index 1+, index 0 is the column header)
+    to one color — the counterpart of color_scoreboard_column() for columns
+    whose values aren't signed numbers."""
+    if shape is None or not shape.has_text_frame:
+        return
+    for para in list(shape.text_frame.paragraphs)[1:]:
+        for run in para.runs:
+            run.font.color.rgb = color
+
+
 DOT_SIZE_DEFAULT = Emu(250065)     # matches every non-selected dot in the template
 DOT_SIZE_HIGHLIGHT = Emu(340000)   # a bit bigger than the template's own highlight size (314873)
 
@@ -262,8 +322,8 @@ def fmt_pct(value: float) -> str:
     return f"{value:.1f}%"
 
 
-def fmt_money_m(value_eur: float, currency: str) -> str:
-    return f"{currency} {value_eur / 1_000_000:.1f}m"
+def fmt_money_m(value_base: float, currency: str) -> str:
+    return f"{currency} {value_base / 1_000_000:.1f}m"
 
 
 def fmt_money_k(value: float, currency: str) -> str:
@@ -294,6 +354,7 @@ def update_bar_by_name(slide, chart_name, data):
 # Table header style matches the template's own tables exactly (all of
 # slides 13/15/17/18/19/22 use gold fill + navy bold text for headers —
 # see references/assumptions.md).
+CARD_FILL = RGBColor(0xF2, 0xF4, 0xF7)   # the pale panel behind the sleeve slides' text blocks
 TABLE_HEADER_FILL = GOLD
 TABLE_HEADER_FONT = NAVY
 
@@ -349,9 +410,17 @@ def rebuild_holdings_table(slide, table_shape_name, holdings, currency_fallback=
             _cell(table.cell(1, c), "")
         return
     for r, h in enumerate(holdings, 1):
-        ccy = h.get("currency") or currency_fallback
+        # A precious-metal account quotes in ounces (assumptions.md §1a), so
+        # its "value in quote currency" is an ounce count, not an amount of
+        # money — 144 XPT would print as "XPT 0k" for a 220k position. Those
+        # rows are shown in the portfolio's base currency instead.
+        if h.get("metal_account"):
+            ccy, value = currency_fallback, h.get("value_base") or 0
+        else:
+            ccy = h.get("currency") or currency_fallback
+            value = h.get("value_qc") or h.get("value_base") or 0
         _cell(table.cell(r, 0), h.get("name") or "", size=9)
-        _cell(table.cell(r, 1), fmt_money_k(h.get("value_qc") or h.get("value_eur") or 0, ccy), size=9)
+        _cell(table.cell(r, 1), fmt_money_k(value, ccy), size=9)
         _cell(table.cell(r, 2), fmt_pct(h['weight_pct']), size=9, align=PP_ALIGN.RIGHT)
         if include_yield_column:
             yld = h.get("yield_pct")
@@ -370,7 +439,7 @@ def fill_concentration_table(slide, table_shape_name, rows, currency="EUR"):
             row = rows[i]
             _cell(table.cell(r, 0), str(row["rank"]), size=9)
             _cell(table.cell(r, 1), row["name"] or "", size=9)
-            _cell(table.cell(r, 2), f"{row['value_eur']:,.0f}", size=9, align=PP_ALIGN.RIGHT)
+            _cell(table.cell(r, 2), f"{row['value_base']:,.0f}", size=9, align=PP_ALIGN.RIGHT)
             _cell(table.cell(r, 3), fmt_pct(row['weight_pct']), size=9, align=PP_ALIGN.RIGHT)
             _cell(table.cell(r, 4), f"{row['cumulative_pct']:.1f}%", size=9, align=PP_ALIGN.RIGHT)
         else:
@@ -390,7 +459,7 @@ def fill_income_tables(slide, sleeve_table_name, duration_table_name, income):
             if i < len(rows):
                 row = rows[i]
                 _cell(table.cell(r, 0), row["sleeve"], size=9)
-                _cell(table.cell(r, 1), f"{row['income_eur']:,.0f}", size=9, align=PP_ALIGN.RIGHT)
+                _cell(table.cell(r, 1), f"{row['income_base']:,.0f}", size=9, align=PP_ALIGN.RIGHT)
                 _cell(table.cell(r, 2), fmt_pct(row['pct_of_income']), size=9, align=PP_ALIGN.RIGHT)
             else:
                 for c in range(3):
@@ -417,7 +486,7 @@ def fill_income_tables(slide, sleeve_table_name, duration_table_name, income):
             _cell(table.cell(0, c), h, bold=True, fill=TABLE_HEADER_FILL, font_color=TABLE_HEADER_FONT, size=9)
         for r, row in enumerate(rows, 1):
             _cell(table.cell(r, 0), row["label"], size=8.5)
-            _cell(table.cell(r, 1), f"{row['value_eur']:,.0f}", size=8.5, align=PP_ALIGN.RIGHT)
+            _cell(table.cell(r, 1), f"{row['value_base']:,.0f}", size=8.5, align=PP_ALIGN.RIGHT)
             _cell(table.cell(r, 2), f"{row['avg_duration']:.1f}", size=8.5, align=PP_ALIGN.RIGHT)
             _cell(table.cell(r, 3), f"{row['contribution']:.2f}", size=8.5, align=PP_ALIGN.RIGHT)
 
@@ -427,7 +496,7 @@ def fill_income_tables(slide, sleeve_table_name, duration_table_name, income):
 def fill_cover(prs, parsed):
     slide = get_slide(prs, 1)
     ccy = parsed["base_currency"]
-    amount_m = parsed["total_value_eur"] / 1_000_000
+    amount_m = parsed["total_value_base"] / 1_000_000
     set_text(slide, "Text Placeholder 5",
              f"{parsed['risk_profile_input']} {ccy} {amount_m:.1f}m\n\n"
              f"Prepared for {parsed['client_name']}\n\n"
@@ -460,12 +529,12 @@ def fill_profile_dial(prs, parsed):
 def fill_portfolio_overview(prs, parsed):
     slide = get_slide(prs, 11)
     ccy = parsed["base_currency"]
-    set_text(slide, "Rectangle 3", f"{ccy} {parsed['total_value_eur']/1_000_000:.1f}M\nTotal value")
+    set_text(slide, "Rectangle 3", f"{ccy} {parsed['total_value_base']/1_000_000:.1f}M\nTotal value")
     set_text(slide, "Rectangle 4", f"{parsed['num_positions']}\nPositions")
     set_text(slide, "Rectangle 5", f"{parsed['largest_position_pct']:.1f}%\nLargest position")
     set_text(slide, "Rectangle 6", f"{parsed['liquid_share_pct']:.1f}%\nLiquid share")
     ry = parsed["income"]["running_yield_pct"]
-    set_text(slide, "Rectangle 7", f"{ry:.1f}%\nRunning yield" if ry is not None else "n/a\nRunning yield")
+    set_text(slide, "Rectangle 7", f"{ry:.1f}%\nRunning yield" if ry else "n/a\nRunning yield")
     update_donut_by_name(slide, "Chart 10", parsed["asset_allocation_pct"])
     update_donut_by_name(slide, "Chart 14", parsed["currency_exposure_pct"])
 
@@ -482,16 +551,33 @@ def set_donut_legend(slide, textbox_names, data: dict[str, float]):
         set_text(slide, name, text)
 
 
-def fill_geo_sector(prs, parsed):
-    slide = get_slide(prs, 12)
+GEOGRAPHIC_SLIDE = 12
+EQUITY_BREAKDOWN_SLIDE = 16
+
+
+def fill_geographic_exposure(prs, parsed):
+    """Both geographic views on one slide: the whole portfolio on the left,
+    the equity sleeve on the right.
+
+    The template's right-hand panel was "Sector exposure", and the equity
+    sleeve's regional split had a slide of its own. Sector and market-cap
+    breakdowns are out of this deck entirely (see build(): the equity-
+    breakdown slide is dropped), so the freed panel carries the equity
+    geography instead of a chart that could only ever say "Not available"
+    without a desk sector mapping — assumptions.md §7."""
+    slide = get_slide(prs, GEOGRAPHIC_SLIDE)
+    sleeve = parsed["sleeves"].get("Equities", {})
+    ccy = parsed["base_currency"]
+    val_m = (sleeve.get("total_weight_pct", 0) / 100) * parsed["total_value_base"] / 1_000_000
+    set_text(slide, "Title 1", "Geographic exposure")
+    set_subtitle(slide,
+                 f"Regional breakdown of the whole portfolio and, separately, of the equity "
+                 f"sleeve — {sleeve.get('num_lines', 0)} lines, {ccy} {val_m:.1f}m, "
+                 f"{sleeve.get('total_weight_pct', 0):.1f}% of the portfolio.")
+    set_text(slide, "TextBox 3", "Whole portfolio")
     update_bar_by_name(slide, "Chart 5", parsed["geographic_exposure_pct"])
-    if parsed["sector_exposure_pct"]:
-        update_bar_by_name(slide, "Chart 8", parsed["sector_exposure_pct"])
-    else:
-        # title stays "Sector exposure" as-is; the chart itself already
-        # shows "Not available" as its one bar, so the caveat isn't
-        # repeated in the title too (assumptions.md §7 has the full reason)
-        update_bar_by_name(slide, "Chart 8", {"Not available": 100.0})
+    set_text(slide, "TextBox 6", "Equity sleeve")
+    update_bar_by_name(slide, "Chart 8", parsed["equity_breakdown"]["by_geography_pct"])
 
 
 SLEEVE_SLIDES = {
@@ -528,11 +614,19 @@ def fill_sleeve_slides(prs, parsed):
                 set_text(slide, "TextBox 11", "")
 
 
+# Original template position of the "Fixed Income Breakdown" (proposed bond
+# selection) slide. It is dropped when the Excel carries no 'Fixed Income'
+# proposal tab — leaving it would ship the template's own example selection,
+# six issues and EUR 600,000 of bonds, as if proposed for this client. See
+# the removal list in build().
+PROPOSED_BOND_SLIDE = 14
+
+
 def fill_proposed_bond_selection(prs, parsed):
-    slide = get_slide(prs, 14)
     pb = parsed.get("proposed_bond_selection")
     if not pb:
-        return
+        return  # slide removed later, see build()
+    slide = get_slide(prs, PROPOSED_BOND_SLIDE)
     set_text(slide, "Text 1",
              f"Proposed bond selection: {pb['num_issues']} issues, "
              f"{pb['currency']} {pb['total_amount']:,.0f}, equally weighted at "
@@ -548,46 +642,163 @@ def fill_proposed_bond_selection(prs, parsed):
     set_donut_legend(slide, ["Text 32", "Text 34", "Text 36", "Text 38", "Text 40"], pb["by_rating_pct"])
     # internal data-sourcing footnote — not for the client's eyes
     set_text(slide, "Text 41", "")
+    # ...and the source deck's hardcoded "12" in the bottom-right corner: a
+    # page number left over from its own pagination, already wrong before this
+    # skill existed and carried by no other data slide. Blanked, not
+    # renumbered.
+    set_text(slide, "Text 42", "")
+
+
+def drop_slide(prs, slide):
+    """Remove a slide, located by part identity rather than by position: by
+    the time the removals run, build_line_items_tables.build() has inserted
+    the extra holdings pages and everything after slide 10 has moved."""
+    line_items_mod.delete_slide(prs, [s.part for s in prs.slides].index(slide.part))
+
+
+# --- equity breakdown: sector / market cap / style ------------------------
+# The slide's three donuts have no legend of their own and no category labels:
+# the companion dot+textbox pairs beside each one ARE the legend, so a donut
+# can only show as many slices as the legend has rows. Panel 1's rows are
+# grown by cloning when a breakdown has more categories than the template drew.
+EQUITY_PANELS = {
+    "sector":     {"chart": "Chart 0", "title": "Text 3",
+                    "dots": ["Shape 4", "Shape 6", "Shape 8", "Shape 10", "Shape 12"],
+                    "texts": ["Text 5", "Text 7", "Text 9", "Text 11", "Text 13"]},
+    "market_cap": {"chart": "Chart 1", "title": "Text 14",
+                    "dots": ["Shape 15", "Shape 17", "Shape 19", "Shape 21", "Shape 23"],
+                    "texts": ["Text 16", "Text 18", "Text 20", "Text 22", "Text 24"]},
+    "style":      {"chart": "Chart 2", "title": "Text 25",
+                    "dots": ["Shape 26", "Shape 28", "Shape 30"],
+                    "texts": ["Text 27", "Text 29", "Text 31"]},
+}
+LEGEND_BOTTOM_LIMIT = Emu(int(19.0 * 360000))   # keep clear of the page footnote
+
+
+def cap_categories(data: dict, max_slices: int, other_label: str = "Other") -> dict:
+    """Keep the largest categories and roll the rest into one slice. A donut
+    whose legend cannot name a slice is worse than an honest 'Other'."""
+    if data is None or len(data) <= max_slices:
+        return data
+    items = sorted(data.items(), key=lambda kv: -kv[1])
+    kept = dict(items[:max_slices - 1])
+    kept[other_label] = round(sum(v for _, v in items[max_slices - 1:]), 6)
+    return kept
+
+
+def _clone_legend_row(slide, dot_name, text_name, pitch, index):
+    """Clone the last dot/label pair of a legend, `index` rows further down."""
+    new = []
+    for name in (dot_name, text_name):
+        src = find_shape(slide, name)
+        el = _copy.deepcopy(src._element)
+        slide.shapes._spTree.append(el)
+        shape = slide.shapes[-1]
+        shape.name = f"{name} clone {index}"
+        shape.top = Emu(int(src.top + pitch * index))
+        new.append(shape.name)
+    return new
+
+
+def grow_legend(slide, panel, n_needed):
+    """Return (dot names, text names) long enough for n_needed categories."""
+    dots, texts = list(panel["dots"]), list(panel["texts"])
+    if n_needed <= len(texts):
+        return dots, texts
+    first, second = find_shape(slide, texts[0]), find_shape(slide, texts[1])
+    pitch = second.top - first.top
+    # Offsets are measured from the template's own last row, fixed before the
+    # loop starts: reading texts[-1] inside it would measure from the clone
+    # just added, so each row would be pushed one pitch further than intended
+    # and the run would stop short of the rows the data needs.
+    last_top = find_shape(slide, texts[-1]).top
+    for i in range(1, n_needed - len(panel["texts"]) + 1):
+        if last_top + pitch * i > LEGEND_BOTTOM_LIMIT:
+            break
+        d, t = _clone_legend_row(slide, panel["dots"][-1], panel["texts"][-1], pitch, i)
+        dots.append(d)
+        texts.append(t)
+    return dots, texts
+
+
+def donut_slice_colors(slide, chart_name, n):
+    """The colours the donut actually ended up using, slice by slice — read
+    back rather than assumed, so the legend dots cannot drift from the ring."""
+    sh = find_shape(slide, chart_name)
+    out = []
+    if sh is None or not sh.has_chart:
+        return out
+    points = sh.chart.plots[0].series[0].points
+    for i in range(min(n, len(points))):
+        try:
+            out.append(points[i].format.fill.fore_color.rgb)
+        except (AttributeError, TypeError, ValueError):
+            out.append(None)
+    return out
+
+
+def fill_equity_panel(slide, panel, title, data, max_slices):
+    """One donut plus its legend. `data` None means the desk mapping that
+    feeds it wasn't supplied — the panel says so instead of showing a split."""
+    set_text(slide, panel["title"], title)
+    if not data:
+        update_donut_by_name(slide, panel["chart"], {"Not available": 100.0})
+        for name in panel["texts"]:
+            set_text(slide, name, "")
+        set_text(slide, panel["texts"][0], "Desk classification not supplied")
+        return
+    data = cap_categories(data, max_slices)
+    update_donut_by_name(slide, panel["chart"], data, label_style="one_decimal")
+    dots, texts = grow_legend(slide, panel, len(data))
+    colors = donut_slice_colors(slide, panel["chart"], len(data))
+    for i, name in enumerate(texts):
+        set_text(slide, name, chart_mod.pct_label_one_decimal(*list(data.items())[i])
+                 if i < len(data) else "")
+    for i, name in enumerate(dots):
+        dot = find_shape(slide, name)
+        if dot is None:
+            continue
+        if i < len(colors) and colors[i] is not None:
+            dot.fill.solid()
+            dot.fill.fore_color.rgb = colors[i]
+        elif i >= len(data):
+            dot.fill.background()
+            dot.line.fill.background()
 
 
 def fill_equity_breakdown(prs, parsed):
-    slide = get_slide(prs, 16)
+    """Sector, market cap and style for the equity sleeve. Geography is not
+    here — it shares the geographic-exposure slide with the whole-portfolio
+    view. All three come from desk override CSVs (assumptions.md §7-8): none
+    of the three is a column in the custodian export."""
+    slide = get_slide(prs, EQUITY_BREAKDOWN_SLIDE)
     eb = parsed["equity_breakdown"]
-    update_donut_by_name(slide, "Chart 0", eb["by_geography_pct"], label_style="one_decimal")
-    set_donut_legend(slide, ["Text 5", "Text 7", "Text 9", "Text 11", "Text 13"], eb["by_geography_pct"])
-    # titles stay "By sector" / "By market cap" as-is when unavailable; the
-    # chart itself already shows "Not available" as its one slice
-    if eb["by_sector_pct"]:
-        update_donut_by_name(slide, "Chart 1", eb["by_sector_pct"], label_style="one_decimal")
-        set_donut_legend(slide, ["Text 16", "Text 18", "Text 20", "Text 22", "Text 24"], eb["by_sector_pct"])
-    else:
-        update_donut_by_name(slide, "Chart 1", {"Not available": 100.0})
-        set_donut_legend(slide, ["Text 16", "Text 18", "Text 20", "Text 22", "Text 24"], {})
-    if eb["by_market_cap_pct"]:
-        update_donut_by_name(slide, "Chart 2", eb["by_market_cap_pct"], label_style="one_decimal")
-        set_donut_legend(slide, ["Text 27", "Text 29", "Text 31"], eb["by_market_cap_pct"])
-    else:
-        update_donut_by_name(slide, "Chart 2", {"Not available": 100.0})
-        set_donut_legend(slide, ["Text 27", "Text 29", "Text 31"], {})
     sleeve = parsed["sleeves"].get("Equities", {})
     ccy = parsed["base_currency"]
-    n_lines = sleeve.get("num_lines", 0)
-    val_m = (sleeve.get("total_weight_pct", 0) / 100) * parsed["total_value_eur"] / 1_000_000
-    set_text(slide, "Text 1", f"Equity sleeve: {n_lines} lines, {ccy} {val_m:.1f}m, "
-                               f"{sleeve.get('total_weight_pct', 0):.1f}% of the portfolio.")
-    # internal data-classification footnote — not for the client's eyes
+    val_m = (sleeve.get("total_weight_pct", 0) / 100) * parsed["total_value_base"] / 1_000_000
+    set_text(slide, "Text 1",
+             f"Equity sleeve: {sleeve.get('num_lines', 0)} lines, {ccy} {val_m:.1f}m, "
+             f"{sleeve.get('total_weight_pct', 0):.1f}% of the portfolio. "
+             f"Weights below are of the sleeve, not of the whole portfolio.")
+    fill_equity_panel(slide, EQUITY_PANELS["sector"], "By sector", eb.get("by_sector_pct"), 7)
+    fill_equity_panel(slide, EQUITY_PANELS["market_cap"], "By market cap", eb.get("by_market_cap_pct"), 5)
+    fill_equity_panel(slide, EQUITY_PANELS["style"], "By style", eb.get("by_style_pct"), 3)
+    # internal data-classification footnote and a stale page number
     set_text(slide, "Text 32", "")
+    set_text(slide, "Text 33", "")
 
 
 def fill_liquidity(prs, parsed):
     slide = get_slide(prs, 20)
     update_donut_by_name(slide, "Chart 5", parsed["liquidity_profile_pct"])
-    illiquid = parsed["liquidity_profile_pct"].get("Illiquid (lock-up)", 0)
+    profile = parsed["liquidity_profile_pct"]
+    illiquid = profile.get("Illiquid (lock-up)", 0)
+    daily = profile.get("Liquid assets", 0)
     set_text(slide, "TextBox 8",
              f"About {illiquid:.1f}% of the portfolio sits in private, hedge-fund and lock-up vehicles "
              f"with redemption gates and notice periods.\n\n"
-             f"Liquidity events should be planned around these constraints; the daily-liquid sleeve "
-             f"covers near-term needs.")
+             f"Liquidity events should be planned around these constraints; the {daily:.1f}% in listed "
+             f"securities and daily-liquid funds covers near-term needs.")
 
 
 def fill_concentration(prs, parsed):
@@ -600,14 +811,17 @@ def fill_concentration(prs, parsed):
     set_text(slide, "Rectangle 7", f"{conc['positions_above_5pct']}\nPositions > 5%")
 
 
+INCOME_SLIDE = 22
+
+
 def fill_income(prs, parsed):
-    slide = get_slide(prs, 22)
+    slide = get_slide(prs, INCOME_SLIDE)
     income = parsed["income"]
     ry = income["running_yield_pct"]
-    set_text(slide, "Rectangle 5", f"{ry:.1f}%\nRunning yield" if ry is not None else "n/a\nRunning yield")
+    set_text(slide, "Rectangle 5", f"{ry:.1f}%\nRunning yield" if ry else "n/a\nRunning yield")
     fd = income["fi_duration_years"]
     set_text(slide, "Rectangle 6", f"{fd:.1f}y\nFI duration" if fd is not None else "n/a\nFI duration")
-    ri = income["rate_impact_100bp_eur"]
+    ri = income["rate_impact_100bp_base"]
     ccy = parsed["base_currency"]
     set_text(slide, "Rectangle 7", f"{ccy} {ri:,.0f}\nImpact +100bp" if ri is not None else "n/a\nImpact +100bp")
     fill_income_tables(slide, "Table 4", "Table 9", income)
@@ -624,6 +838,12 @@ def fill_market_slides(prs, market):
         return
     s3 = get_slide(prs, 3)
     h = market["headline"]
+    # The template's own titles describe a weekly market recap ("How markets
+    # moved last week"). A source that isn't one — a monthly house-view
+    # summary, say — carries its own title in the JSON rather than shipping
+    # under a heading its content doesn't match.
+    if h.get("slide_title"):
+        set_text(s3, "Title 1", h["slide_title"])
     set_subtitle(s3, h["intro_sentence"])
 
     rects = [sh for sh in s3.shapes if sh.name == "Rectangle"]
@@ -637,31 +857,209 @@ def fill_market_slides(prs, market):
     # [0]='Cross-asset scoreboard' label, [1]=Index col, [2]=Week col,
     # [3]=YTD col, [4]='Three observations' label
     if len(textboxes) >= 4:
-        rows = market["scoreboard"]["rows"]
-        set_shape_lines(textboxes[1], ["Index"] + [r["index"] for r in rows])
-        set_shape_lines(textboxes[2], ["Week"] + [r["week"] for r in rows])
-        set_shape_lines(textboxes[3], ["YTD"] + [r["ytd"] for r in rows])
-        color_scoreboard_column(textboxes[2], [r["week"] for r in rows])
-        color_scoreboard_column(textboxes[3], [r["ytd"] for r in rows])
+        board = market.get("scoreboard") or {}
+        rows = board.get("rows") or []
+        # The block's label and its three column headers are data too, not
+        # fixture: a source with no cross-asset performance table can fill the
+        # same three columns with what it does have (e.g. a tactical-allocation
+        # preference matrix: house view / stance / change). Both default to the
+        # template's own weekly wording.
+        headers = board.get("headers") or ["Index", "Week", "YTD"]
+        if board.get("label"):
+            set_shape_lines(textboxes[0], [board["label"]])
+        if rows:
+            fit_scoreboard_columns(
+                textboxes[0], textboxes[1:4],
+                [[headers[0]] + [r["index"] for r in rows],
+                 [headers[1]] + [r["week"] for r in rows],
+                 [headers[2]] + [r["ytd"] for r in rows]])
+            set_shape_lines(textboxes[1], [headers[0]] + [r["index"] for r in rows])
+            set_shape_lines(textboxes[2], [headers[1]] + [r["week"] for r in rows])
+            set_shape_lines(textboxes[3], [headers[2]] + [r["ytd"] for r in rows])
+            if board.get("colorize", True):
+                color_scoreboard_column(textboxes[2], [r["week"] for r in rows])
+                color_scoreboard_column(textboxes[3], [r["ytd"] for r in rows])
+            else:
+                # Sign-based green/orange is meaningless for non-numeric values,
+                # and the template's own paragraphs carry the reference week's
+                # colors — reset both columns to navy so a stance word doesn't
+                # inherit "this number was negative".
+                recolor_column(textboxes[2], NAVY)
+                recolor_column(textboxes[3], NAVY)
+        else:
+            # No scoreboard in this source at all. "Leave it un-filled"
+            # (SKILL.md step 3) has to mean *emptied* here: the template ships
+            # with the reference week's real numbers in these boxes, so leaving
+            # them alone would put another week's market data on the slide.
+            for tb in textboxes[:4]:
+                set_shape_lines(tb, [""])
+            print("Note: market_update.json carries no scoreboard rows — slide 3's "
+                  "scoreboard block was emptied rather than left with the "
+                  "template's own reference-week numbers.")
 
     s4 = get_slide(prs, 4)
+    if market["four_drivers"].get("slide_title"):
+        set_text(s4, "Title 1", market["four_drivers"]["slide_title"])
     set_subtitle(s4, market["four_drivers"]["intro_sentence"])
-    # the 5th 'Rectangle' on slide 4 is a standalone policy note (no title
-    # line), not a numbered driver card — left untouched, see slide_recipe.md
-    driver_rects = [sh for sh in s4.shapes if sh.name == "Rectangle"][:4]
-    for sh, drv in zip(driver_rects, market["four_drivers"]["drivers"]):
+    s4_rects = [sh for sh in s4.shapes if sh.name == "Rectangle"]
+    for sh, drv in zip(s4_rects[:4], market["four_drivers"]["drivers"]):
         lines = [f"{drv['number']} - {drv['title']}", drv["body"]]
         if drv.get("stat"):
             lines.append(drv["stat"])
         # only the title (line 0) stays bold; body/stat lines forced normal
         set_shape_lines(sh, lines, bold_overrides={i: False for i in range(1, len(lines))})
 
+    # The 5th 'Rectangle' is a standalone policy note (no title line), not a
+    # numbered driver card — but it is still this week's market commentary.
+    # Leaving it to the template ships the reference week's own policy
+    # sentence to every client, so it is filled from the JSON, or emptied
+    # when the source has no policy line to put there.
+    if len(s4_rects) >= 5:
+        note = market["four_drivers"].get("policy_note")
+        set_shape_lines(s4_rects[4], [note or ""])
+        if not note:
+            print("Note: market_update.json has no four_drivers.policy_note — slide 4's "
+                  "policy note was emptied rather than left with the template's own.")
+
+
+
+# --------------------------------------------- private-equity monitoring ---
+
+# The Alternatives sleeve slide (original template position 17) is the anchor:
+# the fund-by-fund review goes immediately after it, inside the sleeve.
+ALTERNATIVES_SLIDE = 17
+
+# Column header, JSON key, and width in cm. Widths sum to the deck's own
+# content width (26.11cm, the title placeholder's width).
+PE_COLUMNS = [
+    ("Fund",                   "name",                   4.00),
+    ("Vintage",                "vintage",                1.50),
+    ("Term",                   "term",                   1.30),
+    ("Ccy",                    "currency",               1.00),
+    ("As of",                  "as_of",                  1.80),
+    ("TVPI / MOIC",            "multiple",               3.70),
+    ("DPI",                    "dpi",                    1.30),
+    ("Called",                 "capital_called",         1.50),
+    ("Expected calls (4Q)",    "expected_calls",         4.00),
+    ("Expected distrib. (4Q)", "expected_distributions", 6.01),
+]
+PE_TABLE_TOP = Emu(int(6.20 * 360000))
+PE_ROW_HEIGHT = Emu(int(0.95 * 360000))
+# The cards fill the band between the table and the page footnote (19.40cm),
+# which leaves room for a title line plus six lines of 8pt commentary each.
+PE_CARD_TOP = Emu(int(11.20 * 360000))
+PE_CARD_WIDTH = Emu(int(12.85 * 360000))
+PE_CARD_HEIGHT = Emu(int(3.85 * 360000))
+PE_CARD_GAP_X = Emu(int(0.41 * 360000))
+PE_CARD_GAP_Y = Emu(int(0.35 * 360000))
+CONTENT_LEFT = Emu(665163)
+CONTENT_WIDTH = Emu(9398001)
+
+
+def _clone_decoration(shape, dest_slide):
+    """Copy one decorative shape (the page footnote, the corner mark) onto a
+    slide built from a bare layout.
+
+    A picture also owns relationships, which do not travel with the XML: every
+    r:embed in the copy still names an rId that only exists on the source
+    slide, and PowerPoint reports the file as corrupt. Each one is re-related
+    to the destination slide and rewritten. Note the corner mark is an SVG
+    picture, so it carries *two* — `a:blip` for the raster fallback and
+    `asvg:svgBlip` inside an extension for the vector original; walking every
+    element with an r:embed catches both, where matching on `a:blip` alone
+    silently leaves the second one dangling."""
+    new_el = _copy.deepcopy(shape._element)
+    dest_slide.shapes._spTree.append(new_el)
+    embed_attr = qn("r:embed")
+    remapped = {}
+    for el in new_el.iter():
+        old_rid = el.get(embed_attr)
+        if not old_rid:
+            continue
+        if old_rid not in remapped:
+            rel = shape.part.rels[old_rid]
+            remapped[old_rid] = dest_slide.part.relate_to(rel.target_part, rel.reltype)
+        el.set(embed_attr, remapped[old_rid])
+
+
+def build_pe_monitoring_slide(prs, anchor_slide, pe):
+    """Add the private-equity fund-by-fund review, immediately after the
+    Alternatives sleeve slide it belongs to.
+
+    Its content is a separate input (`--pe-monitoring`), not something the
+    custodian Excel carries: manager-reported fund metrics — TVPI, DPI, called
+    capital, expected calls and distributions — live in the managers' own
+    quarterly reports, not in a custodian position file. Nothing here is
+    derived from or reconciled against parsed.json.
+
+    Like the slide removals in build(), this runs after the line-items
+    rebuild, so the anchor is located by part identity rather than by a slide
+    position the rebuild has already moved."""
+    anchor_idx = [sl.part for sl in prs.slides].index(anchor_slide.part)
+    slide = line_items_mod.duplicate_slide_after(prs, anchor_idx)
+
+    # A slide built from the bare layout has the title and body placeholders
+    # and nothing else — the footnote and corner mark live on each slide, so
+    # they are copied from the anchor to keep the page furniture consistent.
+    for name in ("TextBox 11", "Oval 12", "Graphic 20"):
+        src = find_shape(anchor_slide, name)
+        if src is not None:
+            _clone_decoration(src, slide)
+    # The title placeholder arrives empty (no runs), so its text goes in as a
+    # new run and the font comes from the layout — the same inheritance every
+    # other title on the deck uses. set_subtitle() then replaces the body
+    # placeholder with the deck's standard fixed-position subtitle textbox.
+    title = find_shape(slide, "Title 1")
+    title.text_frame.paragraphs[0].add_run().text = pe.get(
+        "slide_title", "Private equity: fund-by-fund review")
+    set_subtitle(slide, pe["intro_sentence"])
+
+    funds = pe["funds"]
+    table_height = PE_ROW_HEIGHT * (len(funds) + 1)
+    frame = slide.shapes.add_table(len(funds) + 1, len(PE_COLUMNS),
+                                   CONTENT_LEFT, PE_TABLE_TOP, CONTENT_WIDTH, table_height)
+    table = frame.table
+    for c, (_, _, width_cm) in enumerate(PE_COLUMNS):
+        table.columns[c].width = Emu(int(width_cm * 360000))
+    for r in range(len(funds) + 1):
+        table.rows[r].height = PE_ROW_HEIGHT
+    for c, (header, _, _) in enumerate(PE_COLUMNS):
+        _cell(table.cell(0, c), header, bold=True, fill=TABLE_HEADER_FILL,
+              font_color=TABLE_HEADER_FONT, size=9)
+    for r, fund in enumerate(funds, 1):
+        for c, (_, key, _) in enumerate(PE_COLUMNS):
+            _cell(table.cell(r, c), fund.get(key, "—"), size=9, bold=(c == 0))
+
+    # One commentary card per fund, two by two under the table.
+    for i, fund in enumerate(funds):
+        left = CONTENT_LEFT + (PE_CARD_WIDTH + PE_CARD_GAP_X) * (i % 2)
+        top = PE_CARD_TOP + (PE_CARD_HEIGHT + PE_CARD_GAP_Y) * (i // 2)
+        box = slide.shapes.add_textbox(Emu(int(left)), Emu(int(top)), PE_CARD_WIDTH, PE_CARD_HEIGHT)
+        box.name = f"PE Card {i + 1}"
+        box.fill.solid()
+        box.fill.fore_color.rgb = CARD_FILL
+        box.line.fill.background()
+        tf = box.text_frame
+        tf.word_wrap = True
+        tf.margin_left = tf.margin_right = Emu(144000)
+        tf.margin_top = tf.margin_bottom = Emu(108000)
+        for j, line in enumerate([fund["name"]] + list(fund["comments"])):
+            para = tf.paragraphs[0] if j == 0 else tf.add_paragraph()
+            run = para.add_run()
+            run.text = line if j == 0 else f"- {line}"
+            run.font.size = Pt(10 if j == 0 else 8)
+            run.font.bold = (j == 0)
+            run.font.color.rgb = NAVY
+            para.space_after = Pt(3 if j == 0 else 2)
+    return slide
+
 
 # --------------------------------------------------------------------- main
 
 def build(excel_path, profile, client_name, output_path, market_update_path=None,
           valuation_date=None, bucket_overrides=None, market_cap_overrides=None,
-          sector_overrides=None, keep_parsed_json=None):
+          sector_overrides=None, style_overrides=None, vehicle_overrides=None, keep_parsed_json=None,
+          pe_monitoring_path=None):
     parse_cmd = [sys.executable, str(SCRIPT_DIR / "parse_portfolio.py"), excel_path,
                  "--profile", profile, "--client-name", client_name,
                  "-o", keep_parsed_json or str(SCRIPT_DIR.parent / "work" / "_parsed_tmp.json")]
@@ -673,6 +1071,10 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
         parse_cmd += ["--market-cap-overrides", market_cap_overrides]
     if sector_overrides:
         parse_cmd += ["--sector-overrides", sector_overrides]
+    if style_overrides:
+        parse_cmd += ["--style-overrides", style_overrides]
+    if vehicle_overrides:
+        parse_cmd += ["--vehicle-overrides", vehicle_overrides]
     subprocess.run(parse_cmd, check=True)
 
     parsed_path = keep_parsed_json or str(SCRIPT_DIR.parent / "work" / "_parsed_tmp.json")
@@ -681,6 +1083,10 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
     market = None
     if market_update_path:
         market = json.loads(Path(market_update_path).read_text())
+
+    pe_monitoring = None
+    if pe_monitoring_path:
+        pe_monitoring = json.loads(Path(pe_monitoring_path).read_text())
 
     prs = Presentation(str(TEMPLATE_PATH))
 
@@ -694,14 +1100,45 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
     fill_market_slides(prs, market)
     fill_profile_dial(prs, parsed)
     fill_portfolio_overview(prs, parsed)
-    fill_geo_sector(prs, parsed)
+    fill_geographic_exposure(prs, parsed)
     fill_sleeve_slides(prs, parsed)
     fill_proposed_bond_selection(prs, parsed)
     fill_equity_breakdown(prs, parsed)
     fill_liquidity(prs, parsed)
     fill_concentration(prs, parsed)
     fill_income(prs, parsed)
+
+    # Grab the slides addressed by their original template position now, while
+    # those positions are still the template's; both operations below happen
+    # after the line-items rebuild has moved everything after slide 10, and
+    # find their slide by part identity instead.
+    doomed = []
+    # A sleeve slide with no holdings behind it is three empty charts and a
+    # "No holdings in this sleeve" table — worse than not being in the deck.
+    # Same rule as the proposed-bond-selection slide: the data decides.
+    for slide_no, sleeve_key in sorted(SLEEVE_SLIDES.items()):
+        if not parsed["sleeves"].get(sleeve_key, {}).get("num_lines"):
+            doomed.append(get_slide(prs, slide_no))
+            print(f"Note: no {sleeve_key} holdings — that sleeve's slide was removed.")
+    income = parsed["income"]
+    if (income.get("fi_duration_years") is None
+            and not any(r["income_base"] for r in income["income_by_sleeve"])):
+        doomed.append(get_slide(prs, INCOME_SLIDE))
+        print("Note: no holding in this portfolio carries a yield, a coupon or a duration — "
+              "the income & rate-sensitivity slide was removed.")
+    if not parsed.get("proposed_bond_selection"):
+        doomed.append(get_slide(prs, PROPOSED_BOND_SLIDE))
+        print("Note: the portfolio Excel has no 'Fixed Income' proposal tab — the "
+              "'Fixed Income Breakdown' slide was removed rather than left showing "
+              "the template's own example bond selection.")
+    pe_anchor = get_slide(prs, ALTERNATIVES_SLIDE) if pe_monitoring else None
     line_items_mod.build(prs, parsed)  # slides 9-10(+): rebuilt as real tables, runs last
+    for slide in doomed:
+        drop_slide(prs, slide)
+    if pe_anchor is not None:
+        build_pe_monitoring_slide(prs, pe_anchor, pe_monitoring)
+        print(f"Added the private-equity review slide ({len(pe_monitoring['funds'])} funds) "
+              "after the Alternatives sleeve.")
 
     prs.save(output_path)
     print(f"Wrote {output_path}")
@@ -714,18 +1151,30 @@ def main():
                      choices=["Fixed Income", "Conservative", "Moderate", "Balanced", "Growth", "Equity"])
     ap.add_argument("--client-name", default="[Client Name]")
     ap.add_argument("--market-update", default=None, help="market_update.json produced from the market PDF")
+    ap.add_argument("--pe-monitoring", default=None,
+                     help="JSON of manager-reported private-market fund metrics; adds the "
+                          "fund-by-fund review slide after the Alternatives sleeve (schema: "
+                          "work/private_equity_monitoring_202608.json)")
     ap.add_argument("--valuation-date", default=None)
     ap.add_argument("--bucket-overrides", default=None)
     ap.add_argument("--market-cap-overrides", default=None)
     ap.add_argument("--sector-overrides", default=None)
+    ap.add_argument("--style-overrides", default=None,
+                     help="CSV isin,style — Growth / Value / Blend for the equity sleeve")
+    ap.add_argument("--vehicle-overrides", default=None,
+                     help="CSV isin,vehicle — the desk's own Direct line / Fund / Structured "
+                          "call, where the heuristic cannot tell them apart")
     ap.add_argument("--keep-parsed-json", default=None, help="also write parsed.json to this path")
     ap.add_argument("-o", "--output", required=True)
     args = ap.parse_args()
 
     build(args.excel, args.profile, args.client_name, args.output,
-          market_update_path=args.market_update, valuation_date=args.valuation_date,
+          market_update_path=args.market_update, pe_monitoring_path=args.pe_monitoring,
+          valuation_date=args.valuation_date,
           bucket_overrides=args.bucket_overrides, market_cap_overrides=args.market_cap_overrides,
-          sector_overrides=args.sector_overrides, keep_parsed_json=args.keep_parsed_json)
+          sector_overrides=args.sector_overrides, style_overrides=args.style_overrides,
+          vehicle_overrides=args.vehicle_overrides,
+          keep_parsed_json=args.keep_parsed_json)
 
 
 if __name__ == "__main__":
