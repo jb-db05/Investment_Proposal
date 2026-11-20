@@ -13,8 +13,15 @@ in the client's Excel export, or to a documented rule applied to that column.
 - **`Portfolio`** — the client's current holdings. Section-header rows in
   column A (`Cash`, `Short-term instruments`, `Bonds`, `Equities`,
   `Structured products`, `Private Assets`, `Gold and other commodities`,
-  `Other investments`) mark the top-level asset class of every row beneath
-  them, until the next header row. This is the **only** place asset-class
+  `Other investments`, `Hedge Funds`, `Currency forwards`) mark the
+  top-level asset class of every row beneath them, until the next header
+  row. `Hedge Funds` maps to `Alternatives`; `Currency forwards` is a
+  hedging overlay, not a holding — see §3a. An unrecognized header would
+  silently fold its rows into the previous section, so add any new header
+  to `PORTFOLIO_SECTIONS` before running a file that has one.
+  If there is no sheet named `Portfolio` (a re-saved export can come back
+  as `Sheet1`), the first sheet other than `Fixed Income` that has an ISIN
+  header row is used. This is the **only** place asset-class
   membership comes from — the script never re-derives it from instrument
   names — with one documented exception, below.
 - **`Fixed Income`** — a separate, already-curated bond selection to be
@@ -92,6 +99,26 @@ than with the sleeve's bars and coins.
   wrong regardless of which currency wins. A single holding's own value is
   shown in that holding's own `Currency` column via `value_qc` — see §9.
 
+The base currency is read from the export's own `Valuation + accr.
+interest (XXX)` header (EUR and USD books both occur); every `*_base` field
+in `parsed.json` holds amounts in that currency, and `base_currency` labels
+them on the slides. The report-period return in §14
+uses the matching `TW Perf. (XXX, %)` column.
+
+## 3a. FX forwards (hedging overlay)
+
+- Rows under `Currency forwards` come in pairs (one leg per currency, one
+  negative). They are **excluded** from holdings, the line-items table,
+  position count, total value and every allocation chart, and listed in
+  `parsed.json["fx_forwards"]` instead.
+- `currency_exposure_pct` stays the holdings view (what the client owns).
+  `currency_exposure_after_hedges_pct` adds each forward leg's signed
+  `Weight (%)` to its currency — this is the economic exposure, and it
+  matches the custodian's own currency/asset-class grid at the top of the
+  sheet. It is `null` when the file has no forwards.
+- The parser's total therefore differs from the file's stated total by
+  the forwards' net value plus any dropped negative cash line (§2).
+
 ## 4. Fixed income sub-buckets (Cash / Fixed Income line-items table)
 
 The raw export has no "Govies vs Corporate vs High Yield vs EM Debt" column,
@@ -148,8 +175,10 @@ Within a sleeve, each holding is classified as:
 - **Direct line** — `Description` does not contain any fund/structured
   keyword below.
 - **Fund** — `Description` contains "FUND", "FD", "SICAV", "ETF", "ETC",
-  or the row's `Composite Rating` is blank and `Coupon (%)` is blank (a
-  common signature of collective vehicles in this export).
+  "ISHARES", "ISHS", "PHYSICAL", or the row's `Composite Rating` is the
+  literal `Not Rated` and `Coupon (%)` is blank (the export's signature of
+  collective vehicles). A *blank* rating with a blank coupon is a direct
+  share (Microsoft, Safran, Allianz...), not a fund.
 - **Structured / AMC** — `Description` contains "CERTIFICATE", "CERT",
   "AMC", "TRACKER", or the ISIN prefix is `XS`/`CH` combined with a
   `Coupon (%)` that is blank and a bullet/barrier-style name pattern
@@ -236,7 +265,8 @@ Each holding is classified by **how it is actually realised** — not by its
 asset class, and not by its §6 vehicle alone. Four buckets, first match
 wins (`classify_liquidity()`):
 
-- **Illiquid (lock-up)** — `Private Assets` section, or `Description`
+- **Illiquid (lock-up)** — `Private Assets` or `Hedge Funds`
+  (Alternatives) section, or `Description`
   contains "COMMIT" (already excluded per §2 if zero-valued, but a partly
   drawn commitment line still counts here).
 - **Cash & metal accounts** — the `Cash` section, plus §1a precious-metal
@@ -258,6 +288,9 @@ wins (`classify_liquidity()`):
 `liquid_share_pct` is everything that is not **Illiquid (lock-up)** — the
 three other buckets are all realisable at short notice, by different routes.
 
+Shares are of the included lines' total weight, so they sum to 100% even
+when an FX forward or overdraft is left out (§2, §3a).
+
 ## 11. Income & interest-rate sensitivity
 
 - Running yield (portfolio-level KPI) = `sum(Weight% * Yield%)` over rows
@@ -276,7 +309,12 @@ three other buckets are all realisable at short notice, by different routes.
   (mirrors the reference deck's "Corporate bond (auto)", "Corporate bond
   (oil)" style labels) — see `parse_portfolio.py::describe_bond_subsleeve()`
   for the exact keyword list; this label is cosmetic only and does not
-  feed any other calculation.
+  feed any other calculation. With no `Sector` column (the Portfolio
+  sheet never has one), an issuer name in `SOVEREIGN_KEYWORDS` (a country,
+  "TREAS", "GOVT"...) gives "Government bond" / "Government bond fund";
+  any other fund is "Bond fund" ("High yield bond fund" only with H/Y or
+  HIGH YIELD in the name) and any other direct line "Corporate bond".
+  Only an explicit `Government` sector gives "Quasi-sovereign bond".
 
 ## 12. Risk-profile dial (slide 8)
 
@@ -313,3 +351,24 @@ as-is; only `0 < value < 0.1` gets the `<0.1%` treatment. This rule only
 works because of the 6dp rounding above — if `pct()` rounded to 1dp
 before storing, the distinction between "genuinely zero" and "just very
 small" would already be gone by the time the display layer runs.
+
+## 14. Winners & losers
+
+`parsed.json["performance"]` ranks holdings (top 5 each way) on three
+custodian columns, read as-is and never recomputed from prices:
+
+| Measure | Column | Meaning |
+|---|---|---|
+| `unrealized_pl_base` | `Unrealized P / L Total (BC) (holding per.)` | gain/loss since purchase, in the base currency |
+| `holding_return_qc_pct` | `MCR (QC, %) (holding per.)` | % return since purchase, in the security's own currency |
+| `period_return_base_pct` | `TW Perf. (<base ccy>, %)` | time-weighted % return over the report period, in the base currency |
+
+A "winner" list only holds positive values and a "loser" list only
+negative ones, so either can be shorter than 5. The export does not state
+the report period's dates, so label it "report period", not "YTD" or
+"MTD", unless the user confirms which. `period_contribution_by_asset_class_pp`
+sums weight × period return per asset class (percentage points of the
+whole portfolio). Cash lines carry none of these columns and drop out.
+Custodian cost data can be odd (e.g. a negative total cost after partial
+sales); the P/L and MCR figures are still the custodian's own and are
+reported unchanged.

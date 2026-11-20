@@ -4,3 +4,5 @@ __pycache__/
 
 # build temp written by build_proposal.py when --keep-parsed-json is not given
 investment-proposal-builder/work/_parsed_tmp.json
+# client deliverables are built locally, never committed
+Investment Proposal - *.pptx

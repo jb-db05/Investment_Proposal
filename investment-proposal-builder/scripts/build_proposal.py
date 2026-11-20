@@ -101,7 +101,7 @@ PROFILE_LABEL_SHAPE = {
 # Sleeve slides where the "largest holdings" table's Yield/Coupon column is
 # always empty (equities, alternatives and commodities don't carry
 # yield/coupon data) -- dropped per user instruction rather than shown blank.
-SLEEVES_WITHOUT_YIELD_COLUMN = {"Equities", "Private Assets", "Commodities"}
+SLEEVES_WITHOUT_YIELD_COLUMN = {"Equities", "Private Assets", "Alternatives", "Commodities"}
 
 
 def find_shape(slide, name):
@@ -334,6 +334,17 @@ def get_slide(prs, index_1based):
     return list(prs.slides)[index_1based - 1]
 
 
+def delete_slide(prs, slide):
+    """Drop a slide by identity (not index), so it is safe to call after
+    line_items_mod.build() has shifted slide numbers."""
+    sld_ids = prs.slides._sldIdLst
+    for sld_id in list(sld_ids):
+        if prs.part.related_part(sld_id.rId) is slide.part:
+            prs.part.drop_rel(sld_id.rId)
+            sld_ids.remove(sld_id)
+            return
+
+
 # ---------------------------------------------------------------- charts ---
 
 def update_donut_by_name(slide, chart_name, data, label_style="whole"):
@@ -537,6 +548,17 @@ def fill_portfolio_overview(prs, parsed):
     set_text(slide, "Rectangle 7", f"{ry:.1f}%\nRunning yield" if ry else "n/a\nRunning yield")
     update_donut_by_name(slide, "Chart 10", parsed["asset_allocation_pct"])
     update_donut_by_name(slide, "Chart 14", parsed["currency_exposure_pct"])
+    # duration caveat under the KPI row -- the template's text belongs to
+    # the reference client, so always rewrite or blank it
+    fi = parsed["sleeves"].get("Fixed Income") or {}
+    cov, cov_pct = fi.get("duration_coverage"), fi.get("duration_value_coverage_pct")
+    text = ""
+    if cov and cov_pct is not None:
+        have, total = (int(x) for x in cov.split(" of "))
+        if have < total:
+            text = (f"⚠ {total - have} of {total} fixed-income line(s) report no modified duration; "
+                    f"portfolio duration reflects the {cov_pct:.0f}% of the sleeve that does.")
+    set_text(slide, "TextBox 12", text)
 
 
 def set_donut_legend(slide, textbox_names, data: dict[str, float]):
@@ -584,18 +606,52 @@ SLEEVE_SLIDES = {
     # slide_number: parsed.json sleeve key
     13: "Fixed Income",
     15: "Equities",
-    17: "Private Assets",
+    17: ("Alternatives", "Private Assets"),
     18: "Commodities",
     19: "Structured Products",
 }
 
 
+def merge_sleeves(sleeves):
+    """One slide can cover several parsed sleeves (slide 17 'Alternatives'
+    = hedge funds + private assets): combine by weight."""
+    sleeves = [s for s in sleeves if s]
+    if len(sleeves) <= 1:
+        return sleeves[0] if sleeves else None
+    total = sum(s["total_weight_pct"] for s in sleeves)
+    vehicles = {}
+    for s in sleeves:
+        for k, v in s["vehicle_breakdown_pct"].items():
+            vehicles[k] = vehicles.get(k, 0.0) + v * s["total_weight_pct"] / total
+    return {
+        "total_weight_pct": total,
+        "num_lines": sum(s["num_lines"] for s in sleeves),
+        "top_holdings": sorted((h for s in sleeves for h in s["top_holdings"]),
+                               key=lambda h: -h["weight_pct"])[:5],
+        "vehicle_breakdown_pct": dict(sorted(vehicles.items(), key=lambda kv: -kv[1])),
+        "duration_coverage": None,
+    }
+
+
+def clear_sleeve_slide(slide):
+    """No holdings: drop the reference client's table, chart and caveat."""
+    set_text(slide, "TextBox 5", "No holdings in this sleeve for this portfolio.")
+    set_text(slide, "TextBox 11", "")
+    for name in ("Table 6", "Chart 9"):
+        sh = find_shape(slide, name)
+        if sh is not None:
+            sh._element.getparent().remove(sh._element)
+
+
 def fill_sleeve_slides(prs, parsed):
-    for slide_num, sleeve_key in SLEEVE_SLIDES.items():
+    for slide_num, sleeve_keys in SLEEVE_SLIDES.items():
         slide = get_slide(prs, slide_num)
-        sleeve = parsed["sleeves"].get(sleeve_key)
+        if isinstance(sleeve_keys, str):
+            sleeve_keys = (sleeve_keys,)
+        sleeve_key = sleeve_keys[0]
+        sleeve = merge_sleeves([parsed["sleeves"].get(k) for k in sleeve_keys])
         if sleeve is None:
-            set_text(slide, "TextBox 5", "No holdings in this sleeve for this portfolio.")
+            clear_sleeve_slide(slide)
             continue
         include_yield = sleeve_key not in SLEEVES_WITHOUT_YIELD_COLUMN
         rebuild_holdings_table(slide, "Table 6", sleeve["top_holdings"], parsed["base_currency"],
@@ -864,9 +920,12 @@ def fill_market_slides(prs, market):
         # same three columns with what it does have (e.g. a tactical-allocation
         # preference matrix: house view / stance / change). Both default to the
         # template's own weekly wording.
-        headers = board.get("headers") or ["Index", "Week", "YTD"]
-        if board.get("label"):
-            set_shape_lines(textboxes[0], [board["label"]])
+        # "title"/"columns" are accepted as aliases of "label"/"headers"
+        # (older market_update.json files used those names).
+        headers = board.get("headers") or board.get("columns") or ["Index", "Week", "YTD"]
+        label = board.get("label") or board.get("title")
+        if label:
+            set_shape_lines(textboxes[0], [label])
         if rows:
             fit_scoreboard_columns(
                 textboxes[0], textboxes[1:4],

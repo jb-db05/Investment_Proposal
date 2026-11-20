@@ -448,3 +448,8 @@ the source PDF doesn't have a clean equivalent for a field (e.g. no
 scenario-probability table that week), leave the slide's original template
 text in place rather than inventing numbers, and say so in your reply to
 the user.
+
+When the source is a monthly house-view summary with no weekly return
+table, don't leave last week's returns on the slide: set the scoreboard's
+`title`/`columns` to what the source does give (e.g. forward P/E and EPS
+growth by region) and keep the `week`/`ytd` keys for the two value columns.

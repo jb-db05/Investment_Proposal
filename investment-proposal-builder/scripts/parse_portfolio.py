@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import re
 import json
 import re
 import sys
@@ -39,7 +40,14 @@ PORTFOLIO_SECTIONS = {
     "Private Assets",
     "Gold and other commodities",
     "Other investments",
+    "Hedge Funds",
+    "Currency forwards",
 }
+
+# Sections that are hedging overlays, not holdings: excluded from every
+# allocation/line-item figure, but captured in parsed.json["fx_forwards"]
+# and used for the hedge-adjusted currency exposure (assumptions.md §3a).
+OVERLAY_SECTIONS = {"Currency forwards"}
 
 # Maps a raw Portfolio-sheet section header to the asset-class bucket used
 # throughout parsed.json and the slide 9/10 line-items table (assumptions.md §4-5).
@@ -52,6 +60,7 @@ ASSET_CLASS_MAP = {
     "Private Assets": "Private Assets",
     "Gold and other commodities": "Commodities",
     "Other investments": "Other",
+    "Hedge Funds": "Alternatives",
 }
 
 # ISO 4217 codes for the four precious metals. A "current account" denominated
@@ -67,7 +76,7 @@ RISK_PROFILES = ["Fixed Income", "Conservative", "Moderate", "Balanced", "Growth
 IG_RATINGS = {"AAA", "AA+", "AA", "AA-"}
 CORP_IG_RATINGS = {"A+", "A", "A-", "BBB+", "BBB", "BBB-"}
 
-FUND_KEYWORDS = ("FUND", " FD ", "SICAV", "ETF", "ETC")
+FUND_KEYWORDS = ("FUND", " FD ", "SICAV", "ETF", "ETC", "ISHARES", "ISHS ", "PHYSICAL")
 STRUCTURED_KEYWORDS = ("CERTIFICATE", " CERT", "AMC", "TRACKER", "DCI-", "RAF ", "CPN ")
 
 
@@ -198,7 +207,10 @@ def classify_vehicle(description: str, rating, coupon, currency=None, asset_clas
     # physical: a direct line.
     if asset_class in ("Cash", "Commodities") or is_precious_metal_account(description, currency):
         return "Direct line"
-    if (rating in (None, "", "Not Rated")) and coupon in (None, ""):
+    # The custodian writes the literal "Not Rated" on funds, but leaves the
+    # rating cell empty on direct shares -- so only the literal means fund
+    # (checked on both sample exports: every fund-named line is "Not Rated").
+    if rating == "Not Rated" and coupon in (None, ""):
         return "Fund"
     return "Direct line"
 
@@ -226,7 +238,9 @@ ILLIQUID_BUCKET = "Illiquid (lock-up)"
 def classify_liquidity(row: dict, asset_class: str, vehicle: str) -> str:
     """assumptions.md §10. Four buckets, by how a holding is actually
     realised — not by its asset class and not by its vehicle alone."""
-    if asset_class == "Private Assets" or "COMMIT" in str(row.get("description") or "").upper():
+    # Hedge funds (Alternatives) carry notice periods and gates like private
+    # assets -- never "liquid" (assumptions.md §10).
+    if asset_class in ("Private Assets", "Alternatives") or "COMMIT" in str(row.get("description") or "").upper():
         return ILLIQUID_BUCKET
     # Account balances settle like money, whether the account is denominated
     # in a currency or in a metal (§1a) — a metal account is the currency form
@@ -242,6 +256,12 @@ def classify_liquidity(row: dict, asset_class: str, vehicle: str) -> str:
     # the same way, on a normal settlement cycle, and splitting them said more
     # about the instrument's wrapper than about its liquidity.
     return "Liquid assets"
+# Issuer names that mark a sovereign bond when the export has no Sector
+# column (the issuer is the country itself, e.g. "4.125% ARGENTINA 35").
+SOVEREIGN_KEYWORDS = ("TREAS", "GOVT", "REPUBLIC", "REP OF", "BUND", "GILT", "T-NOTE",
+                      "ARGENTINA", "BRAZIL", "MEXICO", "TURKEY", "COLOMBIA", "CHILE", "PERU",
+                      "EGYPT", "NIGERIA", "ROMANIA", "HUNGARY", "POLAND", "ITALY", "SPAIN",
+                      "GREECE", "ECUADOR", "PANAMA", "INDONESIA", "SOUTH AFRICA")
 
 
 def describe_bond_subsleeve(row: dict) -> str:
@@ -250,6 +270,7 @@ def describe_bond_subsleeve(row: dict) -> str:
     sector = str(row.get("sector") or "").strip()
     du = desc.upper()
     keyword_map = [
+        ("FID.", "Fiduciary deposit"),
         ("AUTO", "Corporate bond (auto)"),
         ("OIL", "Corporate bond (oil)"),
         ("PORT", "Corporate bond (port)"),
@@ -269,13 +290,23 @@ def describe_bond_subsleeve(row: dict) -> str:
             return label
     is_fund = any(k in du for k in FUND_KEYWORDS)
     if is_fund:
-        return "High yield bond fund"
+        if any(k in du for k in ("H/Y", "HIGH YIELD", " HY ")):
+            return "High yield bond fund"
+        if any(k in du for k in SOVEREIGN_KEYWORDS):
+            return "Government bond fund"
+        return "Bond fund"
+    if any(k in du for k in SOVEREIGN_KEYWORDS):
+        return "Government bond"
     if "SUPRANATIONAL" in sector.upper() or "DEVELOPMENT" in du:
         return "Supranational bond"
     if any(k in du for k in STRUCTURED_KEYWORDS):
         return "Structured note / certificate"
-    if sector.lower() in ("government", ""):
+    if sector.lower() == "government":
         return "Quasi-sovereign bond"
+    # No Sector column in the Portfolio sheet: don't call every direct bond
+    # quasi-sovereign -- funds are funds, and an issuer name is a corporate.
+    if not sector and classify_vehicle(desc, row.get("composite rating"), row.get("coupon (%)")) == "Fund":
+        return "Bond fund"
     return "Corporate bond"
 
 
@@ -418,6 +449,58 @@ def weight(row: dict) -> float:
         return 0.0
 
 
+def _num(row: dict, key: str) -> float | None:
+    v = row.get(key)
+    return float(v) if isinstance(v, (int, float)) else None
+
+
+def build_performance(included: list[dict], base_ccy: str, n: int = 5) -> dict:
+    """assumptions.md §14. Ranks holdings three ways, each straight from a
+    custodian column -- nothing is recomputed from prices:
+      - unrealized P/L (base ccy) since purchase -> 'Unrealized P / L Total (BC)'
+      - holding-period return in quote ccy   -> 'MCR (QC, %) (holding per.)'
+      - report-period return in base ccy     -> 'TW Perf. (<base>, %)'
+    Cash lines carry none of these and drop out naturally."""
+    rows = []
+    for r in included:
+        rows.append({
+            "name": r.get("description"),
+            "isin": r.get("isin code"),
+            "asset_class": r["_asset_class"],
+            "weight_pct": pct(r["_weight"]),
+            "value_base": round(r["_value_base"], 2),
+            "unrealized_pl_base": _num(r, "unrealized p / l total (bc) (holding per.)"),
+            "holding_return_qc_pct": _num(r, "mcr (qc, %) (holding per.)"),
+            "period_return_base_pct": _num(r, f"tw perf. ({base_ccy.lower()}, %)"),
+        })
+
+    def rank(key: str, reverse: bool) -> list[dict]:
+        have = [x for x in rows if x[key] is not None]
+        have.sort(key=lambda x: x[key], reverse=reverse)
+        return [x for x in have[:n] if (x[key] > 0 if reverse else x[key] < 0)]
+
+    pl = [x["unrealized_pl_base"] for x in rows if x["unrealized_pl_base"] is not None]
+    contrib = defaultdict(float)
+    for x in rows:
+        if x["period_return_base_pct"] is not None:
+            contrib[x["asset_class"]] += x["weight_pct"] * x["period_return_base_pct"] / 100.0
+    return {
+        "unrealized_pl_total_base": round(sum(pl), 2),
+        "positions_in_gain": sum(1 for v in pl if v > 0),
+        "positions_in_loss": sum(1 for v in pl if v < 0),
+        "winners_by_unrealized_pl": rank("unrealized_pl_base", True),
+        "losers_by_unrealized_pl": rank("unrealized_pl_base", False),
+        "winners_by_holding_return": rank("holding_return_qc_pct", True),
+        "losers_by_holding_return": rank("holding_return_qc_pct", False),
+        "winners_by_period_return": rank("period_return_base_pct", True),
+        "losers_by_period_return": rank("period_return_base_pct", False),
+        # weight x period return, in percentage points of the portfolio
+        "period_contribution_by_asset_class_pp": {
+            k: round(v, 4) for k, v in sorted(contrib.items(), key=lambda kv: kv[1])
+        },
+    }
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("excel_path")
@@ -448,10 +531,20 @@ def main():
     vehicle_overrides = load_overrides(args.vehicle_overrides, "vehicle")
     style_overrides = load_overrides(args.style_overrides, "style")
 
-    included, uncalled = [], []
+    included, uncalled, fx_forward_legs = [], [], []
     for row in port_rows:
         section = row.get("_section")
         if section not in PORTFOLIO_SECTIONS:
+            continue
+        if section in OVERLAY_SECTIONS:
+            fx_forward_legs.append({
+                "description": row.get("description"),
+                "currency": row.get("currency"),
+                "amount_qc": row.get("balance"),
+                "value_base": val_base(row, base_value_header),
+                "weight_pct": pct(weight(row)),
+                "maturity": row.get("contract close date"),
+            })
             continue
         w = weight(row)
         v = val_base(row, base_value_header)
@@ -478,8 +571,8 @@ def main():
 
     total_value_base = sum(r["_value_base"] for r in included)
 
-    # Base/reporting currency: fixed at EUR, matching the custodian file's
-    # own "Valuation + accr. interest (EUR)" column and its own stated
+    # Base/reporting currency: the custodian file's own
+    # "Valuation + accr. interest (XXX)" column (EUR or USD so far) and its own stated
     # portfolio total (assumptions.md §3). This is NOT the same thing as
     # "most-held currency by weight" (that's currency_exposure_pct below,
     # a property of the holdings, not of the reporting base) -- conflating
@@ -503,6 +596,20 @@ def main():
         ccy_weight[str(r.get("currency") or "Other")] += r["_weight"]
     currency_exposure = {k: pct(v) for k, v in sorted(ccy_weight.items(), key=lambda kv: -kv[1])}
 
+    # Hedge-adjusted currency exposure (assumptions.md §3a): add each FX
+    # forward leg's signed weight to its currency. None when the file has
+    # no forwards, so the deck keeps showing the plain holdings view.
+    if fx_forward_legs:
+        hedged = defaultdict(float, ccy_weight)
+        for leg in fx_forward_legs:
+            hedged[str(leg["currency"] or "Other")] += leg["weight_pct"] / 100.0
+        currency_exposure_hedged = {k: pct(v) for k, v in sorted(hedged.items(), key=lambda kv: -kv[1])}
+    else:
+        currency_exposure_hedged = None
+
+    # --- §14 winners & losers ---
+    performance = build_performance(included, base_ccy)
+
     # --- §7 geography / sector portfolio-wide ---
     # The Portfolio sheet carries no Sector column (unlike the separate
     # 'Fixed Income' proposal tab) -- sector exposure is only computable if
@@ -516,7 +623,8 @@ def main():
         geo_weight[region_of(r.get("geographical breakdown"))] += r["_weight"]
         if sector_data_available:
             isin = str(r.get("isin code") or "")
-            sector_weight[sector_overrides.get(isin, "Other")] += r["_weight"]
+            default = "Cash" if r["_asset_class"] == "Cash" else "Other"
+            sector_weight[sector_overrides.get(isin, default)] += r["_weight"]
     geographic_exposure = {k: pct(v) for k, v in sorted(geo_weight.items(), key=lambda kv: -kv[1])}
     sector_exposure = (
         {k: pct(v) for k, v in sorted(sector_weight.items(), key=lambda kv: -kv[1])}
@@ -557,6 +665,9 @@ def main():
             ],
             "vehicle_breakdown_pct": {k: pct(v) for k, v in sorted(vehicle_weight.items(), key=lambda kv: -kv[1])},
             "duration_coverage": f"{n_with_dur} of {len(rows_ac)}" if asset_class == "Fixed Income" else None,
+            "duration_value_coverage_pct": (
+                pct(sum(r["_weight"] for r in rows_ac if isinstance(r.get("duration"), (int, float))) / ac_total_w)
+                if asset_class == "Fixed Income" and ac_total_w else None),
         }
 
     # --- §8 equity breakdown (renormalized to the equity sleeve) ---
@@ -609,7 +720,10 @@ def main():
     liq_weight = defaultdict(float)
     for r in included:
         liq_weight[classify_liquidity(r, r["_asset_class"], vehicle_of(r, vehicle_overrides))] += r["_weight"]
-    liquidity_profile = {k: pct(v) for k, v in sorted(liq_weight.items(), key=lambda kv: -kv[1])}
+    # share of the invested book: custodian weights of the included lines sum
+    # to slightly more than 100% when an FX forward or overdraft is left out
+    liq_total = sum(liq_weight.values()) or 1.0
+    liquidity_profile = {k: pct(v / liq_total) for k, v in sorted(liq_weight.items(), key=lambda kv: -kv[1])}
 
     # --- §11 income & rate sensitivity ---
     fi_rows = [r for r in included if r["_asset_class"] == "Fixed Income"]
@@ -726,9 +840,12 @@ def main():
         "total_value_base": round(total_value_base, 2),
         "num_positions": len(included),
         "largest_position_pct": pct(by_weight[0]["_weight"]) if by_weight else 0,
-        "liquid_share_pct": pct(sum(v for k, v in liq_weight.items() if k != ILLIQUID_BUCKET)),
+        "liquid_share_pct": pct(sum(v for k, v in liq_weight.items() if k != ILLIQUID_BUCKET) / liq_total),
         "asset_allocation_pct": asset_allocation,
         "currency_exposure_pct": currency_exposure,
+        "currency_exposure_after_hedges_pct": currency_exposure_hedged,
+        "fx_forwards": fx_forward_legs,
+        "performance": performance,
         "geographic_exposure_pct": geographic_exposure,
         "sector_exposure_pct": sector_exposure,
         "sleeves": sleeves,
