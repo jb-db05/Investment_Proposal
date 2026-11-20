@@ -194,8 +194,7 @@ as a 0% slice).
 
 Within a sleeve, each holding is classified as:
 
-- **Direct line** — `Description` does not contain any fund/structured
-  keyword below.
+- **Direct line** — anything not matched by the two rules below.
 - **Fund** — `Description` contains "FUND", "FD", "SICAV", "ETF", "ETC",
   "ISHARES", "ISHS", "PHYSICAL", or the row's `Composite Rating` is the
   literal `Not Rated` and `Coupon (%)` is blank (the export's signature of

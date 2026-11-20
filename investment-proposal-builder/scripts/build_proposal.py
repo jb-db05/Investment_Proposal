@@ -46,6 +46,7 @@ from pptx.oxml.ns import qn
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 import build_line_items_tables as line_items_mod  # noqa: E402
+import build_rebalance_slides as rebalance_mod  # noqa: E402
 import update_chart as chart_mod  # noqa: E402
 
 TEMPLATE_PATH = SCRIPT_DIR.parent / "assets" / "template.pptx"
@@ -613,6 +614,10 @@ def fill_geographic_exposure(prs, parsed):
     update_bar_by_name(slide, "Chart 8", parsed["equity_breakdown"]["by_geography_pct"])
 
 
+# Slides found to have no data for this client (empty sleeve, no bond
+# proposal). Removed at the very end of build(), after every fill that
+# addresses slides by template position has run.
+
 SLEEVE_SLIDES = {
     # slide_number: parsed.json sleeve key
     13: "Fixed Income",
@@ -714,6 +719,22 @@ def fill_proposed_bond_selection(prs, parsed):
     # skill existed and carried by no other data slide. Blanked, not
     # renumbered.
     set_text(slide, "Text 42", "")
+
+
+def renumber_slide_parts(prs):
+    """Give every slide part a unique, ordered name before saving.
+
+    python-pptx names a new slide part after the current slide count, so a
+    slide added after another was deleted (holdings pages, rebalance slides,
+    the private-equity slide) can take a name that is still in use, and the
+    saved file then holds two 'slideN.xml' entries. Renaming in two passes
+    (temporary names first) avoids any collision while renaming."""
+    from pptx.opc.packuri import PackURI
+    parts = [s.part for s in prs.slides]
+    for i, part in enumerate(parts, 1):
+        part.partname = PackURI(f"/ppt/slides/_renumber_{i}.xml")
+    for i, part in enumerate(parts, 1):
+        part.partname = PackURI(f"/ppt/slides/slide{i}.xml")
 
 
 def drop_slide(prs, slide):
@@ -919,7 +940,10 @@ def fill_income(prs, parsed):
     set_text(slide, "Rectangle 6", f"{fd:.1f}y\nFI duration" if fd is not None else "n/a\nFI duration")
     ri = income["rate_impact_100bp_base"]
     ccy = parsed["base_currency"]
-    set_text(slide, "Rectangle 7", f"{ccy} {ri:,.0f}\nImpact +100bp" if ri is not None else "n/a\nImpact +100bp")
+    # currency goes in the caption: "USD -3,977" does not fit the box at the
+    # template's 24pt and wraps mid-number
+    ri_txt = (f"{ri / 1000:,.1f}k" if abs(ri) >= 1000 else f"{ri:,.0f}") if ri is not None else "n/a"
+    set_text(slide, "Rectangle 7", f"{ri_txt}\n{ccy} impact +100bp")
     fill_income_tables(slide, "Table 4", "Table 9", income)
 
 
@@ -1066,7 +1090,8 @@ def fill_market_slides(prs, market):
     # sentence to every client, so it is filled from the JSON, or emptied
     # when the source has no policy line to put there.
     if len(s4_rects) >= 5:
-        note = market["four_drivers"].get("policy_note")
+        # also accepted at the top level (older market_update.json files)
+        note = market["four_drivers"].get("policy_note") or market.get("policy_note")
         set_shape_lines(s4_rects[4], [note or ""])
         if not note:
             print("Note: market_update.json has no four_drivers.policy_note — slide 4's "
@@ -1211,7 +1236,7 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
           valuation_date=None, bucket_overrides=None, market_cap_overrides=None,
           sector_overrides=None, style_overrides=None, vehicle_overrides=None, keep_parsed_json=None,
           pe_monitoring_path=None, asset_class_overrides=None, equity_region_overrides=None,
-          parsed_json_in=None):
+          parsed_json_in=None, rebalance_path=None):
     # parsed_json_in: use an already-built parsed.json (e.g. from
     # parse_model_allocation.py for a weights-only model) instead of
     # re-parsing a custodian export. Everything downstream is identical:
@@ -1294,6 +1319,12 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
               "the template's own example bond selection.")
     pe_anchor = get_slide(prs, ALTERNATIVES_SLIDE) if pe_monitoring else None
     line_items_mod.build(prs, parsed)  # slides 9-10(+): rebuilt as real tables, runs last
+    if rebalance_path:
+        # Optional "recommended changes" slides (build_rebalance.py output),
+        # inserted after slide 8. Added before any slide is dropped: python-pptx
+        # names a new slide part by slide count, so adding after a deletion can
+        # reuse an existing part name.
+        rebalance_mod.build(prs, json.loads(Path(rebalance_path).read_text()))
     for slide in doomed:
         drop_slide(prs, slide)
     if pe_anchor is not None:
@@ -1301,6 +1332,7 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
         print(f"Added the private-equity review slide ({len(pe_monitoring['funds'])} funds) "
               "after the Alternatives sleeve.")
 
+    renumber_slide_parts(prs)
     prs.save(output_path)
     print(f"Wrote {output_path}")
 
@@ -1334,6 +1366,8 @@ def main():
     ap.add_argument("--parsed-json-in", default=None,
                      help="use this pre-built parsed.json (e.g. from parse_model_allocation.py) "
                           "instead of parsing a custodian export")
+    ap.add_argument("--rebalance", default=None,
+                    help="rebalance.json from build_rebalance.py: adds the recommended-changes slides")
     ap.add_argument("-o", "--output", required=True)
     args = ap.parse_args()
 
@@ -1348,7 +1382,8 @@ def main():
           vehicle_overrides=args.vehicle_overrides,
           asset_class_overrides=args.asset_class_overrides,
           equity_region_overrides=args.equity_region_overrides,
-          keep_parsed_json=args.keep_parsed_json, parsed_json_in=args.parsed_json_in)
+          keep_parsed_json=args.keep_parsed_json, parsed_json_in=args.parsed_json_in,
+          rebalance_path=args.rebalance)
 
 
 if __name__ == "__main__":

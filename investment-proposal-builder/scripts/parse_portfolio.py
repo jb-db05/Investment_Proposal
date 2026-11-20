@@ -79,7 +79,7 @@ IG_RATINGS = {"AAA", "AA+", "AA", "AA-"}
 CORP_IG_RATINGS = {"A+", "A", "A-", "BBB+", "BBB", "BBB-"}
 
 FUND_KEYWORDS = ("FUND", " FD ", "SICAV", "ETF", "ETC", "ISHARES", "ISHS ", "PHYSICAL")
-STRUCTURED_KEYWORDS = ("CERTIFICATE", " CERT", "AMC", "TRACKER", "DCI-", "RAF ", "CPN ")
+STRUCTURED_KEYWORDS = ("CERTIFICATE", " CERT", "-CERT", "AMC", "TRACKER", "DCI-", "RAF ", "CPN ")
 
 
 def is_precious_metal_account(description, currency) -> bool:
@@ -211,8 +211,8 @@ def classify_vehicle(description: str, rating, coupon, currency=None, asset_clas
         return "Direct line"
     # The custodian writes the literal "Not Rated" on funds, but leaves the
     # rating cell empty on direct shares -- so only the literal means fund
-    # (checked on both sample exports: every fund-named line is "Not Rated").
-    if rating == "Not Rated" and coupon in (None, ""):
+    # (holds in every export seen so far).
+    if str(rating or "").strip() == "Not Rated" and coupon in (None, ""):
         return "Fund"
     return "Direct line"
 
@@ -690,6 +690,7 @@ def main():
             ],
             "vehicle_breakdown_pct": {k: pct(v) for k, v in sorted(vehicle_weight.items(), key=lambda kv: -kv[1])},
             "duration_coverage": f"{n_with_dur} of {len(rows_ac)}" if asset_class == "Fixed Income" else None,
+            "duration_lines_with": n_with_dur if asset_class == "Fixed Income" else None,
             "duration_value_coverage_pct": (
                 pct(sum(r["_weight"] for r in rows_ac if isinstance(r.get("duration"), (int, float))) / ac_total_w)
                 if asset_class == "Fixed Income" and ac_total_w else None),
@@ -704,6 +705,7 @@ def main():
     style_available = bool(style_overrides)
     for r in equity_rows:
         w_norm = r["_weight"] / eq_total_w
+        isin = str(r.get("isin code") or "").strip()
         eq_geo[eq_region(r)] += w_norm
         if sector_data_available:
             eq_sector[sector_overrides.get(isin, "Other")] += w_norm
@@ -772,7 +774,6 @@ def main():
         if isinstance(d, (int, float)):
             duration_subsleeves[label]["dur_weighted"] += r["_value_base"] * d
     fi_duration = round(dur_num / dur_den, 2) if dur_den else None
-    fi_lines_without_duration = sum(1 for r in fi_rows if not isinstance(r.get("duration"), (int, float)))
     rate_impact_base = round(-fi_duration * 0.01 * fi_total_val, 2) if fi_duration else None
 
     income_by_sleeve = defaultdict(float)
@@ -787,8 +788,6 @@ def main():
     income = {
         "running_yield_pct": running_yield_pct,
         "fi_duration_years": fi_duration,
-        "fi_lines_total": len(fi_rows),
-        "fi_lines_without_duration": fi_lines_without_duration,
         "rate_impact_100bp_base": rate_impact_base,
         "income_by_sleeve": [
             {"sleeve": k, "income_base": round(v, 2), "pct_of_income": pct(v / total_income)}
