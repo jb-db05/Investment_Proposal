@@ -40,6 +40,14 @@ export's header row — a row of >=5 filled cells including an `ISIN code`
 column — is used instead, and the script says which one it picked. Two such
 sheets is an error, not a guess.
 
+Some exports ship a single unnamed sheet (e.g. `Sheet1`) instead of a
+`Portfolio` tab. When no sheet is named `Portfolio`, the first sheet other
+than `Fixed Income` that has an ISIN header row is used. Two further
+section headers are recognised: `Hedge Funds` (asset class
+`Alternatives`, a growth class, filling the deck's "Alternatives" slide
+when there are no `Private Assets`) and `Currency forwards` (an FX-hedge
+overlay, see §2).
+
 Column names are matched case-insensitively with whitespace stripped
 (the export has trailing spaces on some headers, e.g. `"Rating  "`).
 
@@ -78,6 +86,18 @@ than with the sleeve's bars and coins.
   the line-items table, but their count and total committed amount are
   reported separately as `uncalled_commitments` in `parsed.json` so nothing
   is silently dropped — they just aren't a % of the invested book.
+- **Currency forwards** are an overlay, not holdings. Each forward
+  appears as two legs (a negative-weight sold leg, a positive-weight bought
+  leg). The legs are excluded from the position count, every sleeve and
+  every asset-class figure, and listed in `parsed.json: fx_forwards`
+  (details in §3a). They enter only: (a) the currency-exposure donut on the
+  overview slide, which shows **net post-hedge** exposure
+  (`currency_exposure_after_hedges_pct`), matching the export's own
+  "Breakdown General" table; (b) `total_value_base`, as the net
+  mark-to-market, so the KPI ties out to the export's stated total; and (c)
+  one netted "FX hedges" line in the holdings table, so its Total row
+  reads 100%. Liquid share is computed over the invested holdings only, so
+  it can't exceed 100% when the excluded legs net to a negative weight.
 - All weights are read directly from the file's own `Weight (%)` column
   (already computed by the custodian against the portfolio total) rather
   than recomputed from valuations, so the numbers tie out to the client's
@@ -108,16 +128,18 @@ uses the matching `TW Perf. (XXX, %)` column.
 ## 3a. FX forwards (hedging overlay)
 
 - Rows under `Currency forwards` come in pairs (one leg per currency, one
-  negative). They are **excluded** from holdings, the line-items table,
-  position count, total value and every allocation chart, and listed in
-  `parsed.json["fx_forwards"]` instead.
+  negative). They are **excluded** from holdings, position count and every
+  allocation chart except currency exposure, and listed in
+  `parsed.json["fx_forwards"]` (§2 for how they enter the total and the
+  holdings table).
 - `currency_exposure_pct` stays the holdings view (what the client owns).
   `currency_exposure_after_hedges_pct` adds each forward leg's signed
   `Weight (%)` to its currency — this is the economic exposure, and it
   matches the custodian's own currency/asset-class grid at the top of the
   sheet. It is `null` when the file has no forwards.
-- The parser's total therefore differs from the file's stated total by
-  the forwards' net value plus any dropped negative cash line (§2).
+- `currency_exposure_pct` alone is shown when there are no forwards.
+- The parser's total includes the forwards' net value, so it matches the
+  file's stated total except for any dropped negative cash line (§2).
 
 ## 4. Fixed income sub-buckets (Cash / Fixed Income line-items table)
 
@@ -238,6 +260,19 @@ classified **Direct line** without consulting it:
   Geography sits in the right-hand panel of the geographic-exposure slide,
   beside the whole-portfolio split; sector, market cap and style share the
   equity-breakdown slide.
+- The file's country tag is sometimes misleading for a fund (an
+  Irish-domiciled commodity ETF tagged "Ireland", a European fund tagged
+  "Misc.Europe"). `--equity-region-overrides overrides.csv` (columns
+  `isin,region`) sets the region per ISIN. It applies to both this donut
+  and the holdings-table groups. Labels beyond the default map, such as
+  `Europe` or `Emerging Markets`, are allowed and sort in a fixed order.
+- `--asset-class-overrides overrides.csv` (columns `isin,asset_class`)
+  moves a holding to another asset class: for example, a uranium or
+  rare-earth equity ETF the desk counts as `Commodities`. This changes
+  every asset-class figure (allocation donut, sleeves, holdings table).
+  The value must be one of the existing class names.
+- The geography donut's legend has 5 rows in the template. A 6th region
+  gets one cloned row, which still fits inside the panel.
 - Sector: same `--sector-overrides` mechanism and `null`-when-absent
   behavior as §7, renormalized to the equity sleeve.
 - Market cap is not a column in the export — every equity line is

@@ -38,6 +38,7 @@ PORTFOLIO_SECTIONS = {
     "Equities",
     "Structured products",
     "Private Assets",
+    "Hedge Funds",
     "Gold and other commodities",
     "Other investments",
     "Hedge Funds",
@@ -58,6 +59,7 @@ ASSET_CLASS_MAP = {
     "Equities": "Equities",
     "Structured products": "Structured Products",
     "Private Assets": "Private Assets",
+    "Hedge Funds": "Alternatives",
     "Gold and other commodities": "Commodities",
     "Other investments": "Other",
     "Hedge Funds": "Alternatives",
@@ -142,7 +144,7 @@ def load_sheet_rows(ws) -> tuple[dict[str, int], list[dict]]:
     section = None
     for r in range(header_row_idx + 1, ws.max_row + 1):
         col_a = ws.cell(r, 1).value
-        if isinstance(col_a, str) and col_a.strip() in PORTFOLIO_SECTIONS:
+        if isinstance(col_a, str) and col_a.strip() in PORTFOLIO_SECTIONS | OVERLAY_SECTIONS:
             section = col_a.strip()
             continue
         row = {h: ws.cell(r, c).value for h, c in headers.items()}
@@ -517,6 +519,10 @@ def main():
                     help="CSV isin,vehicle — 'Direct line' / 'Fund' / 'Structured / AMC'. "
                           "Overrides the assumptions.md §6 heuristic, which cannot tell a "
                           "single-name equity from an equity fund.")
+    ap.add_argument("--asset-class-overrides", default=None,
+                    help="CSV isin,asset_class: reclassify a holding (e.g. a commodity-equity ETF as Commodities)")
+    ap.add_argument("--equity-region-overrides", default=None,
+                    help="CSV isin,region: equity region when the file's country tag is misleading")
     ap.add_argument("-o", "--output", default="parsed.json")
     args = ap.parse_args()
 
@@ -530,6 +536,16 @@ def main():
     sector_overrides = load_overrides(args.sector_overrides, "sector")
     vehicle_overrides = load_overrides(args.vehicle_overrides, "vehicle")
     style_overrides = load_overrides(args.style_overrides, "style")
+    asset_class_overrides = load_overrides(args.asset_class_overrides, "asset_class")
+    equity_region_overrides = load_overrides(args.equity_region_overrides, "region")
+    valid_classes = set(ASSET_CLASS_MAP.values()) | {"Alternatives"}
+    bad = {v for v in asset_class_overrides.values() if v not in valid_classes}
+    if bad:
+        sys.exit(f"Error: unknown asset class(es) in --asset-class-overrides: {sorted(bad)}")
+
+    def eq_region(r):
+        isin = str(r.get("isin code") or "").strip()
+        return equity_region_overrides.get(isin) or equity_region_of(r.get("geographical breakdown"))
 
     included, uncalled, fx_forward_legs = [], [], []
     for row in port_rows:
@@ -558,9 +574,13 @@ def main():
                     "currency": row.get("currency"),
                 })
             continue
-        row["_asset_class"] = (
-            "Commodities" if is_precious_metal_account(row.get("description"), row.get("currency"))
-            else ASSET_CLASS_MAP[section])
+        isin_key = str(row.get("isin code") or "").strip()
+        if isin_key in asset_class_overrides:
+            row["_asset_class"] = asset_class_overrides[isin_key]
+        else:
+            row["_asset_class"] = (
+                "Commodities" if is_precious_metal_account(row.get("description"), row.get("currency"))
+                else ASSET_CLASS_MAP[section])
         row["_weight"] = w
         row["_value_base"] = v
         try:
@@ -569,7 +589,11 @@ def main():
             row["_value_qc"] = 0.0
         included.append(row)
 
-    total_value_base = sum(r["_value_base"] for r in included)
+    # FX forwards' net mark-to-market is part of the client's net asset
+    # value, so it is added back here: the KPI then ties out to the export's
+    # own stated total even though the legs are not holdings.
+    total_value_base = (sum(r["_value_base"] for r in included)
+                        + sum(leg["value_base"] or 0 for leg in fx_forward_legs))
 
     # Base/reporting currency: the custodian file's own
     # "Valuation + accr. interest (XXX)" column (EUR or USD so far) and its own stated
@@ -603,6 +627,7 @@ def main():
         hedged = defaultdict(float, ccy_weight)
         for leg in fx_forward_legs:
             hedged[str(leg["currency"] or "Other")] += leg["weight_pct"] / 100.0
+        hedged = {k: v for k, v in hedged.items() if v > 0}
         currency_exposure_hedged = {k: pct(v) for k, v in sorted(hedged.items(), key=lambda kv: -kv[1])}
     else:
         currency_exposure_hedged = None
@@ -679,8 +704,7 @@ def main():
     style_available = bool(style_overrides)
     for r in equity_rows:
         w_norm = r["_weight"] / eq_total_w
-        isin = str(r.get("isin code") or "").strip()
-        eq_geo[equity_region_of(r.get("geographical breakdown"))] += w_norm
+        eq_geo[eq_region(r)] += w_norm
         if sector_data_available:
             eq_sector[sector_overrides.get(isin, "Other")] += w_norm
         if mcap_available:
@@ -748,6 +772,7 @@ def main():
         if isinstance(d, (int, float)):
             duration_subsleeves[label]["dur_weighted"] += r["_value_base"] * d
     fi_duration = round(dur_num / dur_den, 2) if dur_den else None
+    fi_lines_without_duration = sum(1 for r in fi_rows if not isinstance(r.get("duration"), (int, float)))
     rate_impact_base = round(-fi_duration * 0.01 * fi_total_val, 2) if fi_duration else None
 
     income_by_sleeve = defaultdict(float)
@@ -762,6 +787,8 @@ def main():
     income = {
         "running_yield_pct": running_yield_pct,
         "fi_duration_years": fi_duration,
+        "fi_lines_total": len(fi_rows),
+        "fi_lines_without_duration": fi_lines_without_duration,
         "rate_impact_100bp_base": rate_impact_base,
         "income_by_sleeve": [
             {"sleeve": k, "income_base": round(v, 2), "pct_of_income": pct(v / total_income)}
@@ -790,9 +817,9 @@ def main():
     # --- line items table source (assumptions.md §4, slides 9-10) ---
     line_items = []
     fi_bucket_order = ["Govies 1-10 (local)", "Govies 10+ (local)", "High Yield (local or global hdg)",
-                        "Corporate IG (local)", "EM Debt"]
-    equity_region_order = ["US", "Eurozone", "Europe ex-EMU", "UK", "Switzerland", "Japan",
-                            "EM", "Global / thematic"]
+                        "Corporate IG (local)", "EM Debt", "Inflation-linked", "Money market"]
+    equity_region_order = ["US", "Europe", "Eurozone", "Europe ex-EMU", "UK", "Switzerland", "Japan",
+                            "EM", "Emerging Markets", "Global / thematic"]
     for r in included:
         ac = r["_asset_class"]
         if ac == "Fixed Income":
@@ -800,7 +827,7 @@ def main():
         elif ac == "Cash":
             group = "Cash"
         elif ac == "Equities":
-            group = equity_region_of(r.get("geographical breakdown"))
+            group = eq_region(r)
         else:
             group = ac
         line_items.append({
@@ -810,11 +837,22 @@ def main():
             "instrument": r.get("description"),
             "weight_pct": pct(r["_weight"]),
         })
+    # FX forwards: one netted line (sum of the legs' signed weights, i.e.
+    # the hedge's mark-to-market), so the holdings table's Total ties out
+    # to 100% of the statement instead of 100% + the excluded legs.
+    if fx_forward_legs:
+        line_items.append({
+            "top_category": "FX hedges",
+            "group": "FX hedges",
+            "isin": None,
+            "instrument": "Currency forwards, net mark-to-market",
+            "weight_pct": round(sum(leg["weight_pct"] for leg in fx_forward_legs), 4),
+        })
     # stable sort: top_category (Cash, Fixed Income, Equities, Alternatives,
     # Structured Products, Private Assets, Commodities, Other), then FI bucket
     # order, then descending weight within group.
     top_cat_order = ["Cash", "Fixed Income", "Equities", "Alternatives", "Structured Products",
-                      "Private Assets", "Commodities", "Other"]
+                      "Private Assets", "Commodities", "Other", "FX hedges"]
 
     def sort_key(li):
         tc = top_cat_order.index(li["top_category"]) if li["top_category"] in top_cat_order else 99

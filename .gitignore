@@ -6,3 +6,4 @@ __pycache__/
 investment-proposal-builder/work/_parsed_tmp.json
 # client deliverables are built locally, never committed
 Investment Proposal - *.pptx
+investment-proposal-builder/clients/

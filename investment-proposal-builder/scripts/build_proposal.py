@@ -36,6 +36,8 @@ import sys
 from pathlib import Path
 
 from pptx import Presentation
+from pptx.enum.dml import MSO_THEME_COLOR
+from pptx.oxml.ns import qn
 from pptx.util import Emu, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
@@ -547,7 +549,11 @@ def fill_portfolio_overview(prs, parsed):
     ry = parsed["income"]["running_yield_pct"]
     set_text(slide, "Rectangle 7", f"{ry:.1f}%\nRunning yield" if ry else "n/a\nRunning yield")
     update_donut_by_name(slide, "Chart 10", parsed["asset_allocation_pct"])
-    update_donut_by_name(slide, "Chart 14", parsed["currency_exposure_pct"])
+    # Net of FX forwards when the book has any (the client's economic
+    # exposure, and what the export's own summary table shows); otherwise
+    # the plain holdings view. assumptions.md §3a.
+    update_donut_by_name(slide, "Chart 14", parsed.get("currency_exposure_after_hedges_pct")
+                         or parsed["currency_exposure_pct"])
     # duration caveat under the KPI row -- the template's text belongs to
     # the reference client, so always rewrite or blank it
     fi = parsed["sleeves"].get("Fixed Income") or {}
@@ -822,6 +828,28 @@ def fill_equity_panel(slide, panel, title, data, max_slices):
             dot.line.fill.background()
 
 
+LEGEND_ROW_STEP = Emu(274205)  # vertical spacing between the template's legend rows
+
+
+def _add_legend_row(slide, dot_name, text_name, new_text_name, theme_color):
+    dot, text = find_shape(slide, dot_name), find_shape(slide, text_name)
+    if dot is None or text is None:
+        return
+    for src, name in ((dot, f"{dot_name}b"), (text, new_text_name)):
+        el = _copy.deepcopy(src._element)
+        src._element.addnext(el)
+        new = [sh for sh in slide.shapes if sh._element is el][0]
+        new.top = src.top + LEGEND_ROW_STEP
+        new.name = name
+        # a deep copy keeps the source's shape id; ids must be unique per slide
+        max_id = max(int(e.get("id")) for e in slide.shapes._spTree.iter(qn("p:cNvPr")))
+        el.find(".//" + qn("p:cNvPr")).set("id", str(max_id + 1))
+        if src is dot:
+            new.fill.solid()
+            new.fill.fore_color.theme_color = theme_color
+            new.line.color.theme_color = theme_color
+
+
 def fill_equity_breakdown(prs, parsed):
     """Sector, market cap and style for the equity sleeve. Geography is not
     here — it shares the geographic-exposure slide with the whole-portfolio
@@ -884,10 +912,57 @@ def fill_income(prs, parsed):
 
 
 # ------------------------------------------------------------- market slides
-# Slides 5-6 (economic scenario / investment views) are permanently frozen
-# per explicit instruction — they are never touched here, always shipping
-# with the reference deck's own text. Only slides 3-4 pull from
-# market_update.json.
+# Slides 5-6 (economic scenario / investment views) ship with the reference
+# deck's own text unless market_update.json carries an explicit
+# "house_view_slides" section (opt-in, added when the desk supplies its own
+# monthly Investment Conclusions deck) — see fill_house_view_slides().
+
+SCENARIO_BOXES = ["TextBox 6", "TextBox 10", "TextBox 14"]   # Growth / Central Banks / Politics
+VIEW_BOXES = ["TextBox 6", "TextBox 10", "TextBox 14"]       # Equities / Fixed Income / Commodities & Forex
+VIEW_HEADERS = ["Rectangle 4", "Rectangle 8", "Rectangle 12"]
+
+
+def _set_stance_body(shape, stance, body):
+    """Slide 6 view boxes are one paragraph of two runs: a bold stance
+    ('Neutral:') then normal body text. Keep both runs' own formatting."""
+    if shape is None or not shape.has_text_frame:
+        return
+    para = shape.text_frame.paragraphs[0]
+    for extra in list(shape.text_frame.paragraphs)[1:]:
+        extra._p.getparent().remove(extra._p)
+    runs = list(para.runs)
+    if len(runs) < 2:
+        set_shape_lines(shape, [f"{stance}: {body}"])
+        return
+    for r in runs[2:]:
+        r._r.getparent().remove(r._r)
+    runs[0].text = f"{stance}: "
+    runs[1].text = body
+
+
+def fill_house_view_slides(prs, market):
+    hv = (market or {}).get("house_view_slides")
+    if not hv:
+        return
+    source = hv.get("source")
+    sc = hv.get("scenario")
+    if sc:
+        s5 = get_slide(prs, 5)
+        set_subtitle(s5, sc["intro_sentence"])
+        for name, col in zip(SCENARIO_BOXES, sc["columns"]):
+            set_text(s5, name, col["body"])
+        if source:
+            set_text(s5, "TextBox 15", source)
+    vw = hv.get("views")
+    if vw:
+        s6 = get_slide(prs, 6)
+        set_subtitle(s6, vw["intro_sentence"])
+        for box, header, v in zip(VIEW_BOXES, VIEW_HEADERS, vw["columns"]):
+            if v.get("asset_class"):
+                set_text(s6, header, v["asset_class"])
+            _set_stance_body(find_shape(s6, box), v["stance"], v["body"])
+        if source:
+            set_text(s6, "TextBox 15", source)
 
 def fill_market_slides(prs, market):
     if not market:
@@ -901,6 +976,9 @@ def fill_market_slides(prs, market):
     if h.get("slide_title"):
         set_text(s3, "Title 1", h["slide_title"])
     set_subtitle(s3, h["intro_sentence"])
+    if h.get("slide_title"):
+        # e.g. "How markets moved last quarter" for a monthly/quarterly outlook
+        set_text(s3, "Title 1", h["slide_title"])
 
     rects = [sh for sh in s3.shapes if sh.name == "Rectangle"]
     stat_rects, obs_rects = rects[:4], rects[4:7]
@@ -922,7 +1000,9 @@ def fill_market_slides(prs, market):
         # template's own weekly wording.
         # "title"/"columns" are accepted as aliases of "label"/"headers"
         # (older market_update.json files used those names).
-        headers = board.get("headers") or board.get("columns") or ["Index", "Week", "YTD"]
+        headers = list(board.get("headers") or board.get("columns") or ["Index", "Week", "YTD"])
+        if board.get("period_label"):  # older alias: relabels only the middle column
+            headers[1] = board["period_label"]
         label = board.get("label") or board.get("title")
         if label:
             set_shape_lines(textboxes[0], [label])
@@ -1118,7 +1198,7 @@ def build_pe_monitoring_slide(prs, anchor_slide, pe):
 def build(excel_path, profile, client_name, output_path, market_update_path=None,
           valuation_date=None, bucket_overrides=None, market_cap_overrides=None,
           sector_overrides=None, style_overrides=None, vehicle_overrides=None, keep_parsed_json=None,
-          pe_monitoring_path=None):
+          pe_monitoring_path=None, asset_class_overrides=None, equity_region_overrides=None):
     parse_cmd = [sys.executable, str(SCRIPT_DIR / "parse_portfolio.py"), excel_path,
                  "--profile", profile, "--client-name", client_name,
                  "-o", keep_parsed_json or str(SCRIPT_DIR.parent / "work" / "_parsed_tmp.json")]
@@ -1134,6 +1214,10 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
         parse_cmd += ["--style-overrides", style_overrides]
     if vehicle_overrides:
         parse_cmd += ["--vehicle-overrides", vehicle_overrides]
+    if asset_class_overrides:
+        parse_cmd += ["--asset-class-overrides", asset_class_overrides]
+    if equity_region_overrides:
+        parse_cmd += ["--equity-region-overrides", equity_region_overrides]
     subprocess.run(parse_cmd, check=True)
 
     parsed_path = keep_parsed_json or str(SCRIPT_DIR.parent / "work" / "_parsed_tmp.json")
@@ -1157,6 +1241,7 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
     # slide's content is already in place.
     fill_cover(prs, parsed)
     fill_market_slides(prs, market)
+    fill_house_view_slides(prs, market)
     fill_profile_dial(prs, parsed)
     fill_portfolio_overview(prs, parsed)
     fill_geographic_exposure(prs, parsed)
@@ -1223,6 +1308,10 @@ def main():
     ap.add_argument("--vehicle-overrides", default=None,
                      help="CSV isin,vehicle — the desk's own Direct line / Fund / Structured "
                           "call, where the heuristic cannot tell them apart")
+    ap.add_argument("--asset-class-overrides", default=None,
+                     help="CSV isin,asset_class — move a holding to another asset class")
+    ap.add_argument("--equity-region-overrides", default=None,
+                     help="CSV isin,region — equity region when the file's country tag is misleading")
     ap.add_argument("--keep-parsed-json", default=None, help="also write parsed.json to this path")
     ap.add_argument("-o", "--output", required=True)
     args = ap.parse_args()
@@ -1233,6 +1322,8 @@ def main():
           bucket_overrides=args.bucket_overrides, market_cap_overrides=args.market_cap_overrides,
           sector_overrides=args.sector_overrides, style_overrides=args.style_overrides,
           vehicle_overrides=args.vehicle_overrides,
+          asset_class_overrides=args.asset_class_overrides,
+          equity_region_overrides=args.equity_region_overrides,
           keep_parsed_json=args.keep_parsed_json)
 
 
