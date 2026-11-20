@@ -510,8 +510,12 @@ def fill_cover(prs, parsed):
     slide = get_slide(prs, 1)
     ccy = parsed["base_currency"]
     amount_m = parsed["total_value_base"] / 1_000_000
+    # A weights-only model allocation has no real portfolio value; money
+    # figures are indicative on a nominal base, flagged here so the reader
+    # never mistakes the cover amount for a real valuation.
+    indicative = " (indicative)" if parsed.get("is_indicative") else ""
     set_text(slide, "Text Placeholder 5",
-             f"{parsed['risk_profile_input']} {ccy} {amount_m:.1f}m\n\n"
+             f"{parsed['risk_profile_input']} {ccy} {amount_m:.1f}m{indicative}\n\n"
              f"Prepared for {parsed['client_name']}\n\n"
              f"Your Relationship Manager: [Name]\n\n"
              f"Your Advisor: ")
@@ -542,7 +546,8 @@ def fill_profile_dial(prs, parsed):
 def fill_portfolio_overview(prs, parsed):
     slide = get_slide(prs, 11)
     ccy = parsed["base_currency"]
-    set_text(slide, "Rectangle 3", f"{ccy} {parsed['total_value_base']/1_000_000:.1f}M\nTotal value")
+    total_caption = "Total value (indicative)" if parsed.get("is_indicative") else "Total value"
+    set_text(slide, "Rectangle 3", f"{ccy} {parsed['total_value_base']/1_000_000:.1f}M\n{total_caption}")
     set_text(slide, "Rectangle 4", f"{parsed['num_positions']}\nPositions")
     set_text(slide, "Rectangle 5", f"{parsed['largest_position_pct']:.1f}%\nLargest position")
     set_text(slide, "Rectangle 6", f"{parsed['liquid_share_pct']:.1f}%\nLiquid share")
@@ -901,6 +906,13 @@ INCOME_SLIDE = 22
 def fill_income(prs, parsed):
     slide = get_slide(prs, INCOME_SLIDE)
     income = parsed["income"]
+    # When the source carries no yield/coupon/duration data at all (e.g. a
+    # weights-only model allocation), the KPIs and both tables are empty by
+    # necessity, not by error — say so in the subtitle rather than leaving
+    # two blank tables that read as a broken slide.
+    if income["running_yield_pct"] is None and not income["income_by_sleeve"]:
+        set_subtitle(slide, "Instrument-level yield, coupon and duration data are not available for this "
+                            "model allocation; income and rate-sensitivity metrics require a valued portfolio.")
     ry = income["running_yield_pct"]
     set_text(slide, "Rectangle 5", f"{ry:.1f}%\nRunning yield" if ry else "n/a\nRunning yield")
     fd = income["fi_duration_years"]
@@ -1198,30 +1210,32 @@ def build_pe_monitoring_slide(prs, anchor_slide, pe):
 def build(excel_path, profile, client_name, output_path, market_update_path=None,
           valuation_date=None, bucket_overrides=None, market_cap_overrides=None,
           sector_overrides=None, style_overrides=None, vehicle_overrides=None, keep_parsed_json=None,
-          pe_monitoring_path=None, asset_class_overrides=None, equity_region_overrides=None):
-    parse_cmd = [sys.executable, str(SCRIPT_DIR / "parse_portfolio.py"), excel_path,
-                 "--profile", profile, "--client-name", client_name,
-                 "-o", keep_parsed_json or str(SCRIPT_DIR.parent / "work" / "_parsed_tmp.json")]
-    if valuation_date:
-        parse_cmd += ["--valuation-date", valuation_date]
-    if bucket_overrides:
-        parse_cmd += ["--bucket-overrides", bucket_overrides]
-    if market_cap_overrides:
-        parse_cmd += ["--market-cap-overrides", market_cap_overrides]
-    if sector_overrides:
-        parse_cmd += ["--sector-overrides", sector_overrides]
-    if style_overrides:
-        parse_cmd += ["--style-overrides", style_overrides]
-    if vehicle_overrides:
-        parse_cmd += ["--vehicle-overrides", vehicle_overrides]
-    if asset_class_overrides:
-        parse_cmd += ["--asset-class-overrides", asset_class_overrides]
-    if equity_region_overrides:
-        parse_cmd += ["--equity-region-overrides", equity_region_overrides]
-    subprocess.run(parse_cmd, check=True)
+          pe_monitoring_path=None, asset_class_overrides=None, equity_region_overrides=None,
+          parsed_json_in=None):
+    # parsed_json_in: use an already-built parsed.json (e.g. from
+    # parse_model_allocation.py for a weights-only model) instead of
+    # re-parsing a custodian export. Everything downstream is identical:
+    # both parsers emit the same schema.
+    if parsed_json_in:
+        parsed = json.loads(Path(parsed_json_in).read_text())
+    else:
+        parse_cmd = [sys.executable, str(SCRIPT_DIR / "parse_portfolio.py"), excel_path,
+                     "--profile", profile, "--client-name", client_name,
+                     "-o", keep_parsed_json or str(SCRIPT_DIR.parent / "work" / "_parsed_tmp.json")]
+        for flag, value in [("--valuation-date", valuation_date),
+                            ("--bucket-overrides", bucket_overrides),
+                            ("--market-cap-overrides", market_cap_overrides),
+                            ("--sector-overrides", sector_overrides),
+                            ("--style-overrides", style_overrides),
+                            ("--vehicle-overrides", vehicle_overrides),
+                            ("--asset-class-overrides", asset_class_overrides),
+                            ("--equity-region-overrides", equity_region_overrides)]:
+            if value:
+                parse_cmd += [flag, value]
+        subprocess.run(parse_cmd, check=True)
 
-    parsed_path = keep_parsed_json or str(SCRIPT_DIR.parent / "work" / "_parsed_tmp.json")
-    parsed = json.loads(Path(parsed_path).read_text())
+        parsed_path = keep_parsed_json or str(SCRIPT_DIR.parent / "work" / "_parsed_tmp.json")
+        parsed = json.loads(Path(parsed_path).read_text())
 
     market = None
     if market_update_path:
@@ -1260,10 +1274,13 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
     # A sleeve slide with no holdings behind it is three empty charts and a
     # "No holdings in this sleeve" table — worse than not being in the deck.
     # Same rule as the proposed-bond-selection slide: the data decides.
-    for slide_no, sleeve_key in sorted(SLEEVE_SLIDES.items()):
-        if not parsed["sleeves"].get(sleeve_key, {}).get("num_lines"):
+    for slide_no, sleeve_keys in sorted(SLEEVE_SLIDES.items()):
+        # a slot can take more than one sleeve (slide 17: Alternatives or
+        # Private Assets); it goes only when none of them has holdings
+        keys = (sleeve_keys,) if isinstance(sleeve_keys, str) else sleeve_keys
+        if not any((parsed["sleeves"].get(k) or {}).get("num_lines") for k in keys):
             doomed.append(get_slide(prs, slide_no))
-            print(f"Note: no {sleeve_key} holdings — that sleeve's slide was removed.")
+            print(f"Note: no {' / '.join(keys)} holdings — that sleeve's slide was removed.")
     income = parsed["income"]
     if (income.get("fi_duration_years") is None
             and not any(r["income_base"] for r in income["income_by_sleeve"])):
@@ -1290,7 +1307,8 @@ def build(excel_path, profile, client_name, output_path, market_update_path=None
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--excel", required=True)
+    ap.add_argument("--excel", default=None,
+                     help="custodian export; omit when using --parsed-json-in")
     ap.add_argument("--profile", required=True,
                      choices=["Fixed Income", "Conservative", "Moderate", "Balanced", "Growth", "Equity"])
     ap.add_argument("--client-name", default="[Client Name]")
@@ -1313,8 +1331,14 @@ def main():
     ap.add_argument("--equity-region-overrides", default=None,
                      help="CSV isin,region — equity region when the file's country tag is misleading")
     ap.add_argument("--keep-parsed-json", default=None, help="also write parsed.json to this path")
+    ap.add_argument("--parsed-json-in", default=None,
+                     help="use this pre-built parsed.json (e.g. from parse_model_allocation.py) "
+                          "instead of parsing a custodian export")
     ap.add_argument("-o", "--output", required=True)
     args = ap.parse_args()
+
+    if not args.excel and not args.parsed_json_in:
+        ap.error("one of --excel or --parsed-json-in is required")
 
     build(args.excel, args.profile, args.client_name, args.output,
           market_update_path=args.market_update, pe_monitoring_path=args.pe_monitoring,
@@ -1324,7 +1348,7 @@ def main():
           vehicle_overrides=args.vehicle_overrides,
           asset_class_overrides=args.asset_class_overrides,
           equity_region_overrides=args.equity_region_overrides,
-          keep_parsed_json=args.keep_parsed_json)
+          keep_parsed_json=args.keep_parsed_json, parsed_json_in=args.parsed_json_in)
 
 
 if __name__ == "__main__":
