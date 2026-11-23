@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -27,7 +28,7 @@ from pathlib import Path
 import openpyxl
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "references"))
-from geography_map import region_of, equity_region_of  # noqa: E402
+from geography_map import region_of, equity_region_of, equity_region_from_name  # noqa: E402
 
 PORTFOLIO_SECTIONS = {
     "Cash",
@@ -36,9 +37,38 @@ PORTFOLIO_SECTIONS = {
     "Equities",
     "Structured products",
     "Private Assets",
+    "Alternative funds",
     "Gold and other commodities",
     "Other investments",
 }
+
+# French-language custodian export (assumptions.md §1b): section headers in
+# column A are translated to the English section names above, so every rule
+# downstream of load_sheet_rows() sees one vocabulary.
+SECTION_ALIASES = {
+    "avoirs en compte": "Cash",
+    "placements à court terme": "Short-term instruments",
+    "obligations": "Bonds",
+    "actions": "Equities",
+    "produits structurés": "Structured products",
+    "actifs privés": "Private Assets",
+    "fonds alternatifs": "Alternative funds",
+    "or et autres matières premières": "Gold and other commodities",
+    "autres placements": "Other investments",
+}
+
+# French column headers -> the English normalized header names every rule in
+# this script reads. The base-currency valuation column is matched separately
+# by VALUATION_HEADER_RE because its currency code varies by file.
+HEADER_ALIASES = {
+    "solde": "balance",
+    "libellé": "description",
+    "devise": "currency",
+    "cours (mc)": "price (qc)",
+    "poids (%)": "weight (%)",
+}
+VALUATION_HEADER_RE = re.compile(
+    r"^(?:valuation \+ accr\. interest|estimation \+ int\. courus) \(([a-z]{3})\)$")
 
 # Maps a raw Portfolio-sheet section header to the asset-class bucket used
 # throughout parsed.json and the slide 9/10 line-items table (assumptions.md §4-5).
@@ -49,6 +79,7 @@ ASSET_CLASS_MAP = {
     "Equities": "Equities",
     "Structured products": "Structured Products",
     "Private Assets": "Private Assets",
+    "Alternative funds": "Alternatives",
     "Gold and other commodities": "Commodities",
     "Other investments": "Other",
 }
@@ -62,44 +93,83 @@ IG_RATINGS = {"AAA", "AA+", "AA", "AA-"}
 CORP_IG_RATINGS = {"A+", "A", "A-", "BBB+", "BBB", "BBB-"}
 
 FUND_KEYWORDS = ("FUND", " FD ", "SICAV", "ETF", "ETC")
-STRUCTURED_KEYWORDS = ("CERTIFICATE", " CERT", "AMC", "TRACKER", "DCI-", "RAF ", "CPN ")
+STRUCTURED_KEYWORDS = ("CERTIFICATE", " CERT", "AMC", "TRACKER", "DCI-", "RAF ", "CPN ", " CLN ")
+# A direct bond line in the French export carries its maturity date in the
+# instrument name ("4.85% HEWLETT PACK OCT31  15.10.2031"); funds never do.
+BOND_MATURITY_IN_NAME_RE = re.compile(r"\b\d{2}\.\d{2}\.\d{4}\b")
 
 
 def norm_header(h) -> str:
     return " ".join(str(h or "").split()).strip().lower()
 
 
-def load_sheet_rows(ws) -> tuple[dict[str, int], list[dict]]:
-    """Find the header row (first row with >=3 non-empty cells that look like
-    column names) then yield every row below it as a dict keyed by normalized
-    header name, tagging each with its section from column A."""
+def canonical_section(value) -> str | None:
+    """English section name for a column-A header cell, or None if the cell
+    isn't a section header (assumptions.md §1, §1b)."""
+    if not isinstance(value, str):
+        return None
+    v = value.strip()
+    if v in PORTFOLIO_SECTIONS:
+        return v
+    return SECTION_ALIASES.get(" ".join(v.split()).lower())
+
+
+def load_sheet_rows(ws) -> tuple[dict[str, int], list[dict], str]:
+    """Find the header row (the first row carrying both a description column
+    and a weight column, in either the English or the French export) then
+    yield every row below it as a dict keyed by normalized English header
+    name, tagging each with its section from column A.
+
+    Returns (headers, rows, base_currency). The base currency is read from
+    the valuation column's own header, e.g. "Valuation + accr. interest
+    (EUR)" or "Estimation + int. courus (USD)" (assumptions.md §3); each
+    row's value in that column lands under the "_value_base" key."""
     header_row_idx = None
     headers: dict[str, int] = {}
+    base_currency = None
     for r in range(1, ws.max_row + 1):
         vals = [ws.cell(r, c).value for c in range(1, ws.max_column + 1)]
-        non_empty = [v for v in vals if v not in (None, "")]
-        if len(non_empty) >= 5 and any(isinstance(v, str) and "isin" in v.lower() for v in vals):
+        normed = [HEADER_ALIASES.get(norm_header(v), norm_header(v)) for v in vals]
+        if "description" in normed and "weight (%)" in normed:
             header_row_idx = r
-            for c, v in enumerate(vals, 1):
-                if v not in (None, ""):
-                    headers[norm_header(v)] = c
+            for c, (v, h) in enumerate(zip(vals, normed), 1):
+                if v in (None, ""):
+                    continue
+                m = VALUATION_HEADER_RE.match(norm_header(v))
+                if m:
+                    base_currency = m.group(1).upper()
+                    headers["_value_base"] = c
+                else:
+                    headers[h] = c
             break
     if header_row_idx is None:
-        raise ValueError(f"Could not find a header row with an ISIN column in sheet '{ws.title}'")
+        raise ValueError(f"Could not find a header row with Description/Libellé and Weight/Poids "
+                         f"columns in sheet '{ws.title}'")
+    if base_currency is None:
+        raise ValueError(f"Could not find a base-currency valuation column "
+                         f"('Valuation + accr. interest (XXX)' or 'Estimation + int. courus (XXX)') "
+                         f"in sheet '{ws.title}'")
 
     rows = []
     section = None
     for r in range(header_row_idx + 1, ws.max_row + 1):
         col_a = ws.cell(r, 1).value
-        if isinstance(col_a, str) and col_a.strip() in PORTFOLIO_SECTIONS:
-            section = col_a.strip()
+        sec = canonical_section(col_a)
+        if sec:
+            section = sec
             continue
         row = {h: ws.cell(r, c).value for h, c in headers.items()}
+        if isinstance(col_a, str) and col_a.strip() and all(v in (None, "") for v in row.values()):
+            # A label in column A with nothing else on the row is a section
+            # header we don't know. Failing loudly beats silently filing its
+            # holdings under the previous section's asset class.
+            raise ValueError(f"Unknown section header '{col_a.strip()}' in sheet '{ws.title}' "
+                             f"(row {r}); add it to PORTFOLIO_SECTIONS or SECTION_ALIASES")
         if all(v in (None, "") for v in row.values()):
             continue
         row["_section"] = section
         rows.append(row)
-    return headers, rows
+    return headers, rows, base_currency
 
 
 def load_bucket_overrides(path: str | None) -> dict[str, str]:
@@ -132,13 +202,61 @@ def load_sector_overrides(path: str | None) -> dict[str, str]:
     return out
 
 
-def classify_fi_bucket(row: dict, overrides: dict[str, str]) -> str:
+def instrument_key(value) -> str:
+    return " ".join(str(value or "").split()).upper()
+
+
+def load_instrument_overrides(path: str | None) -> dict[str, dict[str, str]]:
+    """assumptions.md §14. CSV columns: instrument,region,vehicle,fi_group.
+    `instrument` is an ISIN or the exact instrument description; blank cells
+    mean "no override for this field"."""
+    if not path:
+        return {}
+    out = {}
+    with open(path, newline="") as f:
+        for row in csv.DictReader(f):
+            key = instrument_key(row.get("instrument"))
+            if not key:
+                continue
+            out[key] = {k: (row.get(k) or "").strip() for k in ("region", "vehicle", "fi_group")}
+    return out
+
+
+def instrument_override(row: dict, overrides: dict[str, dict[str, str]], field: str) -> str | None:
+    for key in (row.get("isin code"), row.get("description")):
+        hit = overrides.get(instrument_key(key))
+        if hit and hit.get(field):
+            return hit[field]
+    return None
+
+
+def classify_fi_bucket_by_structure(row: dict) -> str:
+    """assumptions.md §4b: used when the export has no rating column, so the
+    only honest grouping is by instrument structure, read from the section
+    header and the instrument name."""
+    desc = f" {str(row.get('description') or '').upper()} "
+    if row.get("_section") == "Short-term instruments":
+        return "Money market & short-term"
+    if " CLN " in desc:
+        return "Credit-linked notes"
+    if BOND_MATURITY_IN_NAME_RE.search(desc):
+        return "Direct bonds"
+    return "Bond funds"
+
+
+def classify_fi_bucket(row: dict, overrides: dict[str, str], has_rating: bool = True,
+                       instrument_overrides: dict | None = None) -> str:
     """assumptions.md §4. Note: the Portfolio sheet carries no Sector column
     (only the separate 'Fixed Income' proposal tab does), so this rule uses
     Composite Rating + Duration + Geographical breakdown only."""
     isin = str(row.get("isin code") or "").strip()
     if isin in overrides:
         return overrides[isin]
+    forced = instrument_override(row, instrument_overrides or {}, "fi_group")
+    if forced:
+        return forced
+    if not has_rating:
+        return classify_fi_bucket_by_structure(row)
 
     geography = row.get("geographical breakdown")
     if region_of(geography) == "MEA EM":
@@ -158,16 +276,38 @@ def classify_fi_bucket(row: dict, overrides: dict[str, str]) -> str:
     return "High Yield (local or global hdg)"
 
 
-def classify_vehicle(description: str, rating, coupon) -> str:
-    """assumptions.md §6"""
-    d = (description or "").upper()
+def classify_vehicle(description: str, rating, coupon, has_rating: bool = True) -> str:
+    """assumptions.md §6. Without a rating column (§6b) the blank-rating-and-
+    coupon signature means nothing, so a line is "Direct line" only when its
+    name carries a bond maturity date; single stocks and physical metal need
+    an --instrument-overrides entry to be recognised as direct lines."""
+    d = f" {(description or '').upper()} "
     if any(k in d for k in FUND_KEYWORDS):
         return "Fund"
     if any(k in d for k in STRUCTURED_KEYWORDS):
         return "Structured / AMC"
+    if not has_rating:
+        return "Direct line" if BOND_MATURITY_IN_NAME_RE.search(d) else "Fund"
     if (rating in (None, "", "Not Rated")) and coupon in (None, ""):
         return "Fund"
     return "Direct line"
+
+
+def vehicle_of(row: dict, has_rating: bool, instrument_overrides: dict) -> str:
+    return (instrument_override(row, instrument_overrides, "vehicle")
+            or classify_vehicle(row.get("description"), row.get("composite rating"),
+                                row.get("coupon (%)"), has_rating))
+
+
+def equity_region_for(row: dict, has_geography: bool, instrument_overrides: dict) -> str:
+    """assumptions.md §8: override, else the file's own geography column,
+    else (French export, no geography column) a keyword read of the name."""
+    forced = instrument_override(row, instrument_overrides, "region")
+    if forced:
+        return forced
+    if has_geography:
+        return equity_region_of(row.get("geographical breakdown"))
+    return equity_region_from_name(row.get("description"))
 
 
 def describe_bond_subsleeve(row: dict) -> str:
@@ -312,7 +452,10 @@ def pct(x: float) -> float:
 
 
 def val_eur(row: dict) -> float:
-    v = row.get("valuation + accr. interest (eur)")
+    """Value in the file's base currency (see load_sheet_rows). The `_eur`
+    name is historical: every `value_eur` / `total_value_eur` key in
+    parsed.json is in `base_currency`, which is EUR only for EUR-based files."""
+    v = row.get("_value_base")
     try:
         return float(v or 0)
     except (TypeError, ValueError):
@@ -336,18 +479,35 @@ def main():
     ap.add_argument("--bucket-overrides", default=None)
     ap.add_argument("--market-cap-overrides", default=None)
     ap.add_argument("--sector-overrides", default=None)
+    ap.add_argument("--instrument-overrides", default=None,
+                    help="CSV instrument,region,vehicle,fi_group (assumptions.md §14)")
     ap.add_argument("-o", "--output", default="parsed.json")
     args = ap.parse_args()
 
     wb = openpyxl.load_workbook(args.excel_path, data_only=True)
-    if "Portfolio" not in wb.sheetnames:
-        sys.exit("Error: expected a 'Portfolio' sheet in the Excel file")
-    _, port_rows = load_sheet_rows(wb["Portfolio"])
+    # The English export names its holdings tab "Portfolio"; the French
+    # export ships a single unnamed "Sheet1" (assumptions.md §1b).
+    holdings_ws = wb["Portfolio"] if "Portfolio" in wb.sheetnames else wb.worksheets[0]
+    port_headers, port_rows, base_currency = load_sheet_rows(holdings_ws)
+    # Which optional analytics columns this export actually carries. Every
+    # rule that needs a missing column reports "not available" instead of
+    # running on blanks (assumptions.md §1b).
+    data_availability = {
+        "isin": "isin code" in port_headers,
+        "geography": "geographical breakdown" in port_headers,
+        "rating": "composite rating" in port_headers,
+        "duration": "duration" in port_headers,
+        "yield": "yield (%)" in port_headers or "coupon (%)" in port_headers,
+        "value_in_quote_currency": "valuation + accr. interest (in qc)" in port_headers,
+    }
+    has_rating = data_availability["rating"]
+    has_geography = data_availability["geography"]
     proposed_bond_selection = parse_proposed_bonds(wb) if "Fixed Income" in wb.sheetnames else None
 
     bucket_overrides = load_bucket_overrides(args.bucket_overrides)
     mcap_overrides = load_market_cap_overrides(args.market_cap_overrides)
     sector_overrides = load_sector_overrides(args.sector_overrides)
+    instrument_overrides = load_instrument_overrides(args.instrument_overrides)
 
     included, uncalled = [], []
     for row in port_rows:
@@ -369,22 +529,27 @@ def main():
         row["_asset_class"] = ASSET_CLASS_MAP[section]
         row["_weight"] = w
         row["_value_eur"] = v
-        try:
-            row["_value_qc"] = float(row.get("valuation + accr. interest (in qc)") or 0)
-        except (TypeError, ValueError):
-            row["_value_qc"] = 0.0
+        if data_availability["value_in_quote_currency"]:
+            try:
+                row["_value_qc"] = float(row.get("valuation + accr. interest (in qc)") or 0)
+            except (TypeError, ValueError):
+                row["_value_qc"] = None
+        else:
+            # Not derivable without guessing each line's price convention
+            # (bond % of nominal vs fund NAV per unit); tables fall back to
+            # the base-currency value, labelled in the base currency.
+            row["_value_qc"] = None
         included.append(row)
 
     total_value_eur = sum(r["_value_eur"] for r in included)
 
-    # Base/reporting currency: fixed at EUR, matching the custodian file's
-    # own "Valuation + accr. interest (EUR)" column and its own stated
-    # portfolio total (assumptions.md §3). This is NOT the same thing as
-    # "most-held currency by weight" (that's currency_exposure_pct below,
-    # a property of the holdings, not of the reporting base) -- conflating
-    # the two mislabels every EUR-denominated aggregate figure with
-    # whatever currency happens to dominate the book.
-    base_currency = "EUR"
+    # Base/reporting currency: read from the valuation column's own header
+    # ("Valuation + accr. interest (EUR)", "Estimation + int. courus (USD)"),
+    # matching the file's own stated portfolio total (assumptions.md §3).
+    # This is NOT the same thing as "most-held currency by weight" (that's
+    # currency_exposure_pct below, a property of the holdings, not of the
+    # reporting base) -- conflating the two mislabels every aggregate figure
+    # with whatever currency happens to dominate the book.
     ccy_val = defaultdict(float)
     for r in included:
         ccy_val[str(r.get("currency") or "Other")] += r["_value_eur"]
@@ -412,11 +577,17 @@ def main():
     sector_weight = defaultdict(float)
     sector_data_available = bool(sector_overrides)
     for r in included:
-        geo_weight[region_of(r.get("geographical breakdown"))] += r["_weight"]
+        if has_geography:
+            geo_weight[region_of(r.get("geographical breakdown"))] += r["_weight"]
         if sector_data_available:
             isin = str(r.get("isin code") or "")
             sector_weight[sector_overrides.get(isin, "Other")] += r["_weight"]
-    geographic_exposure = {k: pct(v) for k, v in sorted(geo_weight.items(), key=lambda kv: -kv[1])}
+    # No geography column -> null, same "report unavailable, never fabricate"
+    # rule as sector (assumptions.md §7).
+    geographic_exposure = (
+        {k: pct(v) for k, v in sorted(geo_weight.items(), key=lambda kv: -kv[1])}
+        if has_geography else None
+    )
     sector_exposure = (
         {k: pct(v) for k, v in sorted(sector_weight.items(), key=lambda kv: -kv[1])}
         if sector_data_available else None
@@ -430,7 +601,7 @@ def main():
         top = sorted(rows_ac, key=lambda r: -r["_weight"])[:5]
         vehicle_weight = defaultdict(float)
         for r in rows_ac:
-            v = classify_vehicle(r.get("description"), r.get("composite rating"), r.get("coupon (%)"))
+            v = vehicle_of(r, has_rating, instrument_overrides)
             vehicle_weight[v] += r["_weight"] / ac_total_w if ac_total_w else 0
         durations = [float(r["duration"]) for r in rows_ac if isinstance(r.get("duration"), (int, float))]
         n_with_dur = len(durations)
@@ -452,7 +623,8 @@ def main():
                 for r in top
             ],
             "vehicle_breakdown_pct": {k: pct(v) for k, v in sorted(vehicle_weight.items(), key=lambda kv: -kv[1])},
-            "duration_coverage": f"{n_with_dur} of {len(rows_ac)}" if asset_class == "Fixed Income" else None,
+            "duration_coverage": (f"{n_with_dur} of {len(rows_ac)}"
+                                  if asset_class == "Fixed Income" and data_availability["duration"] else None),
         }
 
     # --- §8 equity breakdown (renormalized to the equity sleeve) ---
@@ -462,7 +634,7 @@ def main():
     mcap_available = bool(mcap_overrides)
     for r in equity_rows:
         w_norm = r["_weight"] / eq_total_w
-        eq_geo[equity_region_of(r.get("geographical breakdown"))] += w_norm
+        eq_geo[equity_region_for(r, has_geography, instrument_overrides)] += w_norm
         if sector_data_available:
             isin = str(r.get("isin code") or "")
             eq_sector[sector_overrides.get(isin, "Other")] += w_norm
@@ -499,7 +671,17 @@ def main():
         desc = str(r.get("description") or "").upper()
         if r["_asset_class"] == "Private Assets" or "COMMIT" in desc:
             bucket = "Illiquid (lock-up)"
-        elif classify_vehicle(r.get("description"), r.get("composite rating"), r.get("coupon (%)")) == "Fund":
+        elif r["_asset_class"] == "Cash":
+            # §10 lists cash under "Listed"; without this branch a current
+            # account (blank rating and coupon) fell through to the §6 fund
+            # signature and was filed as a daily-liquid fund.
+            bucket = "Listed"
+        elif r["_asset_class"] == "Alternatives":
+            # §10: the export says these are alternative funds but not their
+            # dealing terms (daily UCITS vs gated quarterly), so they get
+            # their own bucket rather than a guess either way.
+            bucket = "Alternative funds (dealing terms vary)"
+        elif vehicle_of(r, has_rating, instrument_overrides) == "Fund":
             bucket = "Daily-liquid fund"
         else:
             bucket = "Listed"
@@ -524,7 +706,8 @@ def main():
         if isinstance(d, (int, float)):
             dur_num += r["_value_eur"] * d
             dur_den += r["_value_eur"]
-        label = describe_bond_subsleeve(r)
+        label = (describe_bond_subsleeve(r) if has_rating
+                 else classify_fi_bucket(r, bucket_overrides, has_rating, instrument_overrides))
         duration_subsleeves[label]["value"] += r["_value_eur"]
         if isinstance(d, (int, float)):
             duration_subsleeves[label]["dur_weighted"] += r["_value_eur"] * d
@@ -552,8 +735,10 @@ def main():
             {
                 "label": k,
                 "value_eur": round(v["value"], 2),
-                "avg_duration": round(v["dur_weighted"] / v["value"], 2) if v["value"] and v["dur_weighted"] else 0.0,
-                "contribution": round(v["dur_weighted"] / fi_total_val, 2) if fi_total_val else 0.0,
+                "avg_duration": ((round(v["dur_weighted"] / v["value"], 2) if v["value"] and v["dur_weighted"] else 0.0)
+                                 if data_availability["duration"] else None),
+                "contribution": ((round(v["dur_weighted"] / fi_total_val, 2) if fi_total_val else 0.0)
+                                 if data_availability["duration"] else None),
             }
             for k, v in sorted(duration_subsleeves.items(), key=lambda kv: -kv[1]["value"])
         ],
@@ -571,22 +756,25 @@ def main():
     # --- line items table source (assumptions.md §4, slides 9-10) ---
     line_items = []
     fi_bucket_order = ["Govies 1-10 (local)", "Govies 10+ (local)", "High Yield (local or global hdg)",
-                        "Corporate IG (local)", "EM Debt"]
+                        "Corporate IG (local)", "EM Debt",
+                        # §4b structure-based groups (exports without a rating column)
+                        "Direct bonds", "Credit-linked notes", "Bond funds", "Money market & short-term"]
     equity_region_order = ["US", "Eurozone", "UK", "Switzerland", "Japan", "EM", "Global / thematic"]
     for r in included:
         ac = r["_asset_class"]
         if ac == "Fixed Income":
-            group = classify_fi_bucket(r, bucket_overrides)
+            group = classify_fi_bucket(r, bucket_overrides, has_rating, instrument_overrides)
         elif ac == "Cash":
             group = "Cash"
         elif ac == "Equities":
-            group = equity_region_of(r.get("geographical breakdown"))
+            group = equity_region_for(r, has_geography, instrument_overrides)
         else:
             group = ac
         line_items.append({
             "top_category": ac,
             "group": group,
             "isin": r.get("isin code"),
+            "currency": r.get("currency"),
             "instrument": r.get("description"),
             "weight_pct": pct(r["_weight"]),
         })
@@ -616,6 +804,7 @@ def main():
         "risk_profile_input": args.profile,
         "valuation_date": valuation_date,
         "base_currency": base_currency,
+        "data_availability": data_availability,
         "dominant_holding_currency": dominant_holding_currency,
         "total_value_eur": round(total_value_eur, 2),
         "num_positions": len(included),
@@ -638,7 +827,7 @@ def main():
 
     Path(args.output).write_text(json.dumps(parsed, indent=2, default=str))
     print(f"Wrote {args.output}: {len(included)} positions, "
-          f"{parsed['total_value_eur']:,.0f} EUR, dominant holding currency {dominant_holding_currency}")
+          f"{parsed['total_value_eur']:,.0f} {base_currency}, dominant holding currency {dominant_holding_currency}")
 
 
 if __name__ == "__main__":

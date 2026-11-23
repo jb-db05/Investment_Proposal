@@ -35,6 +35,7 @@ from pptx.util import Emu, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.oxml.ns import qn
+from pptx.opc.packuri import PackURI
 
 # --- visual constants, matched to the template's own title-block geometry ---
 TABLE_LEFT = Emu(665163)
@@ -58,6 +59,7 @@ CATEGORY_COLORS = {
     "Fixed Income": RGBColor(0x4B, 0x5F, 0x80),
     "Equities": RGBColor(0x79, 0xD6, 0xFF),          # Sky Blue
     "Private Assets": RGBColor(0xAC, 0x5D, 0x85),
+    "Alternatives": RGBColor(0xAC, 0x5D, 0x85),       # same "Alternatives" slot as Private Assets
     "Commodities": RGBColor(0x3B, 0xAF, 0x90),
     "Structured Products": RGBColor(0xE6, 0xA4, 0xAD),  # Peach Pink
     "Other": RGBColor(0xFF, 0xA4, 0x00),
@@ -159,7 +161,8 @@ def _merge_col1(table, r0, r1):
 
 
 def render_page(slide, page_groups: list[Group], n_rows: int, is_last_page: bool,
-                 grand_total_pct: float | None, category_totals: dict[str, float]):
+                 grand_total_pct: float | None, category_totals: dict[str, float],
+                 id_column: str = "isin"):
     n_cols = 4
     graphic_frame = slide.shapes.add_table(n_rows, n_cols, TABLE_LEFT, TABLE_TOP,
                                             TABLE_WIDTH, ROW_HEIGHT * n_rows)
@@ -173,7 +176,9 @@ def render_page(slide, page_groups: list[Group], n_rows: int, is_last_page: bool
 
     # column-label row: navy text on white, not a colored bar — the colored
     # bars are reserved for the asset-class header rows below
-    headers = ["Asset Allocation", "ISIN", "Instrument", "Weight"]
+    # Exports without ISINs (the French custodian file) show each line's
+    # currency in that column instead of a column of blanks.
+    headers = ["Asset Allocation", "ISIN" if id_column == "isin" else "Currency", "Instrument", "Weight"]
     for c, h in enumerate(headers):
         _set_cell(table.cell(0, c), h, bold=True, fill=RGBColor(0xFF, 0xFF, 0xFF), font_color=NAVY,
                   size=10, font_name=FONT_NAME)
@@ -196,7 +201,7 @@ def render_page(slide, page_groups: list[Group], n_rows: int, is_last_page: bool
             last_top_category = g.top_category
         group_first_row = r
         for li in g.rows:
-            _set_cell(table.cell(r, 1), li["isin"] or "", size=9.5)
+            _set_cell(table.cell(r, 1), li.get(id_column) or "", size=9.5)
             _set_cell(table.cell(r, 2), li["instrument"] or "", size=9.5)
             _set_cell(table.cell(r, 3), fmt_pct(li['weight_pct']), size=9.5, align=PP_ALIGN.RIGHT)
             r += 1
@@ -229,6 +234,15 @@ def duplicate_slide_after(prs, index):
     positioned immediately after it. Returns the new slide."""
     src = prs.slides[index]
     new_slide = prs.slides.add_slide(src.slide_layout)  # appended at the end
+    # python-pptx names a new slide part slide{len(slides)+1}.xml. Once any
+    # slide has been deleted (build_proposal.py drops slides with no data),
+    # that name can belong to a slide still in the deck: both get written to
+    # the zip under one name and the file opens as corrupt. Rename to a free one.
+    used = {str(p.partname) for p in prs.part.package.iter_parts() if p is not new_slide.part}
+    n = 1
+    while f"/ppt/slides/slide{n}.xml" in used:
+        n += 1
+    new_slide.part.partname = PackURI(f"/ppt/slides/slide{n}.xml")
     xml_slides = prs.slides._sldIdLst
     slides = list(xml_slides)
     new_el = slides[-1]
@@ -329,6 +343,7 @@ def build(prs: Presentation, parsed: dict) -> Presentation:
     while len(slot_indices) > n_pages:
         delete_slide(prs, slot_indices.pop())
 
+    id_column = "isin" if any(li.get("isin") for li in line_items) else "currency"
     ccy = parsed["base_currency"]
     total_m = parsed["total_value_eur"] / 1_000_000
     date = parsed["valuation_date"]
@@ -351,7 +366,8 @@ def build(prs: Presentation, parsed: dict) -> Presentation:
         is_last = page_num == n_pages
         if is_last:
             n_rows += 1
-        render_page(slide, page_groups, n_rows, is_last, grand_total if is_last else None, category_totals)
+        render_page(slide, page_groups, n_rows, is_last, grand_total if is_last else None, category_totals,
+                    id_column=id_column)
 
     return prs
 

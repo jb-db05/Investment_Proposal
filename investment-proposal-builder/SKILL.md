@@ -10,12 +10,17 @@ Turns three client-specific inputs into a client-ready PowerPoint deck:
 1. **Portfolio Excel** — a custodian export of the client's current holdings
    (a `Portfolio` sheet with section-header rows per asset class) plus,
    optionally, a `Fixed Income` sheet holding a curated bond *proposal*.
+   The French-language export (one `Sheet1`, `Avoirs en compte` /
+   `Obligations` / `Actions`... sections, `Estimation + int. courus (USD)`)
+   is also accepted; it lacks ISIN, geography, rating, duration and yield
+   columns, so see `references/assumptions.md` §1b for what changes.
 2. **Market-update PDF** — a weekly market commentary (Syz Research style).
 3. **Risk profile** — one of `Fixed Income`, `Conservative`, `Moderate`,
    `Balanced`, `Growth`, `Equity`.
 
-Output: a ~36-39 slide `.pptx` (slide count varies with how many holdings
-the client has — see "Pagination" below), with every number, chart and
+Output: a roughly 28-34 slide `.pptx` (slide count varies with how many
+holdings the client has, see "Pagination" below, and with which data slides
+are dropped for lack of data, see `references/slide_recipe.md`), with every number, chart and
 table traced back to the Excel file, and every piece of market commentary
 traced back to the PDF. **Nothing is invented.** Where a number genuinely
 isn't available in the source file (e.g. equity sector classification —
@@ -56,14 +61,21 @@ files — see `references/assumptions.md` §4, §7-8 for the exact column
 names). Without them, sector and market-cap breakdowns are correctly
 reported as unavailable rather than fabricated.
 
+For an export without ISINs or a geography column (the French one), read
+the equity lines `parse_portfolio.py` filed under `Global / thematic` and
+the direct lines it called `Fund` (single stocks, physical bullion), and
+put the facts it cannot see in an `--instrument-overrides` CSV
+(`instrument,region,vehicle,fi_group`, assumptions.md §14). Keep that CSV
+with the client's inputs and tell the user which lines it covers.
+
 ### 3. Extract the market update (you do this — it's not a script)
 
 Read the market PDF (the `pdf` skill or your own multimodal `Read` tool)
 and produce `market_update.json` matching the schema in
 `references/slide_recipe.md` (§"Market update extraction"). This step is
 judgment, not a deterministic transform: you're picking which 4 headline
-stats, which 9 scoreboard rows, which 3 observations, which 4 drivers, and
-which 3 house-view columns best represent that week's commentary — the
+stats, which 9 scoreboard rows, which 3 observations, which 4 drivers (plus
+a one-line `policy_note` for slide 4's bottom box), and which 3 house-view columns best represent that week's commentary — the
 same summarization call a research analyst makes when condensing their own
 full deck onto these four slides. `work/market_update.json` in this repo
 is a complete worked example from a real PDF; use it as a template for
@@ -73,6 +85,11 @@ If the PDF's structure doesn't cleanly map to a field (no explicit
 scenario-probability table that week, say), leave that field's slide
 un-filled (the template's original text stays) and tell the user instead
 of inventing numbers.
+
+Weekly PDFs often quote the same move several times with different figures
+(an intraday chart, a Bloomberg dashboard and the CIO Office's own tables).
+Take every number from one family of pages where you can, normally the CIO
+Office "Weekly Market Performance" section, and name any exception.
 
 ### 4. Build the deck
 
@@ -87,7 +104,10 @@ python scripts/build_proposal.py \
 ```
 
 This re-runs `parse_portfolio.py` internally (pass the same override flags
-here too if you used them in step 2) and writes the final deck. It also
+here too if you used them in step 2) and writes the final deck. It prints
+any data slide it dropped for lack of data (see `slide_recipe.md`, "Slides
+dropped...") and a warning if the portfolio's growth-asset share sits
+outside the chosen profile's band: pass both on to the user. It also
 rebuilds the holdings-list slides as real tables (`build_line_items_tables.py`)
 — see "Pagination" below.
 
@@ -127,8 +147,9 @@ An empty list is a pass.
 ### 7. Visual QA
 
 Convert to PDF/images and look at every slide (`pptx` skill's
-`scripts/office/soffice.py`, or `thumbnail.py`). **Known limitation**:
-LibreOffice conversion did not work at all in the sandbox this skill was
+`scripts/office/soffice.py`, or `thumbnail.py`). LibreOffice has since
+worked (`soffice.py --headless --convert-to pdf`, then `pdftoppm`). **Earlier
+limitation**: LibreOffice conversion did not work at all in the sandbox this skill was
 built in (`soffice` failed to load even a trivial pptx — an environment
 issue, not specific to this deck; confirmed by testing a blank file). If
 that's still the case in your environment, say so explicitly rather than

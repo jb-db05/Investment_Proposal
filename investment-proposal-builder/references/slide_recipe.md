@@ -41,6 +41,31 @@ those positions are only correct before the holdings-list slide count
 changes. This bit us once during development — see the comment above the
 call order in `build_proposal.build()`.
 
+## Slides dropped when there is nothing true to show
+
+`build_proposal.build()` deletes a data slide rather than ship the
+reference client's leftover charts or a page of "n/a":
+
+| Template slide | Dropped when |
+|---|---|
+| 12 Geographic & sector exposure | both `geographic_exposure_pct` and `sector_exposure_pct` are null |
+| 14 Proposed bond selection | the Excel has no `Fixed Income` proposal tab |
+| 13/15/17/18/19 sleeve slides | the portfolio has no holdings in that sleeve (17 takes `Private Assets`, else `Alternatives`) |
+| 22 Income & interest-rate sensitivity | the export has neither yield/coupon nor duration columns |
+
+Each `fill_*` adds the slide's ORIGINAL number to a `drop` set; deletion
+happens once, highest number first, after every fill and before the
+line-items rebuild, so no fixed slide number moves under a later fill. The
+build prints which slides it dropped: say so to the user, since the agenda
+and slide count change.
+
+Deleting slides exposed a python-pptx naming bug: `add_slide()` names the
+new part `slide{len(slides)+1}.xml`, which can belong to a slide still in
+the deck once any slide is gone, and the saved file then has two zip
+entries under one name (the validator reports unreferenced parts and
+PowerPoint calls the file corrupt). `duplicate_slide_after()` in
+`build_line_items_tables.py` renames each new slide to a free part name.
+
 ## Scope boundary
 
 The appendix (Syz Group at a Glance, advisory service tiers, investment
@@ -273,6 +298,19 @@ automatically:
   house-view slide — the blank preference-matrix table stays for the
   advisor to fill in by hand, but the placeholder instruction sentence
   above it was clutter.
+- **Leftover reference-client text the fills never touched** (fixed in the
+  build, not the template): slide 4's fifth rectangle (a July "June CPI
+  fell 0.4%..." policy note, now `four_drivers.policy_note`), slide 11's
+  `TextBox 12` duration caveat ("2 of 23 fixed-income line(s)..."), and
+  the hard-coded page numbers `Text 42` ("12") and `Text 33` ("13") on the
+  two DEFAULT-layout breakdown slides, which printed next to the real
+  slide number.
+- **Breakdown-slide legends have fixed capacity** (5-6 label/square pairs
+  per donut). `fill_donut_with_legend()` adds rows inside the white panel
+  when a breakdown has more categories (with an explicit slice colour so
+  square and slice match), folds anything beyond that into "Other", and
+  removes the squares of unused rows. An unavailable breakdown shows one
+  "Not available" ring with a single matching legend entry.
 - **The "Headquartered in Geneva..." sentence on "Syz Group at a Glance"**
   was 11pt against every other body sentence in the deck being 12pt —
   fixed to 12pt, text and position untouched.
@@ -305,7 +343,11 @@ Schema (see the worked example for real values):
   "three_observations": [{"headline": str, "body": str}, ...3 of them],
   "four_drivers": {"intro_sentence": str,
                     "drivers": [{"number": int, "title": str, "body": str,
-                                 "stat": str|null}, ...4 of them]},
+                                 "stat": str|null}, ...4 of them],
+                    "policy_note": str  -- one or two sentences for slide 4's
+                                           bottom box (policy / house-view
+                                           takeaway); blanked with a warning
+                                           if missing},
   "scenario": {"intro_sentence": str,
                "probabilities": [{"name": str, "pct": number}, ...]},
   "house_view": {"intro_sentence": str,

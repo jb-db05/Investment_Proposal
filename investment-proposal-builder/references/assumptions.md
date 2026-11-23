@@ -25,6 +25,39 @@ in the client's Excel export, or to a documented rule applied to that column.
 Column names are matched case-insensitively with whitespace stripped
 (the export has trailing spaces on some headers, e.g. `"Rating  "`).
 
+## 1b. French-language export
+
+A second custodian layout is also accepted: a single sheet (`Sheet1`, no
+`Portfolio` tab, no `Fixed Income` tab) with French headers and sections.
+`load_sheet_rows()` translates it into the English vocabulary above before
+any rule runs (`SECTION_ALIASES`, `HEADER_ALIASES` in `parse_portfolio.py`):
+
+| French section | English section | Asset class |
+|---|---|---|
+| Avoirs en compte | Cash | Cash |
+| Placements à court terme | Short-term instruments | Fixed Income |
+| Obligations | Bonds | Fixed Income |
+| Actions | Equities | Equities |
+| Produits structurés | Structured products | Structured Products |
+| Actifs privés | Private Assets | Private Assets |
+| Fonds alternatifs | Alternative funds | Alternatives |
+| Or et autres matières premières | Gold and other commodities | Commodities |
+| Autres placements | Other investments | Other |
+
+Columns: `Libellé` → Description, `Devise` → Currency, `Solde` → Balance,
+`Cours (MC)` → Price (QC), `Poids (%)` → Weight (%), and
+`Estimation + int. courus (XXX)` → the base-currency valuation (§3).
+
+This export carries **no** ISIN, geography, rating, duration, yield, coupon
+or quote-currency valuation column. `parsed.json: data_availability` records
+which of these the file had, and every rule that needs a missing column
+reports "not available" rather than running on blanks: §4b, §6b, §7, §8 and
+§11 below say what each one does instead.
+
+A column-A label that is neither a known section header nor attached to any
+data raises an error instead of filing the rows beneath it under the
+previous section.
+
 ## 2. Row filtering
 
 - A holding row is included in the line-items table and every weight-based
@@ -41,12 +74,15 @@ Column names are matched case-insensitively with whitespace stripped
 
 ## 3. Currency of record
 
-- Portfolio total value and all EUR-denominated figures use the
-  `Valuation + accr. interest (EUR)` column.
+- Portfolio total value and all aggregate figures use the base-currency
+  valuation column, `Valuation + accr. interest (XXX)` (English export) or
+  `Estimation + int. courus (XXX)` (French export).
 - `base_currency` (used to label every aggregate monetary figure — total
-  value, KPIs, sleeve values, rate-impact) is **fixed at EUR**, matching
-  this column and the file's own stated total (e.g. "Total: 21'300'578
-  EUR"). This is deliberately NOT the same as `dominant_holding_currency`
+  value, KPIs, sleeve values, rate-impact) is **read from that column's own
+  header**, matching the file's own stated total (e.g. "Total: 21'300'578
+  EUR", "Total : 2'455'599 USD"). The `value_eur` / `total_value_eur` key
+  names in `parsed.json` are historical: they hold base-currency amounts,
+  which are EUR only for an EUR-based file. This is deliberately NOT the same as `dominant_holding_currency`
   (the currency with the largest weighted valuation, used only for
   informational purposes) — conflating the two would label EUR-denominated
   aggregates with whatever currency happens to dominate the book, which is
@@ -91,6 +127,20 @@ separate from this fixed-income logic: each equity row is bucketed into
 `geography_map.py::equity_region_of()`, applied to `Geographical
 breakdown`.
 
+### 4b. Exports without a rating column
+
+With no `Composite Rating` the Govies / IG / High Yield split above cannot be
+made without guessing, so fixed-income lines are grouped by **structure**,
+which the file does show:
+
+1. **Money market & short-term** — the row sits in the short-term section.
+2. **Credit-linked notes** — the name contains `CLN`.
+3. **Direct bonds** — the name carries a maturity date (`dd.mm.yyyy`).
+4. **Bond funds** — everything else.
+
+An `--instrument-overrides` `fi_group` value (§14) replaces this rule for
+that line.
+
 Desks with an authoritative issuer-level mapping should not rely on this
 heuristic: pass `--bucket-overrides overrides.csv` (columns `isin,bucket`)
 to `parse_portfolio.py` and any ISIN present there skips the rule above.
@@ -117,12 +167,24 @@ Within a sleeve, each holding is classified as:
 
 This is applied in the order above (first match wins) and is a heuristic
 for the same reason as §4 — the export has no vehicle-type column.
+`CLN` (credit-linked note) is also a structured keyword.
+
+### 6b. Exports without a rating column
+
+The "blank rating and blank coupon means fund" signature is meaningless when
+the file has no rating column at all, so there: fund and structured keywords
+apply as above, a name with a maturity date is a **Direct line**, and
+everything else is a **Fund**. Single stocks and physical bullion therefore
+need an `--instrument-overrides` `vehicle` entry (§14) to show as direct
+lines; without one they are counted as funds.
 
 ## 7. Geographic & sector exposure (portfolio-wide bar charts)
 
 - Geography: each holding's `Geographical breakdown` value is mapped to one
   of five regions via `geography_map.py::region_of()`, then weighted by
-  `Weight (%)`.
+  `Weight (%)`. A file with no geography column gets
+  `geographic_exposure_pct: null`; when sector is also null, the whole
+  "Geographic & sector exposure" slide is dropped (slide_recipe.md).
 - Sector: **the `Portfolio` sheet has no `Sector` column** — this is a real
   limitation of the custodian export, not an oversight (the reference deck
   discloses the same gap in its own footnote: "these fields are not in the
@@ -141,6 +203,12 @@ for the same reason as §4 — the export has no vehicle-type column.
   equity sleeve (not the whole portfolio). This is the same taxonomy used
   by the slide 10 line-items table, so the two slides agree with each
   other.
+- Without a geography column, an equity line's region comes from
+  `--instrument-overrides` (§14) if listed, else from whole-word keywords in
+  its name (`geography_map.py::equity_region_from_name()`: "SWISS" or
+  "(CH)" → Switzerland, "US" or "AMERICA" → US, "EM", "ASIA" or "CHINA" →
+  EM, and so on). A name with no regional keyword (single stocks, global
+  sector funds) is `Global / thematic`.
 - Sector: same `--sector-overrides` mechanism and `null`-when-absent
   behavior as §7, renormalized to the equity sleeve.
 - Market cap is not a column in the export — every equity line is
@@ -164,9 +232,15 @@ Each holding is classified by instrument shape, independent of asset class:
 - **Illiquid (lock-up)** — `Private Assets` section, or `Description`
   contains "COMMIT" (already excluded per §2 if zero-valued, but a partly
   drawn commitment line still counts here).
+- **Alternative funds (dealing terms vary)** — the `Alternatives` asset
+  class (French `Fonds alternatifs`). The file does not say whether such a
+  fund deals daily (UCITS) or quarterly with gates, so it is neither called
+  liquid nor locked up, and it is excluded from `liquid_share_pct`.
 - **Daily-liquid fund** — classified "Fund" under the §6 vehicle rule.
 - **Listed** — everything else (direct bonds, direct equities,
-  structured products, ETFs/ETCs, cash).
+  structured products, ETFs/ETCs, cash). Cash is assigned here explicitly:
+  before, a current-account line matched the §6 fund signature and was
+  counted as a daily-liquid fund.
 
 ## 11. Income & interest-rate sensitivity
 
@@ -187,6 +261,14 @@ Each holding is classified by instrument shape, independent of asset class:
   (oil)" style labels) — see `parse_portfolio.py::describe_bond_subsleeve()`
   for the exact keyword list; this label is cosmetic only and does not
   feed any other calculation.
+
+Without yield, coupon or duration columns, running yield, FI duration and
+rate impact are `null` ("n/a"), duration sub-sleeves carry value but
+`avg_duration: null`, and the Income & interest-rate sensitivity slide is
+dropped because none of its figures exist. Coupons are deliberately not
+parsed out of instrument names: a coupon is not a yield, and a "running
+yield" built from a handful of direct bonds would understate the book's
+income while looking precise.
 
 ## 12. Risk-profile dial (slide 8)
 
@@ -223,3 +305,15 @@ as-is; only `0 < value < 0.1` gets the `<0.1%` treatment. This rule only
 works because of the 6dp rounding above — if `pct()` rounded to 1dp
 before storing, the distinction between "genuinely zero" and "just very
 small" would already be gone by the time the display layer runs.
+
+## 14. Instrument overrides
+
+`--instrument-overrides overrides.csv`, columns `instrument,region,vehicle,fi_group`.
+`instrument` is an ISIN or the exact instrument description (matched
+case-insensitively, whitespace collapsed); a blank cell means "no override
+for this field". `region` takes one of the six equity buckets (§8),
+`vehicle` one of `Direct line` / `Fund` / `Structured / AMC` (§6), and
+`fi_group` any fixed-income group label (§4). Use it for facts the export
+does not contain, such as "PFIZER is a US direct equity line", and keep the
+file next to the client's inputs so the classifications stay reviewable.
+

@@ -141,3 +141,31 @@ def equity_region_of(country: str | None) -> str:
     if not country:
         return DEFAULT_EQUITY_REGION
     return EQUITY_REGION_MAP.get(country.strip(), DEFAULT_EQUITY_REGION)
+
+
+# Exports without a "Geographical breakdown" column (the French custodian
+# export, assumptions.md §1b) still name a fund's region in the instrument
+# name: "SISF US LARGE A CAP", "COMGEST GROWTH JAPAN", "BCV SWISS SMALLMID EQ
+# A". Each pattern is a whole-word match against the upper-cased name, tried
+# in this order (EM first, so "AMUNDI MSCI EM ASIA EUR" is EM, not Eurozone).
+# A name that matches nothing (single stocks, global sector funds) falls to
+# DEFAULT_EQUITY_REGION; pass --instrument-overrides to place those.
+import re as _re
+
+EQUITY_NAME_PATTERNS: list[tuple[str, str]] = [
+    (r"\b(EM|EMERGING|EMERG|CHINA|ASIA|INDIA|LATAM|BRAZIL)\b", "EM"),
+    (r"\b(SWISS|SWITZERLAND|SMI|SPI)\b|\(CH\)", "Switzerland"),
+    (r"\b(JAPAN|NIKKEI|TOPIX)\b", "Japan"),
+    (r"\b(UK|BRITISH|FTSE)\b", "UK"),
+    (r"\b(US|USA|AMERICA|AMERICAN|S&P)\b", "US"),
+    (r"\b(EURO|EUROZONE|EMU|EUROLAND|EUROPE|EUROPEAN)\b", "Eurozone"),
+]
+
+
+def equity_region_from_name(description: str | None) -> str:
+    """Map an equity line's instrument name to the six equity-sleeve buckets."""
+    name = " ".join(str(description or "").upper().split())
+    for pattern, region in EQUITY_NAME_PATTERNS:
+        if _re.search(pattern, name):
+            return region
+    return DEFAULT_EQUITY_REGION
